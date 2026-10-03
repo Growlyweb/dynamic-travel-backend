@@ -327,16 +327,19 @@ All are read in `config/env.js`. The full list with comments is in `.env.example
 | `TRUST_PROXY` | Number of reverse proxies in front of the app | off |
 | `COOKIE_SAME_SITE`, `COOKIE_SECURE`, `COOKIE_DOMAIN` | Refresh cookie settings | `lax`, on in production |
 | `OTP_EXPIRES_MINUTES`, `STAFF_INVITE_EXPIRES_HOURS` | Code and invite lifetime | `10`, `48` |
+| `OTP_RESEND_COOLDOWN_SECONDS` | Minimum gap between two codes for the same account | `60` |
 | `BCRYPT_COST` | Password hashing cost | `12` |
 | `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`, `APP_NAME` | Email delivery | none |
 | `EMAILJS_OTP_TEMPLATE_ID` | Optional separate template for emails that carry a code | uses `EMAILJS_TEMPLATE_ID` |
 | `APP_TIMEZONE` | Time zone for the `{{time}}` value in emails | `Asia/Dhaka` |
-| `EMAIL_PROVIDER` | `emailjs` or `console` (prints emails to the log, development only) | `emailjs` when keys are set |
+| `EMAIL_PROVIDER` | `emailjs`, `console` (prints emails to the log, development only) or `file` (appends them to `MAIL_OUTBOX_FILE`, used by the E2E tests; refused in production) | `emailjs` when keys are set |
+| `MAIL_OUTBOX_FILE` | File that receives the emails when `EMAIL_PROVIDER=file` | none |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` or `FIREBASE_SERVICE_ACCOUNT_PATH` | Firebase sign-in | disabled |
 | `FIREBASE_ALLOWED_PROVIDERS` | Firebase sign-in methods the API accepts (comma separated) | `google.com` |
 | `ADMIN_SEED_NAME`, `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` | First admin for `npm run seed` | none |
 | `PRIVATE_STORAGE_DIR`, `LOG_LEVEL`, `LOG_PRETTY` | Document folder, log level, colored logs | `storage/private`, `info`, on in a dev terminal |
 | `RATE_LIMIT_ENABLED` | Turn rate limiting on or off (it is off only under test) | `true` |
+| `SKIP_DOTENV` | `true` stops the server from reading `.env` (set by the E2E stack so a developer's own keys never leak into a test run) | off |
 
 Production refuses to boot without a real `MONGODB_URI`, two different JWT secrets of at least 32 characters, and EmailJS configured.
 
