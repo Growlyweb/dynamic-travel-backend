@@ -1,5 +1,7 @@
 const { test, expect } = require('../helpers/test');
-const { cfg, bearer, json, signUpCustomer, signUpAgency, adminSession, emailFor } = require('../helpers/api');
+const {
+  cfg, bearer, json, mailCount, waitForMail, registerCustomer, signUpCustomer, signUpAgency, adminSession, createStaff, emailFor
+} = require('../helpers/api');
 
 const STRANGER = 'https://evil.example';
 
@@ -86,6 +88,38 @@ test.describe('nothing private leaves the API', () => {
     // the register and verify responses too
     expect(forbidden.test(JSON.stringify(customer.user))).toBe(false);
     expect(forbidden.test(JSON.stringify(agency.body))).toBe(false);
+  });
+
+  test('the one-time code and the invite link reach the inbox only, never a response', async ({ client }) => {
+    const ctx = await client();
+    const admin = await adminSession(ctx);
+    const texts = [];
+    const secrets = [];
+
+    // sign-up, resend, verify
+    const account = await registerCustomer(ctx);
+    texts.push(await account.res.text());
+    const signUpMail = await waitForMail(account.email, { after: account.mark });
+    secrets.push(signUpMail.otp);
+    texts.push(await (await ctx.post('/api/auth/resend-otp', { data: { email: account.email } })).text());
+    texts.push(await (await ctx.post('/api/auth/verify-otp', { data: { email: account.email, otp: signUpMail.otp } })).text());
+
+    // forgot password
+    const mark = mailCount();
+    texts.push(await (await ctx.post('/api/auth/forgot-password', { data: { email: account.email } })).text());
+    secrets.push((await waitForMail(account.email, { after: mark, subject: 'Reset' })).otp);
+
+    // staff invite
+    const staff = await createStaff(admin.token, { permissions: [] });
+    texts.push(await staff.created.text());
+    secrets.push(staff.inviteToken);
+
+    expect(secrets.every((secret) => secret && secret.length >= 6)).toBe(true);
+    for (const text of texts) {
+      secrets.forEach((secret) => expect(text).not.toContain(secret));
+      expect(text).not.toMatch(/"(otp|code|passcode|inviteToken|token)"\s*:/);
+    }
+    expect(JSON.parse(texts[0]).data.otpSent).toBe(true); // it only says an email went out
   });
 
   test('there is no static folder: uploaded files and project files are not served', async ({ client }) => {

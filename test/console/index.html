@@ -119,7 +119,7 @@
 
     <section class="card" id="b2c">
       <h2>1. Customer (B2C)</h2>
-      <p class="hint">Register, then enter the 6-digit code. If EmailJS is not configured the code is printed in the <b>server terminal</b> (look for <code>[mail:console]</code>).</p>
+      <p class="hint">Register, then type the 6-digit code from the email we send you. The code is never shown here or in the server log.</p>
       <form data-route="POST /api/auth/register" data-auth="false">
         <h3>Register <span class="route">POST /api/auth/register</span></h3>
         <div class="grid">
@@ -256,7 +256,7 @@
 
     <section class="card" id="setup">
       <h2>6. Invited staff / admin: set first password</h2>
-      <p class="hint">An admin creates the account (section 7); the emailed link carries a token (also printed in the server terminal as <code>.../setup-account?token=...</code>).</p>
+      <p class="hint">An admin creates the account (section 7); the invitation email links to <code>.../setup-account?token=...</code>. Paste the part after <code>token=</code> here.</p>
       <form data-route="POST /api/auth/setup-account" data-auth="false">
         <h3>Activate account <span class="route">POST /api/auth/setup-account</span></h3>
         <div class="grid">
@@ -529,7 +529,7 @@
       }
       // The API creates the account even when the email cannot be sent. Say so loudly.
       if (data && data.data && (data.data.otpSent === false || data.data.inviteSent === false)) {
-        notes.push('<b style="color:var(--bad)">The email was NOT delivered.</b> The account exists, but no code or link was sent. Look in the API terminal for <code>Failed to send email</code>. Once fixed, use <b>Resend code</b>.');
+        notes.push('<b style="color:var(--bad)">The email was NOT delivered.</b> The account exists, but no code or link was sent. Look in the API terminal for <code>Failed to send email</code>, usually EmailJS is not configured. Once fixed, use <b>Resend code</b>.');
       }
       collectIds(data); renderIds();
       addEntry({ method, url, status: res.status, ms, reqBody: json !== undefined ? json : form ? '(multipart form)' : null, resBody: data, note: notes.join(' ') });

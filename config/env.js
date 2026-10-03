@@ -55,10 +55,16 @@ const mailConfig = {
 };
 const emailJsConfigured = Object.values(mailConfig).every(Boolean);
 
-// 'emailjs' sends for real, 'console' prints the message (development only), 'memory' keeps it for tests.
-const mailProvider = isTest
-  ? 'memory'
-  : process.env.EMAIL_PROVIDER || (emailJsConfigured ? 'emailjs' : 'console');
+// 'emailjs' sends for real. 'memory' keeps emails for Jest. 'file' appends them to a file for the end-to-end tests.
+// There is deliberately no provider that prints an email: a one-time code or an invite link must only ever
+// reach the person it was sent to, never a terminal or a log.
+const mailProvider = isTest ? 'memory' : process.env.EMAIL_PROVIDER || 'emailjs';
+if (!['emailjs', 'file', 'memory'].includes(mailProvider) || (mailProvider === 'memory' && !isTest)) {
+  throw new Error(`EMAIL_PROVIDER "${mailProvider}" is not supported. Remove the variable to use EmailJS.`);
+}
+if (mailProvider === 'file' && !process.env.MAIL_OUTBOX_FILE) {
+  throw new Error('EMAIL_PROVIDER=file needs MAIL_OUTBOX_FILE (a file path). It exists for the end-to-end tests only.');
+}
 
 const env = {
   nodeEnv,
@@ -122,6 +128,8 @@ const env = {
 
   mail: {
     provider: mailProvider,
+    // True when all four EMAILJS_* values are set. Without them, sending an email fails with a clear error.
+    configured: emailJsConfigured,
     appName: process.env.APP_NAME || 'Travel Management Platform',
     emailjs: mailConfig,
     // Optional second EmailJS template used only for emails that carry a one-time code. When it is
@@ -174,7 +182,7 @@ if (isProduction) {
   if (env.jwt.accessSecret === env.jwt.refreshSecret) {
     throw new Error('JWT_ACCESS_SECRET and JWT_REFRESH_SECRET must be different values.');
   }
-  if (env.mail.provider !== 'emailjs') {
+  if (env.mail.provider !== 'emailjs' || !env.mail.configured) {
     throw new Error('Production needs EmailJS configured (EMAILJS_* variables) to send OTP emails.');
   }
   if (env.cookie.sameSite === 'none' && !env.cookie.secure) {

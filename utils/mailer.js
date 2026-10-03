@@ -1,6 +1,5 @@
 const fs = require('fs');
 const env = require('../config/env');
-const logger = require('./logger');
 
 // One outbound email function. The wording lives in services/notificationService.js.
 //
@@ -19,9 +18,11 @@ const logger = require('./logger');
 //
 // Providers (env.mail.provider):
 //   emailjs : real delivery through the EmailJS REST API
-//   console : prints the email to the server log (development only)
-//   memory  : keeps emails in `outbox` so tests can read the OTP
-//   file    : appends each email as a JSON line to MAIL_OUTBOX_FILE (end-to-end tests, never production)
+//   memory  : keeps emails in `outbox` so Jest can read the OTP (tests only)
+//   file    : appends each email as a JSON line to MAIL_OUTBOX_FILE (end-to-end tests only, never production)
+//
+// No provider prints an email, and nothing here logs a message or a code: a one-time code or an invite link
+// must only reach the person it was sent to.
 
 const EMAILJS_URL = 'https://api.emailjs.com/api/v1.0/email/send';
 const REQUEST_TIMEOUT_MS = 10000;
@@ -87,6 +88,9 @@ const send = async (email) => {
 
   switch (env.mail.provider) {
     case 'emailjs':
+      if (!env.mail.configured) {
+        throw new Error('EmailJS is not configured. Set EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, EMAILJS_PUBLIC_KEY and EMAILJS_PRIVATE_KEY.');
+      }
       return sendViaEmailJs(params);
     case 'memory':
       outbox.push({ ...params, sentAt: new Date() });
@@ -96,9 +100,7 @@ const send = async (email) => {
       fs.appendFileSync(env.mail.outboxFile, `${JSON.stringify({ ...params, sentAt: new Date() })}\n`);
       return undefined;
     default:
-      // Development fallback so the flow can be tried before EmailJS is configured.
-      logger.info(`[mail:console] to=${params.to_email} subject="${params.subject}" otp=${params.otp || '-'}\n${params.message}`);
-      return undefined;
+      throw new Error(`Unsupported mail provider "${env.mail.provider}".`);
   }
 };
 

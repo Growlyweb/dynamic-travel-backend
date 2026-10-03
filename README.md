@@ -32,7 +32,7 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Audit log, rate limits, hardening, central errors | Done |
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
-| Automated tests | 260 unit and integration (Jest), 94 end-to-end (Playwright) |
+| Automated tests | 265 unit and integration (Jest), 95 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
@@ -56,7 +56,8 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 
 The app refuses to start while `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` or `TOKEN_HASH_SECRET` is missing or still says `replace-me`.
 If you see `JWT_ACCESS_SECRET is required`, you have no `.env` yet: run `npm run setup`.
-Without EmailJS keys, emails (including OTPs) are printed to the server log in development.
+Codes are never printed in the server log or returned by the API: the user types the code from their email.
+Without the four `EMAILJS_*` keys no email can be sent, so sign-up answers `otpSent: false` and the server logs `EmailJS is not configured`.
 
 ## API documentation and Postman
 
@@ -105,7 +106,7 @@ Start the API first (`npm run dev`).
 
 - The right-hand panel logs every request and response. Passwords are masked, and ids from responses become chips you can click to paste into the focused field.
 - "Client" switches between **web** (refresh token in an `httpOnly` cookie) and **mobile** (refresh token in the response body).
-- With EmailJS not configured, OTPs and invite links are printed in the **API terminal** (`[mail:console]`).
+- Codes and invite links arrive only by email. They are not printed in the API terminal and are not in any response: copy the code from your inbox and type it into the form.
 - Port 5173 is the default `CLIENT_URL`, so CORS and the refresh cookie behave as they would for a real frontend. To use another port, set `TEST_CONSOLE_PORT` and add that address to `CLIENT_URL`.
 - It is a development tool: it binds to localhost and serves only that one file. Do not deploy it.
 
@@ -115,8 +116,8 @@ Start the API first (`npm run dev`).
 `npm run e2e` checks the product the way a user meets it: real server processes, real HTTP, real cookies and CORS, and a real browser driving the test console.
 
 ```bash
-npm run e2e          # everything (94 tests, about 20 seconds)
-npm run e2e:api      # the API only, no browser (76 tests)
+npm run e2e          # everything (95 tests, about 20 seconds)
+npm run e2e:api      # the API only, no browser (77 tests)
 npm run e2e:ui       # the browser test console only (18 tests)
 ```
 
@@ -142,7 +143,7 @@ That provider is refused when `NODE_ENV=production`.
 | `api/admin` | Staff invites, permissions, suspend, role change, soft delete, audit log |
 | `api/profile-access` | Only the owner and an admin can change a profile, nothing can be changed through a foreign id |
 | `api/rbac-matrix` | Every role against every route group, anonymous included |
-| `api/security` | Helmet headers, CORS allow-list, no private fields in any response, no static folders, hostile input |
+| `api/security` | Helmet headers, CORS allow-list, no private fields in any response, codes and invite links never in a response, no static folders, hostile input |
 | `api/rate-limit` | Each limiter blocks at its limit, with `Retry-After` |
 | `ui/console` | Full customer, agency and admin journeys clicked in Chrome, file upload and download, mobile mode, the 429 note |
 | `ui/layout` | No overflow at 1440, 1100, 820 and 390 px, the results panel stays in place, every field has a label, text passes WCAG AA contrast in light and dark mode |
@@ -333,7 +334,7 @@ All are read in `config/env.js`.
 | `EMAILJS_SERVICE_ID`, `EMAILJS_TEMPLATE_ID`, `EMAILJS_PUBLIC_KEY`, `EMAILJS_PRIVATE_KEY`, `APP_NAME` | Email delivery | none |
 | `EMAILJS_OTP_TEMPLATE_ID` | Optional separate template for emails that carry a code | uses `EMAILJS_TEMPLATE_ID` |
 | `APP_TIMEZONE` | Time zone for the `{{time}}` value in emails | `Asia/Dhaka` |
-| `EMAIL_PROVIDER` | `emailjs`, `console` (prints emails to the log, development only) or `file` (appends them to `MAIL_OUTBOX_FILE`, used by the E2E tests; refused in production) | `emailjs` when keys are set |
+| `EMAIL_PROVIDER` | `emailjs`, or `file` (appends emails to `MAIL_OUTBOX_FILE`, used by the E2E tests only; refused in production). No provider prints an email. | `emailjs` |
 | `MAIL_OUTBOX_FILE` | File that receives the emails when `EMAIL_PROVIDER=file` | none |
 | `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY` or `FIREBASE_SERVICE_ACCOUNT_PATH` | Firebase sign-in | disabled |
 | `FIREBASE_ALLOWED_PROVIDERS` | Firebase sign-in methods the API accepts (comma separated) | `google.com` |
