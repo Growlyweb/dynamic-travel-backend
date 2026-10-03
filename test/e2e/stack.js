@@ -4,7 +4,7 @@
 //   3. the API on :5100 with rate limiting OFF
 //   4. a second API on :5101 with rate limiting ON (for the rate-limit tests), sharing the same database
 //   5. the browser test console on :5273
-// Emails are appended to e2e/.tmp/mail.jsonl, so tests can read OTP codes from a real server process.
+// Emails are appended to test/.output/tmp/mail.jsonl, so tests can read OTP codes from a real server process.
 // Your .env is never read (SKIP_DOTENV), and the dev servers on 5000 / 5173 are never touched.
 const fs = require('fs');
 const path = require('path');
@@ -12,7 +12,7 @@ const { spawn, spawnSync } = require('child_process');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const cfg = require('./config');
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..', '..');
 const children = [];
 let mongod;
 
@@ -114,7 +114,7 @@ process.on('SIGTERM', () => shutdown(0));
   await waitFor(`${cfg.LIMITED_API_URL}/health`, 'rate-limited API');
   log(`APIs ready on :${cfg.ports.api} and :${cfg.ports.limitedApi}`);
 
-  start('console', 'scripts/testConsole.js', { TEST_CONSOLE_PORT: String(cfg.ports.console) });
+  start('console', 'test/console/server.js', { TEST_CONSOLE_PORT: String(cfg.ports.console) });
   await waitFor(cfg.CONSOLE_URL, 'test console');
   log(`READY: test console on :${cfg.ports.console}`);
 })().catch((err) => {

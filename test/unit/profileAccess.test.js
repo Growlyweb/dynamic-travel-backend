@@ -1,11 +1,11 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const Partner = require('../models/Partner');
-const AuditLog = require('../models/AuditLog');
-const { ROLES } = require('../config/constants');
-const { PERMISSIONS } = require('../config/rbac');
+const app = require('../../app');
+const User = require('../../models/User');
+const Partner = require('../../models/Partner');
+const AuditLog = require('../../models/AuditLog');
+const { ROLES } = require('../../config/constants');
+const { PERMISSIONS } = require('../../config/rbac');
 const { createUser, createB2B, bearer } = require('./helpers/factory');
 
 // The rule: a profile can be changed by the person themselves and by an admin. Nobody else.

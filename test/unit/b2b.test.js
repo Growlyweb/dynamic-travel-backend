@@ -2,12 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
 
-const app = require('../app');
-const env = require('../config/env');
-const User = require('../models/User');
-const Partner = require('../models/Partner');
-const AuditLog = require('../models/AuditLog');
-const { ROLES, USER_STATUS, APPROVAL_STATUS } = require('../config/constants');
+const app = require('../../app');
+const env = require('../../config/env');
+const User = require('../../models/User');
+const Partner = require('../../models/Partner');
+const AuditLog = require('../../models/AuditLog');
+const { ROLES, USER_STATUS, APPROVAL_STATUS } = require('../../config/constants');
 const { PASSWORD, createUser, createB2B, bearer, lastEmailTo } = require('./helpers/factory');
 
 const PDF = Buffer.from('%PDF-1.4 test document');

@@ -90,7 +90,7 @@ The test suite fails if the file is stale, if a route is missing from it, if it 
 
 ## Test console (browser)
 
-`npm run console` serves `test-console/index.html` at **http://localhost:5173**, a single page for trying every flow by hand.
+`npm run console` serves `test/console/index.html` (the only HTML file in the project) at **http://localhost:5173**, a single page for trying every flow by hand.
 Start the API first (`npm run dev`).
 
 | Section | What you can do |
@@ -115,14 +115,13 @@ Start the API first (`npm run dev`).
 `npm run e2e` checks the product the way a user meets it: real server processes, real HTTP, real cookies and CORS, and a real browser driving the test console.
 
 ```bash
-npm run e2e          # everything (94 tests, about 25 seconds)
+npm run e2e          # everything (94 tests, about 20 seconds)
 npm run e2e:api      # the API only, no browser (76 tests)
 npm run e2e:ui       # the browser test console only (18 tests)
-npm run e2e:report   # open the HTML report of the last run, with screenshots and traces of failures
 ```
 
 You do not have to start anything first.
-`e2e/stack.js` boots its own stack for the run and removes it afterwards:
+`test/e2e/stack.js` boots its own stack for the run and removes it afterwards:
 
 | What | Where | Notes |
 | --- | --- | --- |
@@ -132,7 +131,7 @@ You do not have to start anything first.
 | MongoDB | in memory | Starts empty, a fresh admin is seeded |
 
 It never reads `.env`, never touches your database, and uses different ports from `npm run dev`, so your dev server can stay running.
-Emails are not sent: the server runs with `EMAIL_PROVIDER=file`, which appends each message to `e2e/.tmp/mail.jsonl`, and the tests read the OTP or invite link from there.
+Emails are not sent: the server runs with `EMAIL_PROVIDER=file`, which appends each message to `test/.output/tmp/mail.jsonl`, and the tests read the OTP or invite link from there.
 That provider is refused when `NODE_ENV=production`.
 
 | Spec | What it proves |
@@ -210,8 +209,7 @@ Registration and profile schemas strip them.
 | `utils/` | Small helpers (`ApiError`, `mailer`, `crypto`, `file`, ...) | No imports from higher layers |
 | `config/` | `env.js` (the only place that reads `process.env`), `rbac.json`, `rbac.js`, `constants.js`, `db.js` | |
 | `scripts/` | One-off CLI tasks such as seeding | |
-| `tests/` | Jest and supertest, in-memory MongoDB. Never reads your `.env`. | |
-| `test-console/` | One-page browser tool for manual testing (`npm run console`) | Development only |
+| `test/` | Everything for testing, and nothing else lives outside it: `unit/` (Jest and supertest, in-memory MongoDB, never reads your `.env`), `e2e/` (Playwright), `console/` (the one-page browser tool, `npm run console`), `playwright.config.js`, and `.output/` (git-ignored run output) | Development only |
 | `storage/private/` | Business documents, never served directly | Git-ignored |
 | `documentation/` | The spec, the requirements, `User-Stories.md`, `ToDo.md` and `openapi.json` (generated, do not edit by hand) | |
 
@@ -512,7 +510,7 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nMIIEvw...\n-----END PRIVATE K
 4. **Controller** in `controllers/thingController.js`. One service call per handler, wrapped in `asyncHandler`.
 5. **Routes** inside the role area that owns it, for example `routes/b2c/thingRoutes.js`, mounted from that area's `index.js`.
 6. **Guards**: the area already runs `authenticate` and `requireRole`. Add `requirePermission(...)` for staff features and `checkOwnership(...)` for single records.
-7. **Tests** in `tests/`: one case per role, plus one for another user's record.
+7. **Tests** in `test/unit/`: one case per role, plus one for another user's record.
 
 Route order rule: static paths (`/tree`, `/stats`) go before `/:id`, or Express will treat them as ids.
 

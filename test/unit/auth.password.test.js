@@ -1,10 +1,10 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const RefreshSession = require('../models/RefreshSession');
-const OtpToken = require('../models/OtpToken');
-const AuditLog = require('../models/AuditLog');
+const app = require('../../app');
+const User = require('../../models/User');
+const RefreshSession = require('../../models/RefreshSession');
+const OtpToken = require('../../models/OtpToken');
+const AuditLog = require('../../models/AuditLog');
 const { PASSWORD, createUser, bearer, lastEmailTo, loginRequest } = require('./helpers/factory');
 
 const NEW_PASSWORD = 'N3w!Passw0rd';

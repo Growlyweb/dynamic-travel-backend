@@ -13,10 +13,11 @@ module.exports = {
   ports,
   API_URL: `http://localhost:${ports.api}`,
   LIMITED_API_URL: `http://localhost:${ports.limitedApi}`,
-  CONSOLE_URL: `http://localhost:${ports.console}`,
   // The browser console is the only origin the API accepts (CORS allow-list)
-  TMP_DIR: path.join(__dirname, '.tmp'),
-  MAIL_FILE: path.join(__dirname, '.tmp', 'mail.jsonl'),
+  CONSOLE_URL: `http://localhost:${ports.console}`,
+  // Everything a run writes lives in test/.output (git-ignored): `tmp` here, Playwright's results beside it.
+  TMP_DIR: path.join(__dirname, '..', '.output', 'tmp'),
+  MAIL_FILE: path.join(__dirname, '..', '.output', 'tmp', 'mail.jsonl'),
   ADMIN: { email: 'admin@e2e.test', password: 'Admin@E2E123', name: 'E2E Admin' },
   PASSWORD: 'Str0ng!Pass'
 };

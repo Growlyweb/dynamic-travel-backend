@@ -1,4 +1,4 @@
-// Helpers for driving the test console (test-console/index.html) like a person would.
+// Helpers for driving the test console (test/console/index.html) like a person would.
 const { expect } = require('@playwright/test');
 const cfg = require('../config');
 

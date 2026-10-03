@@ -4,9 +4,9 @@ const mongoose = require('mongoose');
 
 // Runs inside every test file. Requiring the app registers all models, so their indexes
 // (unique email / phone / licenseNo) are built before the first test.
-const env = require('../../config/env');
-require('../../app');
-const { outbox } = require('../../utils/mailer');
+const env = require('../../../config/env');
+require('../../../app');
+const { outbox } = require('../../../utils/mailer');
 
 // Deletes every file but keeps the folders: multer creates them once, when the app loads.
 const emptyDirectory = (dir) => {

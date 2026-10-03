@@ -1,7 +1,7 @@
 const request = require('supertest');
 
-const app = require('../app');
-const env = require('../config/env');
+const app = require('../../app');
+const env = require('../../config/env');
 const { PASSWORD, createUser, bearer, unique } = require('./helpers/factory');
 
 // Limiters are off in every other suite. Here they are switched on, and the counters start

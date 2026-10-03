@@ -1,4 +1,4 @@
-// Serves the browser test console (test-console/index.html) for manual testing.
+// Serves the browser test console (test/console/index.html) for manual testing.
 // Usage: npm run console   ->   http://localhost:5173
 //
 // 5173 is the default CLIENT_URL, so the API's CORS allow-list already accepts this page and the
@@ -9,7 +9,7 @@ const fs = require('fs');
 const path = require('path');
 
 const PORT = Number(process.env.TEST_CONSOLE_PORT) || 5173;
-const FILE = path.join(__dirname, '..', 'test-console', 'index.html');
+const FILE = path.join(__dirname, 'index.html');
 
 http
   .createServer((req, res) => {

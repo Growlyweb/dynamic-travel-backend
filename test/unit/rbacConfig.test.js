@@ -1,10 +1,10 @@
 const request = require('supertest');
 
-const app = require('../app');
-const rbac = require('../config/rbac');
-const User = require('../models/User');
-const raw = require('../config/rbac.json');
-const { ROLES } = require('../config/constants');
+const app = require('../../app');
+const rbac = require('../../config/rbac');
+const User = require('../../models/User');
+const raw = require('../../config/rbac.json');
+const { ROLES } = require('../../config/constants');
 const { createUser, bearer } = require('./helpers/factory');
 
 const clone = () => JSON.parse(JSON.stringify(raw));
@@ -91,7 +91,7 @@ describe('selfRegister flag closes sign-up for a role', () => {
     expect(b2c.status).toBe(403);
     expect(b2c.body.code).toBe('REGISTRATION_CLOSED');
 
-    const firebaseService = require('../services/firebaseService');
+    const firebaseService = require('../../services/firebaseService');
     jest.spyOn(firebaseService, 'verifyIdToken').mockResolvedValue({
       uid: 'g1', email: 'new@example.com', email_verified: true, name: 'New', firebase: { sign_in_provider: 'google.com' }
     });

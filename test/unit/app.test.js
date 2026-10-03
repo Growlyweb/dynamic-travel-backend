@@ -1,8 +1,8 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const env = require('../config/env');
+const app = require('../../app');
+const User = require('../../models/User');
+const env = require('../../config/env');
 const { createUser } = require('./helpers/factory');
 
 describe('hardening and error envelope', () => {

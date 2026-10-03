@@ -1,12 +1,12 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
-const ApiError = require('../utils/ApiError');
-const env = require('../config/env');
-const firebaseService = require('../services/firebaseService');
-const { ROLES, USER_STATUS, AUTH_PROVIDERS } = require('../config/constants');
+const app = require('../../app');
+const User = require('../../models/User');
+const AuditLog = require('../../models/AuditLog');
+const ApiError = require('../../utils/ApiError');
+const env = require('../../config/env');
+const firebaseService = require('../../services/firebaseService');
+const { ROLES, USER_STATUS, AUTH_PROVIDERS } = require('../../config/constants');
 const { PASSWORD, createUser, loginRequest, lastEmailTo } = require('./helpers/factory');
 
 const ID_TOKEN = 'x'.repeat(40);

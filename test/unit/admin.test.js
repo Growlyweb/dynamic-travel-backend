@@ -1,12 +1,12 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
-const RefreshSession = require('../models/RefreshSession');
-const userService = require('../services/userService');
-const { ROLES, USER_STATUS } = require('../config/constants');
-const { PERMISSIONS } = require('../config/rbac');
+const app = require('../../app');
+const User = require('../../models/User');
+const AuditLog = require('../../models/AuditLog');
+const RefreshSession = require('../../models/RefreshSession');
+const userService = require('../../services/userService');
+const { ROLES, USER_STATUS } = require('../../config/constants');
+const { PERMISSIONS } = require('../../config/rbac');
 const { PASSWORD, createUser, bearer, lastEmailTo, loginRequest } = require('./helpers/factory');
 
 let admin;

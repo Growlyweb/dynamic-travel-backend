@@ -1,11 +1,11 @@
 const mongoose = require('mongoose');
 
-const { password, email, phone } = require('../validations/common');
-const { hashValue, safeEqual, generateOtp } = require('../utils/crypto');
-const { checkOwnership } = require('../middleware/ownershipMiddleware');
-const { requireRole, requirePermission } = require('../middleware/authorizeMiddleware');
-const { ROLES } = require('../config/constants');
-const { PERMISSIONS } = require('../config/rbac');
+const { password, email, phone } = require('../../validations/common');
+const { hashValue, safeEqual, generateOtp } = require('../../utils/crypto');
+const { checkOwnership } = require('../../middleware/ownershipMiddleware');
+const { requireRole, requirePermission } = require('../../middleware/authorizeMiddleware');
+const { ROLES } = require('../../config/constants');
+const { PERMISSIONS } = require('../../config/rbac');
 
 describe('password policy', () => {
   it.each([
@@ -45,7 +45,7 @@ describe('FIREBASE_PRIVATE_KEY handling in config/env.js', () => {
     try {
       let loaded;
       jest.isolateModules(() => {
-        loaded = require('../config/env');
+        loaded = require('../../config/env');
       });
       return loaded;
     } finally {
@@ -69,8 +69,8 @@ describe('FIREBASE_PRIVATE_KEY handling in config/env.js', () => {
 });
 
 describe('email payload (utils/mailer.js)', () => {
-  const mailer = require('../utils/mailer');
-  const env = require('../config/env');
+  const mailer = require('../../utils/mailer');
+  const env = require('../../config/env');
 
   const withEmailJs = (extra, fn) => {
     const saved = { emailjs: env.mail.emailjs, otpTemplateId: env.mail.otpTemplateId };

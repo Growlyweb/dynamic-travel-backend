@@ -2,12 +2,12 @@ const fs = require('fs');
 const path = require('path');
 const request = require('supertest');
 
-const app = require('../app');
-const env = require('../config/env');
-const User = require('../models/User');
-const Partner = require('../models/Partner');
-const { ROLES, APPROVAL_STATUS } = require('../config/constants');
-const { PERMISSIONS } = require('../config/rbac');
+const app = require('../../app');
+const env = require('../../config/env');
+const User = require('../../models/User');
+const Partner = require('../../models/Partner');
+const { ROLES, APPROVAL_STATUS } = require('../../config/constants');
+const { PERMISSIONS } = require('../../config/rbac');
 const { createUser, createB2B, createRoleSet, bearer } = require('./helpers/factory');
 
 // Every role against every protected route group. 200 = allowed, 403 = wrong role, 401 = no token.

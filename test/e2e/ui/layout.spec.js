@@ -4,16 +4,13 @@ const { test, expect } = require('../helpers/test');
 const { openConsole } = require('../helpers/console');
 
 // What a person would notice at a glance: things spilling out of their box, a panel hiding content,
-// unreadable text, unlabeled fields. Screenshots are attached to the HTML report for a look by eye.
-
-const attachShot = async (page, testInfo, name) =>
-  testInfo.attach(name, { body: await page.screenshot({ fullPage: false }), contentType: 'image/png' });
+// unreadable text, unlabeled fields.
 
 for (const width of [1440, 1100, 820, 390]) {
   test.describe(`at ${width}px wide`, () => {
     test.use({ viewport: { width, height: 900 } });
 
-    test('nothing spills out of its card or off the page', async ({ page }, testInfo) => {
+    test('nothing spills out of its card or off the page', async ({ page }) => {
       await openConsole(page);
       const report = await page.evaluate(() => {
         const spill = [];
@@ -25,7 +22,6 @@ for (const width of [1440, 1100, 820, 390]) {
         }
         return { page: document.documentElement.scrollWidth - document.documentElement.clientWidth, spill: spill.slice(0, 10) };
       });
-      await attachShot(page, testInfo, `console-${width}`);
 
       expect(report).toEqual({ page: 0, spill: [] });
     });
@@ -72,9 +68,8 @@ test.describe('accessibility basics', () => {
 });
 
 for (const colorScheme of ['light', 'dark']) {
-  test(`text is readable in ${colorScheme} mode (WCAG AA contrast)`, async ({ page }, testInfo) => {
+  test(`text is readable in ${colorScheme} mode (WCAG AA contrast)`, async ({ page }) => {
     await openConsole(page, { colorScheme });
-    await attachShot(page, testInfo, `console-${colorScheme}`);
 
     const failures = await page.evaluate(() => {
       const parse = (c) => c.match(/[\d.]+/g).map(Number);
@@ -118,7 +113,7 @@ for (const colorScheme of ['light', 'dark']) {
 
 test.describe('opened straight from disk', () => {
   test('the page warns that every request will fail, and the warning is hidden on http', async ({ page }) => {
-    await page.goto(pathToFileURL(path.join(__dirname, '..', '..', 'test-console', 'index.html')).href);
+    await page.goto(pathToFileURL(path.join(__dirname, '..', '..', 'console', 'index.html')).href);
     await expect(page.locator('#fileWarning')).toBeVisible();
     await expect(page.locator('#fileWarning')).toContainText('opened as a file');
     await expect(page.locator('#fileWarning')).toContainText('npm run console');

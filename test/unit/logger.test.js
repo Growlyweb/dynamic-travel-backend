@@ -1,7 +1,7 @@
 const { Writable } = require('stream');
 const pino = require('pino');
 
-const logger = require('../utils/logger');
+const logger = require('../../utils/logger');
 
 // The app logger is silent under test, so build a probe logger with the app's own redaction rules.
 const probe = () => {

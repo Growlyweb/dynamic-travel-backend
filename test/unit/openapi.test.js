@@ -2,10 +2,10 @@ const fs = require('fs');
 const path = require('path');
 const SwaggerParser = require('@apidevtools/swagger-parser');
 
-const app = require('../app');
-const { buildSpec, endpoints } = require('../scripts/openapi/spec');
+const app = require('../../app');
+const { buildSpec, endpoints } = require('../../scripts/openapi/spec');
 
-const FILE = path.join(__dirname, '..', 'documentation', 'openapi.json');
+const FILE = path.join(__dirname, '..', '..', 'documentation', 'openapi.json');
 const spec = buildSpec();
 
 // Every route Express has registered, as "METHOD /path/{param}" (Express 4 router stack)

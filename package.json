@@ -7,15 +7,14 @@
     "start": "node server.js",
     "dev": "nodemon server.js",
     "setup": "node scripts/initEnv.js",
-    "console": "node scripts/testConsole.js",
+    "console": "node test/console/server.js",
     "openapi": "node scripts/generateOpenApi.js",
     "seed": "node scripts/seedAdmin.js",
     "test": "NODE_ENV=test jest --runInBand",
     "test:watch": "NODE_ENV=test jest --runInBand --watch",
-    "e2e": "playwright test",
-    "e2e:api": "playwright test --project=api",
-    "e2e:ui": "playwright test --project=ui",
-    "e2e:report": "playwright show-report"
+    "e2e": "playwright test -c test/playwright.config.js",
+    "e2e:api": "playwright test -c test/playwright.config.js --project=api",
+    "e2e:ui": "playwright test -c test/playwright.config.js --project=ui"
   },
   "engines": {
     "node": ">=20"
@@ -23,14 +22,19 @@
   "jest": {
     "testEnvironment": "node",
     "testMatch": [
-      "<rootDir>/tests/**/*.test.js"
+      "<rootDir>/test/unit/**/*.test.js"
     ],
-    "globalSetup": "<rootDir>/tests/setup/globalSetup.js",
-    "globalTeardown": "<rootDir>/tests/setup/globalTeardown.js",
+    "globalSetup": "<rootDir>/test/unit/setup/globalSetup.js",
+    "globalTeardown": "<rootDir>/test/unit/setup/globalTeardown.js",
     "setupFilesAfterEnv": [
-      "<rootDir>/tests/setup/setupAfterEnv.js"
+      "<rootDir>/test/unit/setup/setupAfterEnv.js"
     ],
     "testTimeout": 30000
+  },
+  "nodemonConfig": {
+    "watch": ["server.js", "app.js", "config", "controllers", "middleware", "models", "routes", "services", "utils", "validations"],
+    "ext": "js,json",
+    "ignore": ["test", "documentation", "scripts", "storage"]
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

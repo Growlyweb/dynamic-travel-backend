@@ -1,10 +1,10 @@
 const request = require('supertest');
 
-const app = require('../app');
-const Partner = require('../models/Partner');
-const AuditLog = require('../models/AuditLog');
-const { ROLES, APPROVAL_STATUS } = require('../config/constants');
-const { PERMISSIONS } = require('../config/rbac');
+const app = require('../../app');
+const Partner = require('../../models/Partner');
+const AuditLog = require('../../models/AuditLog');
+const { ROLES, APPROVAL_STATUS } = require('../../config/constants');
+const { PERMISSIONS } = require('../../config/rbac');
 const { createUser, createB2B, bearer } = require('./helpers/factory');
 
 describe('reviewing partner documents', () => {

@@ -1,10 +1,10 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const RefreshSession = require('../models/RefreshSession');
-const AuditLog = require('../models/AuditLog');
-const { USER_STATUS } = require('../config/constants');
+const app = require('../../app');
+const User = require('../../models/User');
+const RefreshSession = require('../../models/RefreshSession');
+const AuditLog = require('../../models/AuditLog');
+const { USER_STATUS } = require('../../config/constants');
 const { PASSWORD, createUser, bearer, loginRequest } = require('./helpers/factory');
 
 // "refreshToken=abc; Path=/api/auth; HttpOnly" -> "refreshToken=abc"

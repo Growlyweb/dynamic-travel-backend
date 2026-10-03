@@ -8,10 +8,8 @@ firebase-service-account*.json
 *.log
 coverage/
 .DS_Store
-# Playwright output and the throwaway files an E2E run creates
-playwright-report/
-test-results/
-e2e/.tmp/
+# Everything a Playwright run writes (results, traces, captured mail, temp files)
+test/.output/
 # Firebase / Google service-account key files, wherever they are saved
 firebaseAuth.json
 *-firebase-adminsdk-*.json

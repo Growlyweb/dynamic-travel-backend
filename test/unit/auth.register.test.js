@@ -1,9 +1,9 @@
 const request = require('supertest');
 
-const app = require('../app');
-const User = require('../models/User');
-const AuditLog = require('../models/AuditLog');
-const { ROLES, USER_STATUS } = require('../config/constants');
+const app = require('../../app');
+const User = require('../../models/User');
+const AuditLog = require('../../models/AuditLog');
+const { ROLES, USER_STATUS } = require('../../config/constants');
 const { PASSWORD, createUser, lastEmailTo } = require('./helpers/factory');
 
 const register = (body = {}) =>

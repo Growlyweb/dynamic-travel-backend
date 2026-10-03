@@ -1,13 +1,13 @@
 const bcrypt = require('bcryptjs');
 const request = require('supertest');
 
-const app = require('../../app');
-const env = require('../../config/env');
-const User = require('../../models/User');
-const Partner = require('../../models/Partner');
-const { ROLES, USER_STATUS, APPROVAL_STATUS } = require('../../config/constants');
-const tokenService = require('../../services/tokenService');
-const { outbox } = require('../../utils/mailer');
+const app = require('../../../app');
+const env = require('../../../config/env');
+const User = require('../../../models/User');
+const Partner = require('../../../models/Partner');
+const { ROLES, USER_STATUS, APPROVAL_STATUS } = require('../../../config/constants');
+const tokenService = require('../../../services/tokenService');
+const { outbox } = require('../../../utils/mailer');
 
 const PASSWORD = 'Str0ng!Pass';
 

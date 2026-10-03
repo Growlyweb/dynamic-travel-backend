@@ -1,5 +1,5 @@
 // Tests are hermetic: they never read a developer's .env (real keys, Firebase, EmailJS).
-// They get safe built-in values instead (see isTest below). The end-to-end stack (e2e/stack.js) runs a
+// They get safe built-in values instead (see isTest below). The end-to-end stack (test/e2e/stack.js) runs a
 // real server and sets SKIP_DOTENV=true for the same reason.
 if (process.env.NODE_ENV !== 'test' && process.env.SKIP_DOTENV !== 'true') require('dotenv').config();
 const os = require('os');
