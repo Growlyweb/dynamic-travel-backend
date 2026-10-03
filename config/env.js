@@ -1,6 +1,7 @@
 // Tests are hermetic: they never read a developer's .env (real keys, Firebase, EmailJS).
-// They get safe built-in values instead (see isTest below).
-if (process.env.NODE_ENV !== 'test') require('dotenv').config();
+// They get safe built-in values instead (see isTest below). The end-to-end stack (e2e/stack.js) runs a
+// real server and sets SKIP_DOTENV=true for the same reason.
+if (process.env.NODE_ENV !== 'test' && process.env.SKIP_DOTENV !== 'true') require('dotenv').config();
 const os = require('os');
 const path = require('path');
 
@@ -114,7 +115,8 @@ const env = {
   otp: {
     expiresMinutes: int(process.env.OTP_EXPIRES_MINUTES, 10),
     maxAttempts: 5,
-    resendCooldownSeconds: isTest ? 0 : 60
+    // Minimum gap between two codes for the same account. 60 s for real; 0 under Jest; the E2E server uses 2 s.
+    resendCooldownSeconds: int(process.env.OTP_RESEND_COOLDOWN_SECONDS, isTest ? 0 : 60)
   },
   staffInviteExpiresHours: int(process.env.STAFF_INVITE_EXPIRES_HOURS, 48),
 
@@ -124,7 +126,10 @@ const env = {
     emailjs: mailConfig,
     // Optional second EmailJS template used only for emails that carry a one-time code. When it is
     // empty, EMAILJS_TEMPLATE_ID is used for everything.
-    otpTemplateId: process.env.EMAILJS_OTP_TEMPLATE_ID || ''
+    otpTemplateId: process.env.EMAILJS_OTP_TEMPLATE_ID || '',
+    // EMAIL_PROVIDER=file appends every email as one JSON line to this file. Used by the end-to-end
+    // tests to read OTP codes from a real server process. Refused in production.
+    outboxFile: process.env.MAIL_OUTBOX_FILE || ''
   },
 
   // Used to print "valid till 12:48 PM" in emails. Set APP_TIMEZONE to your users' IANA zone.

@@ -1,0 +1,5 @@
+{
+  "watch": ["server.js", "app.js", "config", "controllers", "middleware", "models", "routes", "services", "utils", "validations"],
+  "ext": "js,json",
+  "ignore": ["e2e", "tests", "test-console", "test-results", "playwright-report", "documentation", "scripts", "storage"]
+}

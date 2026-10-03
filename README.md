@@ -32,7 +32,7 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Audit log, rate limits, hardening, central errors | Done |
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
-| Automated tests | 260 passing |
+| Automated tests | 260 unit and integration (Jest), 94 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
@@ -108,6 +108,50 @@ Start the API first (`npm run dev`).
 - With EmailJS not configured, OTPs and invite links are printed in the **API terminal** (`[mail:console]`).
 - Port 5173 is the default `CLIENT_URL`, so CORS and the refresh cookie behave as they would for a real frontend. To use another port, set `TEST_CONSOLE_PORT` and add that address to `CLIENT_URL`.
 - It is a development tool: it binds to localhost and serves only that one file. Do not deploy it.
+
+## End-to-end tests (Playwright)
+
+`npm test` checks the code in-process.
+`npm run e2e` checks the product the way a user meets it: real server processes, real HTTP, real cookies and CORS, and a real browser driving the test console.
+
+```bash
+npm run e2e          # everything (94 tests, about 25 seconds)
+npm run e2e:api      # the API only, no browser (76 tests)
+npm run e2e:ui       # the browser test console only (18 tests)
+npm run e2e:report   # open the HTML report of the last run, with screenshots and traces of failures
+```
+
+You do not have to start anything first.
+`e2e/stack.js` boots its own stack for the run and removes it afterwards:
+
+| What | Where | Notes |
+| --- | --- | --- |
+| API with rate limits off | `:5100` | Used by almost every test |
+| API with rate limits on | `:5101` | Shares the database and secrets, used only to prove the 429 behaviour |
+| Test console | `:5273` | The only origin allowed by CORS, as a real front end would be |
+| MongoDB | in memory | Starts empty, a fresh admin is seeded |
+
+It never reads `.env`, never touches your database, and uses different ports from `npm run dev`, so your dev server can stay running.
+Emails are not sent: the server runs with `EMAIL_PROVIDER=file`, which appends each message to `e2e/.tmp/mail.jsonl`, and the tests read the OTP or invite link from there.
+That provider is refused when `NODE_ENV=production`.
+
+| Spec | What it proves |
+| --- | --- |
+| `api/customer` | Register, verify, login, cookie flags, rotating refresh with theft detection, logout, forged tokens |
+| `api/password` | Forgot, reset (single use, lock after 5 wrong codes), change password, old sessions die |
+| `api/agency` | Registration rules, approval lifecycle, byte-for-byte document download, who may download, locked documents |
+| `api/admin` | Staff invites, permissions, suspend, role change, soft delete, audit log |
+| `api/profile-access` | Only the owner and an admin can change a profile, nothing can be changed through a foreign id |
+| `api/rbac-matrix` | Every role against every route group, anonymous included |
+| `api/security` | Helmet headers, CORS allow-list, no private fields in any response, no static folders, hostile input |
+| `api/rate-limit` | Each limiter blocks at its limit, with `Retry-After` |
+| `ui/console` | Full customer, agency and admin journeys clicked in Chrome, file upload and download, mobile mode, the 429 note |
+| `ui/layout` | No overflow at 1440, 1100, 820 and 390 px, the results panel stays in place, every field has a label, text passes WCAG AA contrast in light and dark mode |
+
+The UI tests use the installed Google Chrome.
+On a machine without it, run `npx playwright install chromium` and then `PW_CHANNEL=chromium npm run e2e:ui`.
+Playwright runs with one worker on purpose: the tests share one database and one mail file.
+Every test creates its own users with unique emails, so tests do not depend on each other or on their order.
 
 ## Roles and permissions: `config/rbac.json`
 

@@ -1,3 +1,4 @@
+const fs = require('fs');
 const env = require('../config/env');
 const logger = require('./logger');
 
@@ -20,6 +21,7 @@ const logger = require('./logger');
 //   emailjs : real delivery through the EmailJS REST API
 //   console : prints the email to the server log (development only)
 //   memory  : keeps emails in `outbox` so tests can read the OTP
+//   file    : appends each email as a JSON line to MAIL_OUTBOX_FILE (end-to-end tests, never production)
 
 const EMAILJS_URL = 'https://api.emailjs.com/api/v1.0/email/send';
 const REQUEST_TIMEOUT_MS = 10000;
@@ -88,6 +90,10 @@ const send = async (email) => {
       return sendViaEmailJs(params);
     case 'memory':
       outbox.push({ ...params, sentAt: new Date() });
+      return undefined;
+    case 'file':
+      // One JSON line per email, for tests that run against a real server process.
+      fs.appendFileSync(env.mail.outboxFile, `${JSON.stringify({ ...params, sentAt: new Date() })}\n`);
       return undefined;
     default:
       // Development fallback so the flow can be tried before EmailJS is configured.
