@@ -32,8 +32,9 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Audit log, rate limits, hardening, central errors | Done |
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
-| Automated tests | 223 passing |
+| Automated tests | 233 passing |
 | Browser test console | Done (`npm run console`) |
+| OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
 ## Quick start
 
@@ -56,6 +57,36 @@ node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"
 The app refuses to start while `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET` or `TOKEN_HASH_SECRET` is missing or still says `replace-me`.
 If you see `JWT_ACCESS_SECRET is required`, you have no `.env` yet: run `npm run setup`.
 Without EmailJS keys, emails (including OTPs) are printed to the server log in development.
+
+## API documentation and Postman
+
+`documentation/openapi.json` describes every endpoint: parameters, request bodies (JSON and form-data), example responses, error codes, who may call it, and the rate limit.
+It is OpenAPI 3.0.3, so it also opens in Swagger UI, Insomnia and similar tools.
+
+**Import into Postman**
+
+1. Postman, **File > Import**, choose `documentation/openapi.json`.
+2. You get a collection with 43 requests in folders (Auth, Customer, Agency, Staff, Admin, Documents, System). Request bodies are pre-filled with valid examples.
+3. In the collection's **Variables**, `baseUrl` is `http://localhost:5000`. Add a variable named `bearerToken` and leave it empty.
+4. Send **Auth > Log in**, copy `data.accessToken` from the response into `bearerToken`. Every request with a lock now works.
+5. The token lasts 15 minutes. **Refresh tokens** issues a new one (Postman keeps the refresh cookie).
+
+Things to know in Postman:
+
+- The header `X-Client-Type` is present but **empty**, which means web mode (refresh token in a cookie). Type `mobile` to see the mobile mode (refresh token in the response body).
+- The agency registration is form-data. Pick a file for `tradeLicense`. Add the `otherDocuments` row again for each extra file (up to 3).
+- Downloading a document: use **Send and Download**.
+- Public requests (login, register, ...) carry no `Authorization` header.
+
+**Keeping it correct.** The file is generated from the real code, not written by hand.
+Bodies, query strings and path parameters come from the zod schemas in `validations/`; descriptions, examples and error codes live in `scripts/openapi/endpoints.js`.
+
+```bash
+npm run openapi    # rewrite documentation/openapi.json
+```
+
+Run it after changing a route or a validation file.
+The test suite fails if the file is stale, if a route is missing from it, if it documents a route that does not exist, or if an example body would be rejected by the API.
 
 ## Test console (browser)
 
@@ -138,7 +169,7 @@ Registration and profile schemas strip them.
 | `tests/` | Jest and supertest, in-memory MongoDB. Never reads your `.env`. | |
 | `test-console/` | One-page browser tool for manual testing (`npm run console`) | Development only |
 | `storage/private/` | Business documents, never served directly | Git-ignored |
-| `documentation/` | The spec, the requirements, `User-Stories.md` and `ToDo.md` | |
+| `documentation/` | The spec, the requirements, `User-Stories.md`, `ToDo.md` and `openapi.json` (generated, do not edit by hand) | |
 
 Dependencies point downward only: routes -> controllers -> services -> models.
 
