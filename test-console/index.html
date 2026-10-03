@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Auth API test console</title>
+  <style>
+    :root {
+      --bg: #f4f5f9; --card: #fff; --ink: #1c2033; --muted: #6a7088; --line: #e2e5ee;
+      --accent: #4f46e5; --accent-ink: #fff; --ok: #12805c; --warn: #b45309; --bad: #c0262d;
+      --code-bg: #0f1424; --code-ink: #d7def5; --radius: 10px;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1120; --card: #171b2e; --ink: #e6e9f6; --muted: #9aa1bd; --line: #2a3050;
+        --accent: #7c75ff; --accent-ink: #0e1120; --code-bg: #0a0d1a; --ok: #3ccf9b; --warn: #f2b45a; --bad: #ff7b82;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+    header { position: sticky; top: 0; z-index: 10; background: var(--card); border-bottom: 1px solid var(--line); padding: 10px 20px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; }
+    header h1 { font-size: 16px; margin: 0; white-space: nowrap; }
+    header label { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 12px; }
+    header input, header select { font: inherit; }
+    .spacer { flex: 1; }
+    #who { padding: 4px 10px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); font-size: 12px; max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #who.in { border-color: var(--ok); color: var(--ok); }
+    .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 520px); gap: 18px; padding: 18px 20px 40px; align-items: start; }
+    /* Narrow window: stack the columns and keep the results as a drawer pinned to the bottom. */
+    @media (max-width: 1100px) {
+      .layout { grid-template-columns: minmax(0, 1fr); padding-bottom: 0; }
+      .log { top: auto !important; bottom: 0; max-height: 42vh !important; z-index: 5; border-bottom: 0; border-radius: var(--radius) var(--radius) 0 0; box-shadow: 0 -6px 18px rgba(15, 20, 36, .12); }
+    }
+    #fileWarning { display: none; margin: 14px 20px 0; padding: 12px 16px; border: 1px solid var(--bad); border-radius: var(--radius); background: var(--card); color: var(--ink); }
+    #fileWarning b { color: var(--bad); }
+    details.more { margin-top: 12px; border-top: 1px dashed var(--line); padding-top: 10px; }
+    details.more > summary { cursor: pointer; color: var(--muted); font-size: 12.5px; user-select: none; }
+    details.more > summary:hover { color: var(--accent); }
+    details.more[open] > summary { margin-bottom: 4px; }
+    nav.toc { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; }
+    nav.toc a { font-size: 12px; padding: 3px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); text-decoration: none; background: var(--card); }
+    nav.toc a:hover { color: var(--accent); border-color: var(--accent); }
+    section.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 18px; margin-bottom: 16px; scroll-margin-top: calc(var(--header-h, 57px) + 12px); }
+    section.card > h2 { font-size: 15px; margin: 0 0 4px; }
+    section.card > p.hint { margin: 0 0 12px; color: var(--muted); font-size: 12.5px; }
+    form { border-top: 1px dashed var(--line); padding: 12px 0 2px; margin-top: 10px; }
+    form:first-of-type { border-top: 0; margin-top: 0; padding-top: 4px; }
+    form h3 { font-size: 12.5px; margin: 0 0 8px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .route { font: 11px ui-monospace, Menlo, monospace; color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px 12px; margin-bottom: 10px; }
+    .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+    .field span { font-size: 11.5px; color: var(--muted); }
+    .field span b { color: var(--bad); font-weight: 600; }
+    input, select, textarea { width: 100%; padding: 7px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--bg); color: var(--ink); font: inherit; min-width: 0; }
+    input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+    input[type=file] { padding: 5px; font-size: 12px; }
+    input[type=checkbox] { width: auto; }
+    textarea { font: 12px ui-monospace, Menlo, monospace; resize: vertical; }
+    button { font: inherit; cursor: pointer; padding: 7px 14px; border-radius: 7px; border: 1px solid var(--accent); background: var(--accent); color: var(--accent-ink); }
+    button.ghost { background: transparent; color: var(--accent); }
+    button.danger { border-color: var(--bad); background: transparent; color: var(--bad); }
+    button:disabled { opacity: .5; cursor: progress; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    .note { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+    .note.warn { color: var(--warn); }
+    /* --header-h is set from the real height of the top bar (it wraps on narrow windows). */
+    /* top gap (8) + page bottom padding (40) + slack (4): if the panel were any taller, the end of the
+       page would push it up underneath the top bar. */
+    .log { position: sticky; top: calc(var(--header-h, 57px) + 8px); max-height: calc(100vh - var(--header-h, 57px) - 52px); display: flex; flex-direction: column; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+    /* The header and the id chips keep their size; only the list of requests scrolls. */
+    .log header { position: static; flex: none; border-bottom: 1px solid var(--line); padding: 10px 14px; }
+    .log h2 { font-size: 14px; margin: 0; }
+    #ids { flex: none; max-height: 86px; overflow: auto; padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 12px; display: flex; flex-wrap: wrap; gap: 5px; align-items: center; min-height: 40px; }
+    #ids .chip { font: 11px ui-monospace, Menlo, monospace; border: 1px solid var(--line); background: var(--bg); color: var(--ink); border-radius: 999px; padding: 2px 8px; cursor: pointer; }
+    #ids .chip:hover { border-color: var(--accent); }
+    #ids .chip i { color: var(--muted); font-style: normal; }
+    #entries { overflow: auto; padding: 10px 14px; flex: 1 1 auto; min-height: 0; }
+    .entry { flex: none; }
+    .empty { color: var(--muted); font-size: 12.5px; padding: 20px 4px; }
+    .entry { border: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+    .entry > .top { display: flex; gap: 8px; align-items: center; padding: 6px 10px; background: var(--bg); font: 12px ui-monospace, Menlo, monospace; flex-wrap: wrap; }
+    .entry .url { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+    .badge { padding: 1px 8px; border-radius: 999px; font-weight: 700; color: #fff; }
+    .b2 { background: var(--ok); } .b4 { background: var(--warn); } .b5 { background: var(--bad); } .b0 { background: #6b7280; }
+    .entry pre { margin: 0; padding: 9px 11px; background: var(--code-bg); color: var(--code-ink); font: 12px/1.45 ui-monospace, Menlo, monospace; overflow: auto; max-height: 280px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .entry pre.req { border-bottom: 1px solid #232a48; color: #9fb0e8; }
+    .entry .meta { padding: 5px 10px; font-size: 11.5px; color: var(--muted); border-top: 1px solid var(--line); }
+    .entry .meta b { color: var(--ink); }
+    code { font: 12px ui-monospace, Menlo, monospace; background: var(--bg); padding: 1px 5px; border-radius: 4px; }
+  </style>
+</head>
+<body>
+<header>
+  <h1>Auth API test console</h1>
+  <label>API <input id="base" value="http://localhost:5000" size="22"></label>
+  <label>Client
+    <select id="client">
+      <option value="web">web (refresh token in cookie)</option>
+      <option value="mobile">mobile (refresh token in body)</option>
+    </select>
+  </label>
+  <span class="spacer"></span>
+  <span id="who">Not signed in</span>
+  <button class="ghost" id="clearSession" type="button">Forget tokens</button>
+</header>
+
+<div id="fileWarning" role="alert">
+  <b>This page was opened as a file, so every request will fail.</b>
+  The browser sends <code>Origin: null</code>, which the API rightly refuses (CORS).
+  Run <code>npm run console</code> in the project folder, then open <code>http://localhost:5173</code> instead.
+</div>
+
+<div class="layout">
+  <div>
+    <nav class="toc">
+      <a href="#b2c">B2C</a><a href="#firebase">Firebase</a><a href="#b2b">B2B</a><a href="#session">Session</a>
+      <a href="#reset">Password reset</a><a href="#setup">Staff setup</a><a href="#admin">Admin</a><a href="#staffb2b">Staff / B2B / B2C</a>
+    </nav>
+
+    <section class="card" id="b2c">
+      <h2>1. Customer (B2C)</h2>
+      <p class="hint">Register, then enter the 6-digit code. If EmailJS is not configured the code is printed in the <b>server terminal</b> (look for <code>[mail:console]</code>).</p>
+      <form data-route="POST /api/auth/register" data-auth="false">
+        <h3>Register <span class="route">POST /api/auth/register</span></h3>
+        <div class="grid">
+          <label class="field"><span>name <b>*</b></span><input name="name" value="Rahim Uddin"></label>
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="rahim@example.com"></label>
+          <label class="field"><span>phone (optional)</span><input name="phone" placeholder="+8801712345678"></label>
+          <label class="field"><span>password <b>*</b></span><input name="password" value="Rahim@Pass1"></label>
+        </div>
+        <button>Register</button>
+        <p class="note">Try adding a <code>role</code> in your head: the server ignores it. Password needs 8+ chars with upper, lower, number, symbol.</p>
+      </form>
+      <form data-route="POST /api/auth/verify-otp" data-auth="false">
+        <h3>Verify email code <span class="route">POST /api/auth/verify-otp</span></h3>
+        <div class="grid">
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="rahim@example.com"></label>
+          <label class="field"><span>otp <b>*</b></span><input name="otp" inputmode="numeric" maxlength="6" placeholder="123456"></label>
+        </div>
+        <div class="row"><button>Verify and sign in</button>
+          <button type="button" class="ghost" data-fill-route="POST /api/auth/resend-otp" data-fill-fields="email">Resend code</button></div>
+      </form>
+      <form data-route="POST /api/auth/login" data-auth="false">
+        <h3>Login (any role) <span class="route">POST /api/auth/login</span></h3>
+        <div class="grid">
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="rahim@example.com"></label>
+          <label class="field"><span>password <b>*</b></span><input name="password" value="Rahim@Pass1"></label>
+        </div>
+        <button>Login</button>
+        <p class="note">Use the seeded admin here to unlock the Admin section. Wrong passwords always answer <code>Invalid credentials</code>.</p>
+      </form>
+    </section>
+
+    <section class="card" id="firebase">
+      <h2>2. Firebase sign-in (B2C)</h2>
+      <p class="hint">Sign in with Google. Firebase proves who you are, then the API issues its own tokens (<span class="route">POST /api/auth/firebase</span>). Email and password is not done through Firebase: use the Register and Login forms.</p>
+      <div class="row fbmain">
+        <label class="field" style="flex:1;min-width:240px"><span>Firebase web apiKey <b>*</b> (Project settings, General, Your apps)</span><input id="fbApiKey" placeholder="AIza..." autocomplete="off"></label>
+        <button type="button" id="fbGoogle" style="align-self:flex-end">Sign in with Google</button>
+      </div>
+      <p class="note" id="fbStatus">Paste the apiKey once; it is remembered in this browser.</p>
+
+      <details class="more">
+        <summary>More options (project settings, switch Google account, paste a token)</summary>
+        <div class="grid" style="margin-top:10px">
+          <label class="field"><span>projectId</span><input id="fbProjectId" value="travelms-dev" autocomplete="off"></label>
+          <label class="field"><span>authDomain (blank = projectId.firebaseapp.com)</span><input id="fbAuthDomain" placeholder="travelms-dev.firebaseapp.com" autocomplete="off"></label>
+        </div>
+        <div class="row" style="margin-bottom:8px">
+          <button type="button" class="danger" id="fbOut">Sign out of Firebase</button>
+        </div>
+        <p class="note">The API accepts <b>Google</b> only. A token from Firebase email and password is refused with <code>FIREBASE_PROVIDER_NOT_ALLOWED</code>; for email and password use the Register and Login forms above.</p>
+        <form data-route="POST /api/auth/firebase" data-auth="false" id="fbForm">
+          <label class="field"><span>idToken (filled automatically after a sign-in, or paste your own)</span><textarea name="idToken" id="idToken" rows="3"></textarea></label>
+          <div style="margin-top:8px"><button class="ghost">Send token to the API</button></div>
+        </form>
+      </details>
+    </section>
+
+    <section class="card" id="b2b">
+      <h2>3. Agency (B2B)</h2>
+      <p class="hint">Multipart form. A trade license file is required; business card and other files are optional (PDF, JPEG, PNG or WEBP, up to 5 MB).</p>
+      <form data-route="POST /api/auth/b2b/register" data-auth="false" data-multipart="true">
+        <h3>Register agency <span class="route">POST /api/auth/b2b/register</span></h3>
+        <div class="grid">
+          <label class="field"><span>name <b>*</b></span><input name="name" value="Karim Hossain"></label>
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="karim@agency.com"></label>
+          <label class="field"><span>phone (mobile) <b>*</b></span><input name="phone" value="+8801811111111"></label>
+          <label class="field"><span>password <b>*</b></span><input name="password" value="Karim@Pass1"></label>
+          <label class="field"><span>companyName <b>*</b></span><input name="companyName" value="Sky Travels Ltd"></label>
+          <label class="field"><span>licenseNo <b>*</b></span><input name="licenseNo" value="TL-2024-0042"></label>
+          <label class="field"><span>address <b>*</b></span><input name="address" value="45 Motijheel, Dhaka"></label>
+          <label class="field"><span>businessType</span><input name="businessType" value="Travel agency"></label>
+          <label class="field"><span>tradeLicense file <b>*</b></span><input name="tradeLicense" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"></label>
+          <label class="field"><span>businessCard file</span><input name="businessCard" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp"></label>
+          <label class="field"><span>otherDocuments (up to 3)</span><input name="otherDocuments" type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp"></label>
+        </div>
+        <button>Register agency</button>
+        <p class="note">After this, verify the code with the <b>Verify email code</b> form in section 1 using the agency email. Then try the operational route below: it stays closed until an admin approves.</p>
+      </form>
+    </section>
+
+    <section class="card" id="session">
+      <h2>4. Session</h2>
+      <p class="hint">Uses whoever is signed in (see the top bar). The access token is sent as a Bearer header.</p>
+      <div class="row">
+        <button type="button" data-call="GET /api/auth/me">Who am I (/me)</button>
+        <button type="button" data-call="POST /api/auth/refresh" data-auth="false">Refresh tokens</button>
+        <button type="button" class="ghost" data-call="POST /api/auth/logout">Logout this device</button>
+        <button type="button" class="ghost" data-call="POST /api/auth/logout" data-body='{"allDevices":true}'>Logout all devices</button>
+        <button type="button" class="ghost" data-call="GET /health" data-auth="false">Health</button>
+      </div>
+      <p class="note">To see rotation: click Refresh twice, then replay an old token (mobile mode, paste an old refresh token below) and watch every session die.</p>
+      <form data-route="POST /api/auth/refresh" data-auth="false" data-needs-mobile="true">
+        <h3>Refresh with a pasted token (mobile mode) <span class="route">POST /api/auth/refresh</span></h3>
+        <label class="field"><span>refreshToken</span><textarea name="refreshToken" id="manualRefresh" rows="2" placeholder="paste an old token to test reuse detection"></textarea></label>
+        <div style="margin-top:8px"><button class="ghost">Send</button></div>
+      </form>
+      <form data-route="POST /api/auth/change-password">
+        <h3>Change password <span class="route">POST /api/auth/change-password</span></h3>
+        <div class="grid">
+          <label class="field"><span>currentPassword <b>*</b></span><input name="currentPassword" value="Rahim@Pass1"></label>
+          <label class="field"><span>newPassword <b>*</b></span><input name="newPassword" value="Rahim@Pass2"></label>
+        </div>
+        <button>Change password</button>
+        <p class="note">Other devices are signed out; this one gets fresh tokens. Limit: 5 tries per 15 minutes.</p>
+      </form>
+    </section>
+
+    <section class="card" id="reset">
+      <h2>5. Forgot password</h2>
+      <form data-route="POST /api/auth/forgot-password" data-auth="false">
+        <h3>Request a code <span class="route">POST /api/auth/forgot-password</span></h3>
+        <label class="field" style="max-width:320px"><span>email <b>*</b></span><input name="email" type="email" value="rahim@example.com"></label>
+        <div style="margin-top:8px"><button>Send code</button></div>
+        <p class="note">Always answers the same, even for unknown emails. Limit: 3 per hour.</p>
+      </form>
+      <form data-route="POST /api/auth/verify-reset-token" data-auth="false">
+        <h3>Check the code (does not use it up) <span class="route">POST /api/auth/verify-reset-token</span></h3>
+        <div class="grid">
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="rahim@example.com"></label>
+          <label class="field"><span>otp <b>*</b></span><input name="otp" maxlength="6"></label>
+        </div>
+        <button class="ghost">Check code</button>
+      </form>
+      <form data-route="POST /api/auth/reset-password" data-auth="false">
+        <h3>Set the new password <span class="route">POST /api/auth/reset-password</span></h3>
+        <div class="grid">
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="rahim@example.com"></label>
+          <label class="field"><span>otp <b>*</b></span><input name="otp" maxlength="6"></label>
+          <label class="field"><span>newPassword <b>*</b></span><input name="newPassword" value="Rahim@Pass3"></label>
+        </div>
+        <button>Reset password</button>
+      </form>
+    </section>
+
+    <section class="card" id="setup">
+      <h2>6. Invited staff / admin: set first password</h2>
+      <p class="hint">An admin creates the account (section 7); the emailed link carries a token (also printed in the server terminal as <code>.../setup-account?token=...</code>).</p>
+      <form data-route="POST /api/auth/setup-account" data-auth="false">
+        <h3>Activate account <span class="route">POST /api/auth/setup-account</span></h3>
+        <div class="grid">
+          <label class="field"><span>token <b>*</b></span><input name="token"></label>
+          <label class="field"><span>password <b>*</b></span><input name="password" value="Sara@Pass12"></label>
+        </div>
+        <button>Activate</button>
+      </form>
+    </section>
+
+    <section class="card" id="admin">
+      <h2>7. Admin <small style="font-weight:400;color:var(--muted)">(login as the seeded admin first)</small></h2>
+      <p class="hint">Click an id chip on the right, with a field focused, to paste it in.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" class="ghost" data-call="GET /api/admin/rbac">Roles and permissions (rbac.json)</button>
+        <button type="button" class="ghost" data-call="GET /api/admin/audit-logs?limit=20">Audit log</button>
+        <button type="button" class="ghost" data-call="GET /api/admin/users">List users</button>
+        <button type="button" class="ghost" data-call="GET /api/admin/b2b">List partners</button>
+      </div>
+      <form data-route="GET /api/admin/users">
+        <h3>Find users <span class="route">GET /api/admin/users</span></h3>
+        <div class="grid">
+          <label class="field"><span>search</span><input name="search"></label>
+          <label class="field"><span>role</span><select name="role"><option value="">any</option><option>ADMIN</option><option>STAFF</option><option>B2B</option><option>B2C</option></select></label>
+          <label class="field"><span>status</span><select name="status"><option value="">any</option><option>PENDING</option><option>ACTIVE</option><option>SUSPENDED</option><option>BLOCKED</option><option>INACTIVE</option></select></label>
+        </div>
+        <button class="ghost">Search</button>
+      </form>
+      <form data-route="POST /api/admin/staff">
+        <h3>Create staff (sends invite) <span class="route">POST /api/admin/staff</span></h3>
+        <div class="grid">
+          <label class="field"><span>name <b>*</b></span><input name="name" value="Sara Staff"></label>
+          <label class="field"><span>email <b>*</b></span><input name="email" type="email" value="sara@example.com"></label>
+          <label class="field"><span>permissions (comma separated)</span><input name="permissions" value="B2B_VIEW,DOCUMENT_VIEW,DOCUMENT_VERIFY" data-list="true"></label>
+        </div>
+        <button>Create staff</button>
+      </form>
+      <form data-route="PATCH /api/admin/users/{id}/status">
+        <h3>Change status <span class="route">PATCH /api/admin/users/:id/status</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="user id"></label>
+          <label class="field"><span>status <b>*</b></span><select name="status"><option>SUSPENDED</option><option>ACTIVE</option><option>BLOCKED</option><option>INACTIVE</option></select></label>
+          <label class="field"><span>reason</span><input name="reason"></label>
+        </div>
+        <button>Apply</button>
+        <p class="note">Suspend someone who is signed in elsewhere: their token stops working on the next request.</p>
+      </form>
+      <form data-route="PATCH /api/admin/users/{id}/permissions">
+        <h3>Set staff permissions <span class="route">PATCH /api/admin/users/:id/permissions</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="staff user id"></label>
+          <label class="field"><span>permissions</span><input name="permissions" value="B2B_VIEW" data-list="true"></label>
+        </div>
+        <button class="ghost">Save</button>
+      </form>
+      <form data-route="PATCH /api/admin/b2b/{id}/approval">
+        <h3>Approve or reject an agency <span class="route">PATCH /api/admin/b2b/:id/approval</span></h3>
+        <div class="grid">
+          <label class="field"><span>id (partner) <b>*</b></span><input name="id" placeholder="partner id"></label>
+          <label class="field"><span>decision <b>*</b></span><select name="decision"><option>APPROVED</option><option>REJECTED</option><option>UNDER_REVIEW</option><option>SUSPENDED</option></select></label>
+          <label class="field"><span>note</span><input name="note"></label>
+        </div>
+        <button>Decide</button>
+        <p class="note">Approval needs a trade license on file. Verify the document first if you like (next form).</p>
+      </form>
+      <form data-route="PATCH /api/admin/b2b/{id}/documents/{docId}">
+        <h3>Verify or reject a document <span class="route">PATCH /api/admin/b2b/:id/documents/:docId</span></h3>
+        <div class="grid">
+          <label class="field"><span>id (partner) <b>*</b></span><input name="id"></label>
+          <label class="field"><span>docId <b>*</b></span><input name="docId"></label>
+          <label class="field"><span>status <b>*</b></span><select name="status"><option>VERIFIED</option><option>REJECTED</option></select></label>
+          <label class="field"><span>note</span><input name="note"></label>
+        </div>
+        <button class="ghost">Review</button>
+      </form>
+    </section>
+
+    <section class="card" id="staffb2b">
+      <h2>8. Role areas and private documents</h2>
+      <p class="hint">Each button works only for its own role. Try them with the wrong role to see the 403.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" class="ghost" data-call="GET /api/staff/profile">Staff profile</button>
+        <button type="button" class="ghost" data-call="GET /api/staff/partners">Staff: partners (needs B2B_VIEW)</button>
+        <button type="button" class="ghost" data-call="GET /api/b2b/profile">B2B profile</button>
+        <button type="button" class="ghost" data-call="GET /api/b2b/documents">B2B documents</button>
+        <button type="button" class="ghost" data-call="GET /api/b2b/overview">B2B operational (needs approval)</button>
+        <button type="button" class="ghost" data-call="GET /api/b2c/profile">B2C profile</button>
+      </div>
+      <form data-route="PATCH /api/b2c/profile">
+        <h3>Update my profile (try sneaking in a role) <span class="route">PATCH /api/b2c/profile</span></h3>
+        <div class="grid">
+          <label class="field"><span>name</span><input name="name" value="Rahim U."></label>
+          <label class="field"><span>phone</span><input name="phone"></label>
+          <label class="field"><span>role (must be ignored)</span><input name="role" value="ADMIN"></label>
+        </div>
+        <button class="ghost">Update</button>
+      </form>
+      <form data-route="POST /api/b2b/documents" data-multipart="true">
+        <h3>B2B: upload more documents <span class="route">POST /api/b2b/documents</span></h3>
+        <div class="grid">
+          <label class="field"><span>tradeLicense file</span><input name="tradeLicense" type="file"></label>
+          <label class="field"><span>businessCard file</span><input name="businessCard" type="file"></label>
+          <label class="field"><span>otherDocuments</span><input name="otherDocuments" type="file" multiple></label>
+        </div>
+        <button class="ghost">Upload</button>
+      </form>
+      <form id="dlForm">
+        <h3>Download a private document <span class="route">GET /api/documents/partners/:partnerId/:docId</span></h3>
+        <div class="grid">
+          <label class="field"><span>partnerId <b>*</b></span><input name="partnerId"></label>
+          <label class="field"><span>docId <b>*</b></span><input name="docId"></label>
+        </div>
+        <button class="ghost">Download</button>
+        <p class="note">Owner, admin and permitted staff get the file. Anyone else gets 404, as if it does not exist.</p>
+      </form>
+    </section>
+  </div>
+
+  <aside class="log">
+    <header><h2>Requests</h2><span class="spacer"></span><button class="ghost" id="clearLog" type="button">Clear</button></header>
+    <div id="ids"><span style="color:var(--muted)">ids from responses appear here</span></div>
+    <div id="entries"><div class="empty">Nothing yet. Submit a form on the left.</div></div>
+  </aside>
+</div>
+
+<script type="module">
+  const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+  const store = window.sessionStorage;
+
+  // Opened straight from disk (file://)? The browser's origin is "null" and the API will refuse it.
+  if (location.protocol === 'file:') $('#fileWarning').style.display = 'block';
+
+  // Keep sticky offsets in step with the top bar, which wraps onto two rows on narrow windows.
+  const topBar = $('body > header');
+  const syncHeaderHeight = () => document.documentElement.style.setProperty('--header-h', topBar.offsetHeight + 'px');
+  new ResizeObserver(syncHeaderHeight).observe(topBar);
+  syncHeaderHeight();
+
+  // ------------------------------------------------------------ state
+  const state = {
+    accessToken: store.getItem('accessToken') || '',
+    refreshToken: store.getItem('refreshToken') || '',
+    mobile: store.getItem('client') === 'mobile'
+  };
+  $('#base').value = localStorage.getItem('base') || 'http://localhost:5000';
+  $('#client').value = state.mobile ? 'mobile' : 'web';
+  for (const id of ['fbApiKey', 'fbAuthDomain', 'fbProjectId']) { const v = localStorage.getItem(id); if (v) $('#' + id).value = v; }
+
+  const base = () => $('#base').value.replace(/\/$/, '');
+  const decode = (jwt) => { try { return JSON.parse(atob(jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))); } catch { return null; } };
+
+  function saveTokens() {
+    store.setItem('accessToken', state.accessToken);
+    store.setItem('refreshToken', state.refreshToken);
+    renderWho();
+  }
+  function renderWho() {
+    const el = $('#who');
+    const claims = state.accessToken && decode(state.accessToken);
+    if (!claims) { el.textContent = 'Not signed in'; el.className = ''; return; }
+    const secs = Math.round(claims.exp - Date.now() / 1000);
+    el.className = 'in';
+    el.textContent = `${claims.role} | ${claims.sub.slice(0, 8)}... | token ${secs > 0 ? 'expires in ' + secs + 's' : 'EXPIRED'}`;
+  }
+  setInterval(renderWho, 1000);
+  renderWho();
+
+  $('#base').addEventListener('change', (e) => localStorage.setItem('base', e.target.value));
+  $('#client').addEventListener('change', (e) => { state.mobile = e.target.value === 'mobile'; store.setItem('client', e.target.value); });
+  $('#clearSession').addEventListener('click', () => { state.accessToken = ''; state.refreshToken = ''; saveTokens(); });
+  $('#clearLog').addEventListener('click', () => { $('#entries').innerHTML = '<div class="empty">Cleared.</div>'; });
+
+  // ------------------------------------------------------------ request log and id chips
+  const seenIds = new Map();
+  function collectIds(value, key = '') {
+    if (Array.isArray(value)) value.forEach((v) => collectIds(v, key));
+    else if (value && typeof value === 'object') Object.entries(value).forEach(([k, v]) => collectIds(v, k));
+    else if (typeof value === 'string' && /^[0-9a-f]{24}$/.test(value)) seenIds.set(value, key || 'id');
+  }
+  function renderIds() {
+    const box = $('#ids');
+    if (!seenIds.size) return;
+    box.innerHTML = '';
+    [...seenIds.entries()].slice(-24).reverse().forEach(([id, key]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'chip'; b.title = 'Click to paste into the focused field, or copy';
+      b.innerHTML = `<i>${key}</i> ${id}`;
+      b.addEventListener('click', async () => {
+        const f = lastFocused;
+        if (f && f.tagName === 'INPUT') { f.value = id; f.dispatchEvent(new Event('input')); f.focus(); }
+        else { try { await navigator.clipboard.writeText(id); } catch { /* clipboard may be blocked */ } }
+      });
+      box.appendChild(b);
+    });
+  }
+  let lastFocused = null;
+  document.addEventListener('focusin', (e) => { if (e.target.closest('.layout > div')) lastFocused = e.target; });
+
+  const mask = (obj) => JSON.parse(JSON.stringify(obj, (k, v) => (/password|token$/i.test(k) && typeof v === 'string' && k !== 'idToken' ? '********' : v)));
+
+  function addEntry({ method, url, status, ms, reqBody, resBody, note }) {
+    const wrap = $('#entries');
+    if ($('.empty', wrap)) wrap.innerHTML = '';
+    const cls = status === 0 ? 'b0' : 'b' + String(status)[0];
+    const e = document.createElement('div');
+    e.className = 'entry';
+    const top = document.createElement('div'); top.className = 'top';
+    top.innerHTML = `<span class="badge ${cls}">${status || 'ERR'}</span><b>${method}</b><span class="url"></span><span>${ms} ms</span>`;
+    $('.url', top).textContent = url.replace(base(), '');
+    e.appendChild(top);
+    if (reqBody) { const p = document.createElement('pre'); p.className = 'req'; p.textContent = typeof reqBody === 'string' ? reqBody : JSON.stringify(mask(reqBody), null, 2); e.appendChild(p); }
+    const res = document.createElement('pre');
+    res.textContent = typeof resBody === 'string' ? resBody : JSON.stringify(resBody, null, 2);
+    e.appendChild(res);
+    if (note) { const m = document.createElement('div'); m.className = 'meta'; m.innerHTML = note; e.appendChild(m); }
+    wrap.prepend(e);
+  }
+
+  // ------------------------------------------------------------ core API call
+  async function call(method, path, { query, json, form, auth = true } = {}) {
+    let url = base() + path;
+    if (query && [...Object.keys(query)].length) url += '?' + new URLSearchParams(query);
+    const headers = {};
+    if (state.mobile) headers['X-Client-Type'] = 'mobile';
+    if (auth && state.accessToken) headers.Authorization = 'Bearer ' + state.accessToken;
+
+    let body;
+    if (json !== undefined) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(json); }
+    else if (form) body = form;
+
+    const t0 = performance.now();
+    try {
+      const res = await fetch(url, { method, headers, body, credentials: 'include' });
+      const ms = Math.round(performance.now() - t0);
+      const text = await res.text();
+      let data; try { data = JSON.parse(text); } catch { data = text; }
+
+      const notes = [];
+      if (res.headers.get('retry-after')) notes.push(`Retry-After <b>${res.headers.get('retry-after')}s</b>`);
+      if (data && data.data && data.data.accessToken) {
+        state.accessToken = data.data.accessToken;
+        if (data.data.refreshToken) state.refreshToken = data.data.refreshToken;
+        saveTokens();
+        notes.push(state.mobile ? 'Access + refresh token stored (mobile mode).' : 'Access token stored. The refresh token is an <b>httpOnly cookie</b> (invisible to JavaScript, as intended).');
+      }
+      // The API creates the account even when the email cannot be sent. Say so loudly.
+      if (data && data.data && (data.data.otpSent === false || data.data.inviteSent === false)) {
+        notes.push('<b style="color:var(--bad)">The email was NOT delivered.</b> The account exists, but no code or link was sent. Look in the API terminal for <code>Failed to send email</code>. Once fixed, use <b>Resend code</b>.');
+      }
+      collectIds(data); renderIds();
+      addEntry({ method, url, status: res.status, ms, reqBody: json !== undefined ? json : form ? '(multipart form)' : null, resBody: data, note: notes.join(' ') });
+      return { res, data };
+    } catch (err) {
+      addEntry({ method, url, status: 0, ms: Math.round(performance.now() - t0), reqBody: json, resBody: String(err),
+        note: location.protocol === 'file:'
+          ? '<b>This page is open as a file (origin "null").</b> Run <code>npm run console</code> and open http://localhost:5173 instead.'
+          : `Network or CORS error. Is the API running at ${base()}? This page's origin is <b>${location.origin}</b>, and it must be listed in CLIENT_URL / ADMIN_URL.` });
+      return { res: null, data: null };
+    }
+  }
+
+  // ------------------------------------------------------------ generic forms
+  function formToRequest(form) {
+    const [method, rawPath] = form.dataset.route.split(' ');
+    const multipart = form.dataset.multipart === 'true';
+    const fd = new FormData(form);
+    const fields = {};
+    let path = rawPath;
+
+    for (const [k, v] of fd.entries()) {
+      if (v instanceof File) continue;
+      if (path.includes(`{${k}}`)) { path = path.replace(`{${k}}`, encodeURIComponent(String(v).trim())); continue; }
+      if (String(v).trim() === '') continue;
+      const input = form.elements[k];
+      fields[k] = input && input.dataset && input.dataset.list === 'true' ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : String(v).trim();
+    }
+
+    if (method === 'GET') return { method, path, query: fields };
+    if (!multipart) {
+      if (form.dataset.needsMobile === 'true' && !fields.refreshToken && !state.mobile) return { method, path, json: {} };
+      return { method, path, json: fields };
+    }
+    const out = new FormData();
+    Object.entries(fields).forEach(([k, v]) => out.append(k, v));
+    for (const [k, v] of fd.entries()) if (v instanceof File && v.size > 0) out.append(k, v, v.name);
+    return { method, path, form: out };
+  }
+
+  $$('form[data-route]').forEach((form) => {
+    form.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const btn = ev.submitter; if (btn) btn.disabled = true;
+      const { method, path, ...opts } = formToRequest(form);
+      if (path === '/api/auth/refresh' && state.mobile && !opts.json.refreshToken) opts.json = { refreshToken: state.refreshToken };
+      await call(method, path, { ...opts, auth: form.dataset.auth !== 'false' });
+      if (btn) btn.disabled = false;
+    });
+  });
+
+  // "Resend code" style shortcuts that reuse another route with some of the form's fields
+  $$('[data-fill-route]').forEach((b) => b.addEventListener('click', async () => {
+    const form = b.closest('form');
+    const [method, path] = b.dataset.fillRoute.split(' ');
+    const json = {};
+    b.dataset.fillFields.split(',').forEach((f) => { json[f] = form.elements[f].value.trim(); });
+    await call(method, path, { json, auth: false });
+  }));
+
+  // One-click buttons
+  $$('[data-call]').forEach((b) => b.addEventListener('click', async () => {
+    const [method, rawPath] = b.dataset.call.split(' ');
+    const [path, qs] = rawPath.split('?');
+    const opts = { auth: b.dataset.auth !== 'false', query: qs ? Object.fromEntries(new URLSearchParams(qs)) : undefined };
+    if (b.dataset.body) opts.json = JSON.parse(b.dataset.body);
+    if (path === '/api/auth/refresh' && state.mobile) opts.json = { refreshToken: state.refreshToken };
+    if (path === '/api/auth/logout') {
+      opts.json = { ...(opts.json || {}), ...(state.mobile && state.refreshToken ? { refreshToken: state.refreshToken } : {}) };
+    }
+    if (method === 'POST' && opts.json === undefined) opts.json = {};
+    const { res } = await call(method, path, opts);
+    if (path === '/api/auth/logout' && res && res.ok) { state.accessToken = ''; state.refreshToken = ''; saveTokens(); }
+  }));
+
+  // Private document download: fetch with the Bearer token, then save the blob
+  $('#dlForm').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const f = ev.target.elements;
+    const url = `${base()}/api/documents/partners/${encodeURIComponent(f.partnerId.value.trim())}/${encodeURIComponent(f.docId.value.trim())}`;
+    const t0 = performance.now();
+    const res = await fetch(url, { headers: state.accessToken ? { Authorization: 'Bearer ' + state.accessToken } : {}, credentials: 'include' });
+    const ms = Math.round(performance.now() - t0);
+    if (!res.ok) { addEntry({ method: 'GET', url, status: res.status, ms, resBody: await res.json().catch(() => ({})) }); return; }
+    const blob = await res.blob();
+    const cd = res.headers.get('content-disposition') || '';
+    const name = (/filename="?([^";]+)"?/.exec(cd) || [])[1] || 'document';
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click();
+    addEntry({ method: 'GET', url, status: res.status, ms, resBody: `${name} (${blob.size} bytes, ${blob.type})`,
+      note: `Content-Disposition: <b>${cd}</b> | Cache-Control: <b>${res.headers.get('cache-control')}</b>` });
+  });
+
+  // ------------------------------------------------------------ Firebase
+  const FB_VERSION = '10.14.1';
+  let fb = null;
+  const fbStatus = (t) => { $('#fbStatus').textContent = t; };
+
+  async function loadFirebase() {
+    const projectId = $('#fbProjectId').value.trim();
+    const cfg = {
+      apiKey: $('#fbApiKey').value.trim(),
+      projectId,
+      authDomain: $('#fbAuthDomain').value.trim() || `${projectId}.firebaseapp.com`
+    };
+    if (!cfg.apiKey || !cfg.projectId) { fbStatus('Paste your Firebase web apiKey first (Firebase console, Project settings, General, Your apps).'); return null; }
+    for (const id of ['fbApiKey', 'fbAuthDomain', 'fbProjectId']) localStorage.setItem(id, $('#' + id).value.trim());
+    if (fb && fb.key === JSON.stringify(cfg)) return fb;
+    try {
+      const [app, auth] = await Promise.all([
+        import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-app.js`),
+        import(`https://www.gstatic.com/firebasejs/${FB_VERSION}/firebase-auth.js`)
+      ]);
+      const inst = app.getApps().length ? app.getApp() : app.initializeApp(cfg);
+      fb = { key: JSON.stringify(cfg), auth, a: auth.getAuth(inst) };
+      fbStatus('Firebase SDK loaded.');
+      return fb;
+    } catch (err) { fbStatus('Could not load the Firebase SDK (offline, or blocked): ' + err.message); return null; }
+  }
+
+  async function fbAfterSignIn(user, how) {
+    const token = await user.getIdToken(true);
+    $('#idToken').value = token;
+    const claims = decode(token) || {};
+    fbStatus(`${how}: ${user.email || user.phoneNumber || user.uid} | email_verified=${claims.email_verified} | provider=${claims.firebase && claims.firebase.sign_in_provider}`);
+    $('#fbForm').requestSubmit(); // always hand the token to the API straight away
+  }
+  const fbRun = (fn) => async () => {
+    const f = await loadFirebase(); if (!f) return;
+    try { await fn(f); } catch (err) { fbStatus(`${err.code || 'error'}: ${err.message}`); }
+  };
+
+  $('#fbGoogle').addEventListener('click', fbRun(async (f) => {
+    const r = await f.auth.signInWithPopup(f.a, new f.auth.GoogleAuthProvider());
+    await fbAfterSignIn(r.user, 'Google sign-in');
+  }));
+  $('#fbOut').addEventListener('click', fbRun(async (f) => { await f.auth.signOut(f.a); $('#idToken').value = ''; fbStatus('Signed out of Firebase.'); }));
+</script>
+</body>
+</html>

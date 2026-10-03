@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+storage/private/*
+!storage/private/.gitkeep
+firebase-service-account*.json
+*.log
+coverage/
+.DS_Store
+# Firebase / Google service-account key files, wherever they are saved
+firebaseAuth.json
+*-firebase-adminsdk-*.json
+*serviceAccount*.json
+*service-account*.json
