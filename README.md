@@ -314,7 +314,8 @@ A suspension, role change or password change takes effect at once: `authenticate
 
 ## Environment variables
 
-All are read in `config/env.js`. The full list with comments is in `.env.example`.
+All are read in `config/env.js`.
+`.env.example` holds the variables you normally set; every other variable here is optional and has a default.
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
