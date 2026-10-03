@@ -49,7 +49,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
 
     expect(undocumented).toEqual([]);
     expect(phantom).toEqual([]);
-    expect(real.size).toBe(43);
+    expect(real.size).toBe(47);
   });
 
   it('gives every operation a summary, a tag, an id, a success response and explicit access', () => {

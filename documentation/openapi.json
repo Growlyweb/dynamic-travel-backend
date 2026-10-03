@@ -1896,7 +1896,7 @@
         ],
         "summary": "Update my profile",
         "operationId": "updateCustomerProfile",
-        "description": "Only `name` and `phone` can be changed. A changed phone becomes unverified again. `email`, `role`, `status`, `permissions` and `partnerId` are ignored if sent.\n\n**Access:** B2C.",
+        "description": "Only `name` and `phone` can be changed. A changed phone becomes unverified again. `email`, `role`, `status`, `permissions` and `partnerId` are ignored if sent.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}`).\n\n**Access:** B2C.",
         "security": [
           {
             "bearerAuth": []
@@ -2105,7 +2105,7 @@
         ],
         "summary": "Update my profile",
         "operationId": "updateAgencyProfile",
-        "description": "Change `name`, `phone`, `address` or `businessType`. `companyName` and `licenseNo` are locked, because changing them needs a new review.\n\n**Access:** B2B.",
+        "description": "Change `name`, `phone`, `address` or `businessType`. `companyName` and `licenseNo` are locked, because changing them needs a new review.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}` and `PATCH /api/admin/b2b/{id}`).\n\n**Access:** B2B.",
         "security": [
           {
             "bearerAuth": []
@@ -2634,7 +2634,7 @@
         ],
         "summary": "Update my profile",
         "operationId": "updateStaffProfile",
-        "description": "Only `name` and `phone`. Permissions can only be changed by an admin.\n\n**Access:** STAFF.",
+        "description": "Only `name` and `phone`. Permissions can only be changed by an admin.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}`).\n\n**Access:** STAFF.",
         "security": [
           {
             "bearerAuth": []
@@ -3077,6 +3077,472 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/admin/profile": {
+      "get": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "My profile (admin)",
+        "operationId": "getAdminProfile",
+        "description": "The signed-in admin's own record. The person always comes from the token, never from the URL or body.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Profile fetched.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Super Admin",
+                      "email": "boss@example.com",
+                      "phone": "+8801712345678",
+                      "role": "ADMIN",
+                      "permissions": [],
+                      "status": "ACTIVE",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Update my profile (admin)",
+        "operationId": "updateAdminProfile",
+        "description": "Change your own `name` or `phone`. Send at least one. Email, role, status and permissions cannot be changed here.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+?[0-9]{8,15}$"
+                  }
+                }
+              },
+              "example": {
+                "name": "Super Admin",
+                "phone": "+8801712345678"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile updated."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Profile updated.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Super Admin",
+                      "email": "boss@example.com",
+                      "phone": "+8801712345678",
+                      "role": "ADMIN",
+                      "permissions": [],
+                      "status": "ACTIVE",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}": {
+      "patch": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Edit someone else's profile (name, phone)",
+        "operationId": "adminUpdateUserProfile",
+        "description": "The only way to change another person's profile. Every other role is refused (`403`), including staff holding every permission. Only `name` and `phone` can be changed; the email, role, status and permissions are ignored here and have their own admin actions. A changed phone becomes unverified again. The audit log records which fields changed, never their values. Send at least one field.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+?[0-9]{8,15}$"
+                  }
+                }
+              },
+              "example": {
+                "name": "Edited By Admin",
+                "phone": "+8801788888888"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile updated."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Profile updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6722a",
+                    "name": "Edited By Admin",
+                    "email": "rahim@example.com",
+                    "phone": "+8801788888888",
+                    "role": "B2C",
+                    "permissions": [],
+                    "status": "ACTIVE",
+                    "emailVerified": true,
+                    "phoneVerified": false,
+                    "authProvider": "local",
+                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Get one user",
+        "operationId": "getUser",
+        "description": "One account by id.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "User fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "User fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6722a",
+                    "name": "Rahim Uddin",
+                    "email": "rahim@example.com",
+                    "phone": "+8801712345678",
+                    "role": "B2C",
+                    "permissions": [],
+                    "status": "ACTIVE",
+                    "emailVerified": true,
+                    "phoneVerified": false,
+                    "authProvider": "local",
+                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Deactivate a user (soft delete)",
+        "operationId": "deactivateUser",
+        "description": "Sets the account to `INACTIVE`, cancels its sessions, and keeps the record for the audit trail. You cannot deactivate yourself, and the last active admin cannot be removed.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account deactivated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Account deactivated."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Account deactivated."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `LAST_ADMIN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "You cannot change your own status.",
+                  "code": "SELF_CHANGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -3532,177 +3998,6 @@
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/admin/users/{id}": {
-      "get": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Get one user",
-        "operationId": "getUser",
-        "description": "One account by id.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User fetched.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "User fetched."
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/User"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "User fetched.",
-                  "data": {
-                    "_id": "6ac0a5f0eebc510147c6722a",
-                    "name": "Rahim Uddin",
-                    "email": "rahim@example.com",
-                    "phone": "+8801712345678",
-                    "role": "B2C",
-                    "permissions": [],
-                    "status": "ACTIVE",
-                    "emailVerified": true,
-                    "phoneVerified": false,
-                    "authProvider": "local",
-                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
-                    "createdAt": "2026-10-03T06:51:28.261Z",
-                    "updatedAt": "2026-10-03T06:51:28.261Z"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Deactivate a user (soft delete)",
-        "operationId": "deactivateUser",
-        "description": "Sets the account to `INACTIVE`, cancels its sessions, and keeps the record for the audit trail. You cannot deactivate yourself, and the last active admin cannot be removed.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Account deactivated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Account deactivated."
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Account deactivated."
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `LAST_ADMIN`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "success": false,
-                  "message": "You cannot change your own status.",
-                  "code": "SELF_CHANGE"
-                }
-              }
-            }
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"
@@ -4497,6 +4792,139 @@
           },
           "404": {
             "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin: agencies"
+        ],
+        "summary": "Edit an agency's business record",
+        "operationId": "adminUpdatePartner",
+        "description": "Change `companyName`, `licenseNo`, `businessType` or `address` (send at least one). An agency owner can only change the last two themselves; an admin, as the reviewer, may change all four. The approval status is not touched. A license number that belongs to another agency answers `409`. The audit log records which fields changed, never their values.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6722f"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "companyName": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 150
+                  },
+                  "licenseNo": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "businessType": {
+                    "type": "string",
+                    "maxLength": 80
+                  },
+                  "address": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 300
+                  }
+                }
+              },
+              "example": {
+                "companyName": "Sky Travels International Ltd",
+                "address": "9 Dhanmondi, Dhaka"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Partner updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Partner updated."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Partner"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Partner updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6722f",
+                    "userId": "6ac0a5f0eebc510147c6722e",
+                    "companyName": "Sky Travels International Ltd",
+                    "licenseNo": "TL-2024-0042",
+                    "businessType": "Travel agency",
+                    "address": "9 Dhanmondi, Dhaka",
+                    "documents": [
+                      {
+                        "_id": "6ac0a5f0eebc510147c67230",
+                        "type": "TRADE_LICENSE",
+                        "originalName": "trade-license.pdf",
+                        "mimeType": "application/pdf",
+                        "size": 184320,
+                        "status": "PENDING",
+                        "reviewNote": "",
+                        "uploadedAt": "2026-10-03T06:51:28.261Z"
+                      }
+                    ],
+                    "approvalStatus": "PENDING",
+                    "reviewNote": "",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
           },
           "422": {
             "$ref": "#/components/responses/ValidationError"

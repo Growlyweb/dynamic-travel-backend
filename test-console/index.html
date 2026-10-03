@@ -294,6 +294,30 @@
         </div>
         <button>Create staff</button>
       </form>
+      <form data-route="PATCH /api/admin/users/{id}">
+        <h3>Edit someone's profile <span class="route">PATCH /api/admin/users/:id</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="user id"></label>
+          <label class="field"><span>name</span><input name="name" value="Edited By Admin"></label>
+          <label class="field"><span>phone</span><input name="phone" placeholder="+8801788888888"></label>
+        </div>
+        <button>Save</button>
+        <p class="note">Only an admin can do this. Try it signed in as a customer, an agency or staff: every one gets 403.</p>
+      </form>
+      <div class="row" style="margin:8px 0">
+        <button type="button" class="ghost" data-call="GET /api/admin/profile">My admin profile</button>
+      </div>
+      <form data-route="PATCH /api/admin/b2b/{id}">
+        <h3>Edit an agency's business record <span class="route">PATCH /api/admin/b2b/:id</span></h3>
+        <div class="grid">
+          <label class="field"><span>id (partner) <b>*</b></span><input name="id" placeholder="partner id"></label>
+          <label class="field"><span>companyName</span><input name="companyName"></label>
+          <label class="field"><span>licenseNo</span><input name="licenseNo"></label>
+          <label class="field"><span>businessType</span><input name="businessType"></label>
+          <label class="field"><span>address</span><input name="address"></label>
+        </div>
+        <button class="ghost">Save</button>
+      </form>
       <form data-route="PATCH /api/admin/users/{id}/status">
         <h3>Change status <span class="route">PATCH /api/admin/users/:id/status</span></h3>
         <div class="grid">

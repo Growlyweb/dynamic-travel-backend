@@ -121,6 +121,31 @@ const decide = async (partnerId, admin, { decision, note = '' }, context = {}) =
   return partner;
 };
 
+// ADMIN editing an agency's business record (company name, license number, business type, address).
+// The owner can only change the last two; an admin, as the reviewer, may change all four. Logged with
+// the field names only.
+const adminUpdate = async (admin, partnerId, data, context = {}) => {
+  const partner = await Partner.findById(partnerId);
+  if (!partner) throw new ApiError(404, 'Partner not found.');
+
+  const fields = ['companyName', 'licenseNo', 'businessType', 'address'].filter((field) => data[field] !== undefined);
+  fields.forEach((field) => {
+    partner[field] = data[field];
+  });
+  await partner.save(); // a duplicate license number is rejected by the unique index (409)
+
+  await auditService.record({
+    actorUserId: admin.id,
+    targetUserId: partner.userId,
+    action: AUDIT_ACTIONS.PROFILE_UPDATED,
+    resource: `partner:${partner._id}`,
+    ip: context.ip,
+    meta: { fields }
+  });
+
+  return partner;
+};
+
 // Marks one uploaded document VERIFIED or REJECTED. Used by admins and by staff holding DOCUMENT_VERIFY.
 // This is separate from approving the partner: the partner decision is still an admin's call.
 const reviewDocument = async (partnerId, docId, actor, { status, note = '' }, context = {}) => {
@@ -203,6 +228,7 @@ module.exports = {
   findById,
   getById,
   decide,
+  adminUpdate,
   reviewDocument,
   addDocuments,
   getDocumentFile,

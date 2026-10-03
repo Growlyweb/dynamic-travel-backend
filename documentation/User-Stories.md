@@ -124,6 +124,7 @@ As a customer, I want to change my name and phone number, so that my details sta
 - I can change only my name and phone.
 - A changed phone number becomes unverified again.
 - I cannot change my email, role, status or permissions, even if I try to send them.
+- Only I can change my profile, and an admin. No other customer, agency or staff member can, however they try: there is no route that names another person, and an id in the request body is ignored.
 - Endpoints: `GET /api/b2c/profile`, `PATCH /api/b2c/profile`. Status: **Built**.
 
 ### B2C-6: See only my own data
@@ -283,6 +284,30 @@ As an admin, I want to search and filter accounts, so that I can answer support 
 - Search treats special characters literally, and filter values are validated.
 - Responses never include password hashes.
 - Endpoints: `GET /api/admin/users`, `GET /api/admin/users/:id`. Status: **Built**.
+
+### ADMIN-3a: Correct someone's profile details
+As an admin, I want to fix a person's name or phone number, so that I can help when they cannot do it themselves.
+
+- This is the only way to change another person's profile. Every other role is refused (`403`), including staff who hold every permission.
+- I can change only `name` and `phone`. A changed phone becomes unverified again.
+- The email, role, status and permissions are ignored here and have their own actions, or none.
+- A phone number that belongs to another account is refused (`409`). An empty change is refused (`422`).
+- The audit log records that I changed the profile and which fields, never the values.
+- Endpoint: `PATCH /api/admin/users/:id`. Status: **Built**.
+
+### ADMIN-3b: Correct an agency's business record
+As an admin, I want to edit an agency's company name, license number, business type and address, so that the record matches the documents I reviewed.
+
+- The agency owner can change only the business type and address. As the reviewer I can change all four.
+- A license number that belongs to another agency is refused (`409`).
+- The approval status is not affected, and the change is audit-logged by field name.
+- Endpoint: `PATCH /api/admin/b2b/:id`. Status: **Built**.
+
+### ADMIN-3c: Manage my own profile
+As an admin, I want to update my own name and phone, so that my details are right.
+
+- Works like every other role's profile route: the person comes from my token, and I cannot name anyone else there.
+- Endpoints: `GET /api/admin/profile`, `PATCH /api/admin/profile`. Status: **Built**.
 
 ### ADMIN-4: Suspend, block, reactivate or deactivate an account
 As an admin, I want to control whether an account can sign in, so that I can stop misuse quickly.

@@ -1,4 +1,5 @@
 const userService = require('../services/userService');
+const profileService = require('../services/profileService');
 const auditService = require('../services/auditService');
 const sendResponse = require('../utils/response');
 const asyncHandler = require('../utils/asyncHandler');
@@ -23,6 +24,12 @@ exports.listUsers = asyncHandler(async (req, res) => {
 exports.getUser = asyncHandler(async (req, res) => {
   const user = await userService.getById(req.params.id);
   sendResponse(res, 200, true, 'User fetched.', user);
+});
+
+// PATCH /api/admin/users/:id   (an admin edits another person's name or phone)
+exports.updateUser = asyncHandler(async (req, res) => {
+  const { user } = await profileService.adminUpdateUser(req.user, req.params.id, req.body, contextOf(req));
+  sendResponse(res, 200, true, 'Profile updated.', user);
 });
 
 // POST /api/admin/users   (creates ADMIN or STAFF and emails an invite)

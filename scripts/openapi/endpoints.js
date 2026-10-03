@@ -197,7 +197,7 @@ const endpoints = [
   {
     method: 'patch', path: '/api/b2c/profile', tag: 'Customer (B2C)', id: 'updateCustomerProfile',
     summary: 'Update my profile',
-    description: 'Only `name` and `phone` can be changed. A changed phone becomes unverified again. `email`, `role`, `status`, `permissions` and `partnerId` are ignored if sent.',
+    description: 'Only `name` and `phone` can be changed. A changed phone becomes unverified again. `email`, `role`, `status`, `permissions` and `partnerId` are ignored if sent.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}`).',
     access: 'B2C', needsAuth: true, body: profile.updateProfile, bodyExample: { name: 'Rahim U.', phone: '+8801712345678' },
     success: ok(200, 'Profile updated.', obj({ user: ref('User') }), { user: exUser({ name: 'Rahim U.' }) }), errors: { 401: true, 403: true, 409: true, 422: true }
   },
@@ -212,7 +212,7 @@ const endpoints = [
   {
     method: 'patch', path: '/api/b2b/profile', tag: 'Agency (B2B)', id: 'updateAgencyProfile',
     summary: 'Update my profile',
-    description: 'Change `name`, `phone`, `address` or `businessType`. `companyName` and `licenseNo` are locked, because changing them needs a new review.',
+    description: 'Change `name`, `phone`, `address` or `businessType`. `companyName` and `licenseNo` are locked, because changing them needs a new review.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}` and `PATCH /api/admin/b2b/{id}`).',
     access: 'B2B', needsAuth: true, body: profile.updateB2BProfile, bodyExample: { address: '12 Gulshan Avenue, Dhaka', businessType: 'Travel agency' },
     success: ok(200, 'Profile updated.', obj({ user: ref('User'), partner: ref('Partner') }), { user: exUser({ role: 'B2B' }), partner: exPartner({ address: '12 Gulshan Avenue, Dhaka' }) }), errors: { 401: true, 403: true, 409: true, 422: true }
   },
@@ -257,7 +257,7 @@ const endpoints = [
   },
   {
     method: 'patch', path: '/api/staff/profile', tag: 'Staff', id: 'updateStaffProfile',
-    summary: 'Update my profile', description: 'Only `name` and `phone`. Permissions can only be changed by an admin.',
+    summary: 'Update my profile', description: 'Only `name` and `phone`. Permissions can only be changed by an admin.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}`).',
     access: 'STAFF', needsAuth: true, body: profile.updateProfile, bodyExample: { name: 'Sara A. Staff' },
     success: ok(200, 'Profile updated.', obj({ user: ref('User') }), { user: exUser({ role: 'STAFF', name: 'Sara A. Staff' }) }), errors: { 401: true, 403: true, 409: true, 422: true }
   },
@@ -285,6 +285,25 @@ const endpoints = [
       roles: [{ code: 'STAFF', label: 'Staff', description: 'Internal team member.', selfRegister: false, invitable: true, bypassPermissions: false, assignablePermissions: true }],
       permissions: [{ code: 'VISA_VIEW', description: 'See visa applications' }]
     }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/admin/profile', tag: 'Admin: users', id: 'getAdminProfile',
+    summary: 'My profile (admin)', description: 'The signed-in admin\'s own record. The person always comes from the token, never from the URL or body.',
+    access: 'ADMIN', needsAuth: true,
+    success: ok(200, 'Profile fetched.', obj({ user: ref('User') }), { user: exUser({ role: 'ADMIN', name: 'Super Admin', email: 'boss@example.com' }) }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'patch', path: '/api/admin/profile', tag: 'Admin: users', id: 'updateAdminProfile',
+    summary: 'Update my profile (admin)', description: 'Change your own `name` or `phone`. Send at least one. Email, role, status and permissions cannot be changed here.',
+    access: 'ADMIN', needsAuth: true, body: profile.adminUpdateUser, bodyExample: { name: 'Super Admin', phone: '+8801712345678' },
+    success: ok(200, 'Profile updated.', obj({ user: ref('User') }), { user: exUser({ role: 'ADMIN', name: 'Super Admin', email: 'boss@example.com' }) }), errors: { 401: true, 403: true, 409: true, 422: true }
+  },
+  {
+    method: 'patch', path: '/api/admin/users/{id}', tag: 'Admin: users', id: 'adminUpdateUserProfile',
+    summary: 'Edit someone else\'s profile (name, phone)',
+    description: 'The only way to change another person\'s profile. Every other role is refused (`403`), including staff holding every permission. Only `name` and `phone` can be changed; the email, role, status and permissions are ignored here and have their own admin actions. A changed phone becomes unverified again. The audit log records which fields changed, never their values. Send at least one field.',
+    access: 'ADMIN', needsAuth: true, params: user.idParam, body: profile.adminUpdateUser, bodyExample: { name: 'Edited By Admin', phone: '+8801788888888' },
+    success: ok(200, 'Profile updated.', ref('User'), exUser({ name: 'Edited By Admin', phone: '+8801788888888', phoneVerified: false })), errors: { 401: true, 403: true, 404: true, 409: true, 422: true }
   },
   {
     method: 'get', path: '/api/admin/users', tag: 'Admin: users', id: 'listUsers',
@@ -360,6 +379,14 @@ const endpoints = [
     summary: 'Get one agency', description: 'One partner record with its documents.',
     access: 'ADMIN', needsAuth: true, params: partner.partnerParam, paramExamples: { id: '6ac0a5f0eebc510147c6722f' },
     success: ok(200, 'Partner fetched.', ref('Partner'), exPartner()), errors: { 401: true, 403: true, 404: true, 422: true }
+  },
+  {
+    method: 'patch', path: '/api/admin/b2b/{id}', tag: 'Admin: agencies', id: 'adminUpdatePartner',
+    summary: 'Edit an agency\'s business record',
+    description: 'Change `companyName`, `licenseNo`, `businessType` or `address` (send at least one). An agency owner can only change the last two themselves; an admin, as the reviewer, may change all four. The approval status is not touched. A license number that belongs to another agency answers `409`. The audit log records which fields changed, never their values.',
+    access: 'ADMIN', needsAuth: true, params: partner.partnerParam, paramExamples: { id: '6ac0a5f0eebc510147c6722f' },
+    body: profile.adminUpdatePartner, bodyExample: { companyName: 'Sky Travels International Ltd', address: '9 Dhanmondi, Dhaka' },
+    success: ok(200, 'Partner updated.', ref('Partner'), exPartner({ companyName: 'Sky Travels International Ltd', address: '9 Dhanmondi, Dhaka' })), errors: { 401: true, 403: true, 404: true, 409: true, 422: true }
   },
   {
     method: 'patch', path: '/api/admin/b2b/{id}/approval', tag: 'Admin: agencies', id: 'decidePartner',

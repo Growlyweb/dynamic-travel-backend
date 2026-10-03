@@ -1,6 +1,7 @@
-const { ROLES } = require('../config/constants');
+const { ROLES, AUDIT_ACTIONS } = require('../config/constants');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
+const auditService = require('./auditService');
 const partnerService = require('./partnerService');
 
 // "My own profile" for every role. The user id always comes from the verified token (req.user.id),
@@ -34,4 +35,22 @@ const update = async (userId, { name, phone, address, businessType }) => {
   return { user, partner };
 };
 
-module.exports = { get, update };
+// ADMIN editing another person's name or phone. Only an admin reaches this (the route is behind
+// requireRole(ADMIN)), and only the same two fields a person may edit about themselves. The email,
+// role, status and permissions have their own admin actions, or none. Logged with the field names
+// (not the values) so the audit trail holds no personal data.
+const adminUpdateUser = async (admin, id, data, context = {}) => {
+  const result = await update(id, { name: data.name, phone: data.phone });
+
+  await auditService.record({
+    actorUserId: admin.id,
+    targetUserId: result.user._id,
+    action: AUDIT_ACTIONS.PROFILE_UPDATED,
+    ip: context.ip,
+    meta: { fields: ['name', 'phone'].filter((field) => data[field] !== undefined) }
+  });
+
+  return result;
+};
+
+module.exports = { get, update, adminUpdateUser };

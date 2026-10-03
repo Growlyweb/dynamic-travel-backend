@@ -32,7 +32,7 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Audit log, rate limits, hardening, central errors | Done |
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
-| Automated tests | 233 passing |
+| Automated tests | 260 passing |
 | Browser test console | Done (`npm run console`) |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
@@ -66,7 +66,7 @@ It is OpenAPI 3.0.3, so it also opens in Swagger UI, Insomnia and similar tools.
 **Import into Postman**
 
 1. Postman, **File > Import**, choose `documentation/openapi.json`.
-2. You get a collection with 43 requests in folders (Auth, Customer, Agency, Staff, Admin, Documents, System). Request bodies are pre-filled with valid examples.
+2. You get a collection with 47 requests in folders (Auth, Customer, Agency, Staff, Admin, Documents, System). Request bodies are pre-filled with valid examples.
 3. In the collection's **Variables**, `baseUrl` is `http://localhost:5000`. Add a variable named `bearerToken` and leave it empty.
 4. Send **Auth > Log in**, copy `data.accessToken` from the response into `bearerToken`. Every request with a lock now works.
 5. The token lasts 15 minutes. **Refresh tokens** issues a new one (Postman keeps the refresh cookie).
@@ -248,12 +248,21 @@ A suspension, role change or password change takes effect at once: `authenticate
 - A never-verified account cannot be activated by an admin. It becomes active when the person verifies.
 - Every one of these changes is written to the audit log with the old and new value.
 
-**Profiles** (`/api/staff|b2b|b2c/profile`)
+**Profiles.** A profile can be changed by exactly two parties: **the person themselves, and an admin.** Nobody else.
 
-- The user id always comes from the token, never from the URL or body.
-- Everyone can change `name` and `phone`. A changed phone is marked unverified again.
-- B2B owners can also change `address` and `businessType`. `companyName` and `licenseNo` are locked because changing them needs a new review.
-- Email, role, status, permissions and partner id cannot be changed here. Changing an email needs a re-verification flow that is not built yet (see `documentation/ToDo.md`).
+| Who changes | Route | Fields |
+| --- | --- | --- |
+| The person, any role | `PATCH /api/b2c/profile`, `/api/b2b/profile`, `/api/staff/profile`, `/api/admin/profile` | `name`, `phone` (agency owners also `address`, `businessType`) |
+| An admin, for someone else | `PATCH /api/admin/users/:id` | `name`, `phone` |
+| An admin, for an agency | `PATCH /api/admin/b2b/:id` | `companyName`, `licenseNo`, `businessType`, `address` |
+
+- **The person always comes from the token**, never from the URL or body. There is no route that names another person, and a foreign `id`, `_id` or `userId` in the body is ignored.
+- Two layers enforce this: zod drops unknown fields, and the controller takes the id from the token. Removing one layer alone opens nothing; the tests fail if both go.
+- Every other role gets `403` on the admin routes, including staff who hold every permission.
+- A changed phone is marked unverified again.
+- Agency owners cannot change `companyName` or `licenseNo` (a change needs a new review). An admin, as the reviewer, can.
+- Email, role, status, permissions and partner id cannot be changed through any profile route. Roles, status and permissions have their own admin actions. Changing an email needs a re-verification flow that is not built yet (see `documentation/ToDo.md`).
+- An admin edit is written to the audit log (`PROFILE_UPDATED`) with the field names, never the values.
 
 **B2B documents**
 
@@ -331,12 +340,15 @@ Production never returns stack traces or internal messages.
 | GET | `/rbac` | Roles and permissions from `config/rbac.json` |
 | GET, POST | `/users` | List (filter by `role`, `status`, `search`) and create an invitable role |
 | GET, DELETE | `/users/:id` | Read, or deactivate (soft delete) |
+| PATCH | `/users/:id` | Edit someone's `name` and `phone` |
+| GET, PATCH | `/profile` | An admin's own profile |
 | PATCH | `/users/:id/status` | ACTIVE, SUSPENDED, BLOCKED, INACTIVE |
 | PATCH | `/users/:id/role` | Between the invitable roles only |
 | PATCH | `/users/:id/permissions` | Roles with `assignablePermissions` only |
 | POST | `/users/:id/resend-invite` | Send the invite again |
 | POST | `/staff` | Create STAFF with permissions |
 | GET | `/b2b`, `/b2b/:id` | List and read partners |
+| PATCH | `/b2b/:id` | Edit an agency's company name, license number, business type and address |
 | PATCH | `/b2b/:id/approval` | `APPROVED` (needs a trade license), `REJECTED`, `UNDER_REVIEW`, `SUSPENDED` |
 | PATCH | `/b2b/:id/documents/:docId` | Mark a document `VERIFIED` or `REJECTED` |
 | GET | `/audit-logs` | Security events |

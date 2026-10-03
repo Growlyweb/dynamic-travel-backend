@@ -21,6 +21,12 @@ exports.getPartner = asyncHandler(async (req, res) => {
   sendResponse(res, 200, true, 'Partner fetched.', partner);
 });
 
+// PATCH /api/admin/b2b/:id   (an admin edits an agency's business record)
+exports.updatePartner = asyncHandler(async (req, res) => {
+  const partner = await partnerService.adminUpdate(req.user, req.params.id, req.body, contextOf(req));
+  sendResponse(res, 200, true, 'Partner updated.', partner);
+});
+
 // PATCH /api/admin/b2b/:id/approval
 exports.decide = asyncHandler(async (req, res) => {
   const partner = await partnerService.decide(req.params.id, req.user, req.body, contextOf(req));
