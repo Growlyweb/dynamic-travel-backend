@@ -1,0 +1,52 @@
+{
+  "roles": {
+    "ADMIN": {
+      "label": "Administrator",
+      "description": "Full control of the platform. Created by another admin, or by the seed script for the very first one.",
+      "selfRegister": false,
+      "invitable": true,
+      "bypassPermissions": true,
+      "assignablePermissions": false
+    },
+    "STAFF": {
+      "label": "Staff",
+      "description": "Internal team member. Can only do what the permissions assigned by an admin allow.",
+      "selfRegister": false,
+      "invitable": true,
+      "bypassPermissions": false,
+      "assignablePermissions": true
+    },
+    "B2B": {
+      "label": "B2B partner",
+      "description": "Travel agency or business partner. Registers itself, then waits for admin approval before operational access.",
+      "selfRegister": true,
+      "invitable": false,
+      "bypassPermissions": false,
+      "assignablePermissions": false
+    },
+    "B2C": {
+      "label": "Customer",
+      "description": "Individual traveller. Registers itself or signs in with Firebase.",
+      "selfRegister": true,
+      "invitable": false,
+      "bypassPermissions": false,
+      "assignablePermissions": false
+    }
+  },
+  "permissions": {
+    "USER_VIEW": "See user accounts",
+    "USER_MANAGE": "Create, suspend and change user accounts",
+    "STAFF_CREATE": "Create staff accounts",
+    "VISA_VIEW": "See visa applications",
+    "VISA_UPDATE": "Change the status of visa applications",
+    "PASSPORT_VIEW": "See passport records",
+    "PASSPORT_UPDATE": "Update passport records",
+    "DOCUMENT_VIEW": "See uploaded documents",
+    "DOCUMENT_VERIFY": "Verify or reject uploaded documents",
+    "B2B_VIEW": "See B2B partners",
+    "B2B_MANAGE": "Approve and manage B2B partners",
+    "TOUR_MANAGE": "Manage tour packages and custom tours",
+    "FLIGHT_INQUIRY_MANAGE": "Handle flight inquiries",
+    "REPORT_VIEW": "View reports"
+  }
+}
