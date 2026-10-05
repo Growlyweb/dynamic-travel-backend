@@ -46,6 +46,26 @@ const OTP_PURPOSE = Object.freeze({
   STAFF_INVITE: 'STAFF_INVITE'
 });
 
+// Tour packages. Values are lower case because the handoff and the frontend use them that way.
+const TOUR_STATUS = Object.freeze({
+  DRAFT: 'draft',
+  PUBLISHED: 'published',
+  UNPUBLISHED: 'unpublished',
+  ARCHIVED: 'archived'
+});
+
+// Allowed values of Tour.priceCurrency. Adding one is an edit here and a restart.
+const TOUR_CURRENCIES = Object.freeze(['BDT', 'USD', 'EUR']);
+
+// A B2C customer's custom tour request. The allowed moves between them are in services/customTourService.js.
+const CUSTOM_REQUEST_STATUS = Object.freeze({
+  NEW: 'NEW',
+  IN_REVIEW: 'IN_REVIEW',
+  QUOTED: 'QUOTED',
+  CONFIRMED: 'CONFIRMED',
+  CANCELLED: 'CANCELLED'
+});
+
 const AUDIT_ACTIONS = Object.freeze({
   REGISTER: 'REGISTER',
   EMAIL_VERIFIED: 'EMAIL_VERIFIED',
@@ -65,7 +85,14 @@ const AUDIT_ACTIONS = Object.freeze({
   B2B_REJECTED: 'B2B_REJECTED',
   B2B_STATUS_CHANGED: 'B2B_STATUS_CHANGED',
   DOCUMENT_REVIEWED: 'DOCUMENT_REVIEWED',
-  PROFILE_UPDATED: 'PROFILE_UPDATED'
+  PROFILE_UPDATED: 'PROFILE_UPDATED',
+  CATEGORY_CREATED: 'CATEGORY_CREATED',
+  CATEGORY_DEACTIVATED: 'CATEGORY_DEACTIVATED',
+  TOUR_CREATED: 'TOUR_CREATED',
+  TOUR_UPDATED: 'TOUR_UPDATED',
+  TOUR_ARCHIVED: 'TOUR_ARCHIVED',
+  CUSTOM_TOUR_REQUESTED: 'CUSTOM_TOUR_REQUESTED',
+  CUSTOM_TOUR_STATUS_CHANGED: 'CUSTOM_TOUR_STATUS_CHANGED'
 });
 
 module.exports = {
@@ -75,5 +102,8 @@ module.exports = {
   DOCUMENT_TYPE,
   AUTH_PROVIDERS,
   OTP_PURPOSE,
+  TOUR_STATUS,
+  TOUR_CURRENCIES,
+  CUSTOM_REQUEST_STATUS,
   AUDIT_ACTIONS
 };

@@ -10,6 +10,7 @@
     "console": "node test/console/server.js",
     "openapi": "node scripts/generateOpenApi.js",
     "seed": "node scripts/seedAdmin.js",
+    "seed:tours": "node scripts/seedTours.js",
     "test": "NODE_ENV=test jest --runInBand",
     "test:watch": "NODE_ENV=test jest --runInBand --watch",
     "e2e": "playwright test -c test/playwright.config.js",

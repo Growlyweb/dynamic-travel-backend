@@ -45,6 +45,18 @@
       "description": "Private business documents, served only after an ownership check."
     },
     {
+      "name": "Tour categories",
+      "description": "Reading is public. Changing needs ADMIN, or STAFF with TOUR_MANAGE."
+    },
+    {
+      "name": "Tours",
+      "description": "Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE."
+    },
+    {
+      "name": "Custom tours",
+      "description": "A B2C customer sends and follows their own request; tour managers answer it."
+    },
+    {
       "name": "System",
       "description": "Health and version."
     }
@@ -5443,6 +5455,2122 @@
         }
       }
     },
+    "/api/tour-categories": {
+      "get": {
+        "tags": [
+          "Tour categories"
+        ],
+        "summary": "List tour categories",
+        "operationId": "listTourCategories",
+        "description": "Active categories, sorted by name. A tour manager can add `includeInactive=true` to see the removed ones too; for anyone else the parameter changes nothing.\n\nA token is optional. Every `/api` route is also limited to 300 requests per 15 minutes per IP.\n\n**Access:** Public.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "20"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Part of the category name, ignoring letter case.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": ""
+          },
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "required": false,
+            "description": "`true` adds removed categories. Only tour managers get them.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false",
+                ""
+              ]
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categories fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Categories fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TourCategory"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Categories fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67240",
+                      "name": "Beach & Resort",
+                      "slug": "beach-and-resort",
+                      "legacyId": "cat_beach",
+                      "isActive": true,
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tour categories"
+        ],
+        "summary": "Create a tour category",
+        "operationId": "createTourCategory",
+        "description": "Category names are unique in any letter case and with any spacing. Sending a name that already exists is **not an error**: the existing category is returned with `200` instead of `201`, and no second one is made. If that category had been removed it is switched on again.\n\n**Access:** ADMIN, or STAFF with TOUR_MANAGE.\n\nThe `200` answer for an existing name has the message \"A category with this name already exists.\"",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "Beach & Resort"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Category created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Category created."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TourCategory"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Category created.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67240",
+                    "name": "Beach & Resort",
+                    "slug": "beach-and-resort",
+                    "legacyId": "cat_beach",
+                    "isActive": true,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/tour-categories/{id}": {
+      "get": {
+        "tags": [
+          "Tour categories"
+        ],
+        "summary": "Get one tour category",
+        "operationId": "getTourCategory",
+        "description": "The `id` is this API's id (24 hex characters) **or** the id the frontend used before, such as `cat_beach`. A removed category answers `404` unless the caller is a tour manager.\n\n**Access:** Public.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{3,60}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Category fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TourCategory"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Category fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67240",
+                    "name": "Beach & Resort",
+                    "slug": "beach-and-resort",
+                    "legacyId": "cat_beach",
+                    "isActive": true,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tour categories"
+        ],
+        "summary": "Remove a tour category",
+        "operationId": "removeTourCategory",
+        "description": "Switches the category off (`isActive: false`); nothing is deleted. It disappears from the public list. A category that active tours still use cannot be removed (`CATEGORY_IN_USE`): move or archive those tours first. Repeating the call is harmless.\n\n**Access:** ADMIN, or STAFF with TOUR_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{3,60}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Category removed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Category removed."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/TourCategory"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Category removed.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67240",
+                    "name": "Beach & Resort",
+                    "slug": "beach-and-resort",
+                    "legacyId": "cat_beach",
+                    "isActive": false,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `CATEGORY_IN_USE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "This category is used by 2 tours. Move or archive them first.",
+                  "code": "CATEGORY_IN_USE"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/tours": {
+      "get": {
+        "tags": [
+          "Tours"
+        ],
+        "summary": "List and search tours",
+        "operationId": "listTours",
+        "description": "The public sees **published** tours only (a `status` they send is ignored). A tour manager also sees drafts and unpublished tours, and archived ones with `status=archived`.\n\n- `search` matches name, destination and country, ignoring letter case. Special characters are plain text.\n- `category` takes one id or several separated by commas, as this API's ids or old frontend ids (`cat_beach,cat_city`).\n- `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match.\n- `sort` is `createdAt`, `price`, `durationDays` or `rating`; a leading `-` means descending. Default `-createdAt` (newest first).\n\n**`b2bPrice` is only in the answer for** an admin, staff with TOUR_MANAGE, and a B2B user whose partner is APPROVED. Everyone else never receives the field.\n\nA token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. In Postman, set the request's Authorization to Bearer Token `{{bearerToken}}` to see the signed-in view. Every `/api` route is also limited to 300 requests per 15 minutes per IP.\n\n**Access:** Public.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "10"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Matches name, destination and country, ignoring letter case. Special characters are plain text.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": ""
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "description": "One category id, or several separated by commas. This API's id or an old frontend id such as `cat_beach`.",
+            "schema": {
+              "type": "string",
+              "maxLength": 400
+            },
+            "example": ""
+          },
+          {
+            "name": "country",
+            "in": "query",
+            "required": false,
+            "description": "Exact country name, ignoring letter case.",
+            "schema": {
+              "type": "string",
+              "maxLength": 80
+            },
+            "example": ""
+          },
+          {
+            "name": "destination",
+            "in": "query",
+            "required": false,
+            "description": "Part of the destination text.",
+            "schema": {
+              "type": "string",
+              "maxLength": 150
+            },
+            "example": ""
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Tour managers only: draft, published, unpublished or archived. Ignored for the public, who see published tours. Managers see everything except archived when it is empty.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "published",
+                "unpublished",
+                "archived",
+                ""
+              ]
+            },
+            "example": ""
+          },
+          {
+            "name": "minPrice",
+            "in": "query",
+            "required": false,
+            "description": "Lowest public price (inclusive).",
+            "schema": {
+              "type": "string",
+              "pattern": "^$|^\\d+(\\.\\d+)?$"
+            },
+            "example": ""
+          },
+          {
+            "name": "maxPrice",
+            "in": "query",
+            "required": false,
+            "description": "Highest public price (inclusive).",
+            "schema": {
+              "type": "string",
+              "pattern": "^$|^\\d+(\\.\\d+)?$"
+            },
+            "example": ""
+          },
+          {
+            "name": "durationDays",
+            "in": "query",
+            "required": false,
+            "description": "Exact number of days.",
+            "schema": {
+              "type": "string",
+              "pattern": "^$|^\\d+$"
+            },
+            "example": ""
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "description": "createdAt, price, durationDays or rating. A leading `-` sorts descending. Empty means `-createdAt` (newest first).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "createdAt",
+                "-createdAt",
+                "price",
+                "-price",
+                "durationDays",
+                "-durationDays",
+                "rating",
+                "-rating",
+                ""
+              ]
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tours fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Tours fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Tour"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Tours fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67241",
+                      "legacyId": "tour_205",
+                      "name": "Cox's Bazar Beach Escape",
+                      "country": "Bangladesh",
+                      "destination": "Cox's Bazar, Bangladesh",
+                      "category": {
+                        "_id": "6ac0a5f0eebc510147c67240",
+                        "name": "Beach & Resort",
+                        "slug": "beach-and-resort",
+                        "legacyId": "cat_beach",
+                        "isActive": true
+                      },
+                      "durationDays": 3,
+                      "priceCurrency": "BDT",
+                      "price": 12500,
+                      "seats": 25,
+                      "status": "published",
+                      "rating": 4.9,
+                      "coverImage": "https://picsum.photos/seed/coxs-bazar/900/560",
+                      "gallery": [],
+                      "description": "Experience the world longest natural sea beach with luxury resort stay and fresh seafood.",
+                      "included": [
+                        "2 nights hotel stay",
+                        "Breakfast included",
+                        "Beach tour & sunset view"
+                      ],
+                      "excluded": [
+                        "Personal expenses",
+                        "Shopping"
+                      ],
+                      "hotels": [
+                        "Ocean Paradise Hotel & Resort"
+                      ],
+                      "itinerary": [
+                        {
+                          "day": 1,
+                          "title": "Arrival & Beach Sunset",
+                          "description": "Check-in, relax at Laboni Beach, enjoy sunset."
+                        },
+                        {
+                          "day": 2,
+                          "title": "Inani Beach & Himchari",
+                          "description": "Day trip to Inani rocky beach and Himchari waterfall."
+                        },
+                        {
+                          "day": 3,
+                          "title": "Departure",
+                          "description": "Morning shopping at Burmese market, airport transfer."
+                        }
+                      ],
+                      "terms": "Standard cancellation rules apply.",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Tours"
+        ],
+        "summary": "Create a tour",
+        "operationId": "createTour",
+        "description": "Prices and counts cannot be negative. `priceCurrency` is `BDT`, `USD` or `EUR`. `status` defaults to `draft`. `category` is optional and may be this API's id or an old frontend id; it must exist and be active. Itinerary days are unique, from 1, and no day may be after `durationDays`. A **published** tour needs at least one itinerary day; a draft may be incomplete. `coverImage` and `gallery` are http or https links. Unknown fields are ignored.\n\n**Access:** ADMIN, or STAFF with TOUR_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "destination": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "category": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{3,60}$"
+                  },
+                  "durationDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  },
+                  "priceCurrency": {
+                    "type": "string",
+                    "enum": [
+                      "BDT",
+                      "USD",
+                      "EUR"
+                    ]
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "b2bPrice": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "status": {
+                    "default": "draft",
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "published",
+                      "unpublished",
+                      "archived"
+                    ]
+                  },
+                  "rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                  },
+                  "coverImage": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "gallery": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "included": {
+                    "default": [],
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "excluded": {
+                    "default": [],
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "hotels": {
+                    "default": [],
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "itinerary": {
+                    "maxItems": 365,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "day": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 365
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 150
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "day",
+                        "title",
+                        "description"
+                      ]
+                    }
+                  },
+                  "terms": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 5000
+                  }
+                },
+                "required": [
+                  "name",
+                  "country",
+                  "destination",
+                  "durationDays",
+                  "priceCurrency",
+                  "price",
+                  "description"
+                ]
+              },
+              "example": {
+                "name": "Cox's Bazar Beach Escape",
+                "country": "Bangladesh",
+                "destination": "Cox's Bazar, Bangladesh",
+                "category": "cat_beach",
+                "durationDays": 3,
+                "priceCurrency": "BDT",
+                "price": 12500,
+                "b2bPrice": 10000,
+                "seats": 25,
+                "status": "published",
+                "rating": 4.9,
+                "coverImage": "https://picsum.photos/seed/coxs-bazar/900/560",
+                "description": "Experience the world longest natural sea beach with luxury resort stay and fresh seafood.",
+                "included": [
+                  "2 nights hotel stay",
+                  "Breakfast included"
+                ],
+                "excluded": [
+                  "Personal expenses"
+                ],
+                "hotels": [
+                  "Ocean Paradise Hotel & Resort"
+                ],
+                "itinerary": [
+                  {
+                    "day": 1,
+                    "title": "Arrival & Beach Sunset",
+                    "description": "Check-in, relax at Laboni Beach, enjoy sunset."
+                  },
+                  {
+                    "day": 2,
+                    "title": "Inani Beach & Himchari",
+                    "description": "Day trip to Inani rocky beach and Himchari waterfall."
+                  },
+                  {
+                    "day": 3,
+                    "title": "Departure",
+                    "description": "Morning shopping at Burmese market, airport transfer."
+                  }
+                ],
+                "terms": "Standard cancellation rules apply."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Tour created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Tour created."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Tour"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Tour created.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67241",
+                    "legacyId": "tour_205",
+                    "name": "Cox's Bazar Beach Escape",
+                    "country": "Bangladesh",
+                    "destination": "Cox's Bazar, Bangladesh",
+                    "category": {
+                      "_id": "6ac0a5f0eebc510147c67240",
+                      "name": "Beach & Resort",
+                      "slug": "beach-and-resort",
+                      "legacyId": "cat_beach",
+                      "isActive": true
+                    },
+                    "durationDays": 3,
+                    "priceCurrency": "BDT",
+                    "price": 12500,
+                    "seats": 25,
+                    "status": "published",
+                    "rating": 4.9,
+                    "coverImage": "https://picsum.photos/seed/coxs-bazar/900/560",
+                    "gallery": [],
+                    "description": "Experience the world longest natural sea beach with luxury resort stay and fresh seafood.",
+                    "included": [
+                      "2 nights hotel stay",
+                      "Breakfast included",
+                      "Beach tour & sunset view"
+                    ],
+                    "excluded": [
+                      "Personal expenses",
+                      "Shopping"
+                    ],
+                    "hotels": [
+                      "Ocean Paradise Hotel & Resort"
+                    ],
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival & Beach Sunset",
+                        "description": "Check-in, relax at Laboni Beach, enjoy sunset."
+                      },
+                      {
+                        "day": 2,
+                        "title": "Inani Beach & Himchari",
+                        "description": "Day trip to Inani rocky beach and Himchari waterfall."
+                      },
+                      {
+                        "day": 3,
+                        "title": "Departure",
+                        "description": "Morning shopping at Burmese market, airport transfer."
+                      }
+                    ],
+                    "terms": "Standard cancellation rules apply.",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "b2bPrice": 10000
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/tours/{id}": {
+      "get": {
+        "tags": [
+          "Tours"
+        ],
+        "summary": "Get one tour",
+        "operationId": "getTour",
+        "description": "The `id` is this API's id **or** the id the frontend used before, such as `tour_205`. The itinerary is in ascending day order. A tour that is not published answers `404` for the public, exactly like one that does not exist; tour managers can read it. `b2bPrice` follows the same rule as the list.\n\nA token is optional.\n\n**Access:** Public.",
+        "security": [
+          {},
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{3,60}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tour fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Tour fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Tour"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Tour fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67241",
+                    "legacyId": "tour_205",
+                    "name": "Cox's Bazar Beach Escape",
+                    "country": "Bangladesh",
+                    "destination": "Cox's Bazar, Bangladesh",
+                    "category": {
+                      "_id": "6ac0a5f0eebc510147c67240",
+                      "name": "Beach & Resort",
+                      "slug": "beach-and-resort",
+                      "legacyId": "cat_beach",
+                      "isActive": true
+                    },
+                    "durationDays": 3,
+                    "priceCurrency": "BDT",
+                    "price": 12500,
+                    "seats": 25,
+                    "status": "published",
+                    "rating": 4.9,
+                    "coverImage": "https://picsum.photos/seed/coxs-bazar/900/560",
+                    "gallery": [],
+                    "description": "Experience the world longest natural sea beach with luxury resort stay and fresh seafood.",
+                    "included": [
+                      "2 nights hotel stay",
+                      "Breakfast included",
+                      "Beach tour & sunset view"
+                    ],
+                    "excluded": [
+                      "Personal expenses",
+                      "Shopping"
+                    ],
+                    "hotels": [
+                      "Ocean Paradise Hotel & Resort"
+                    ],
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival & Beach Sunset",
+                        "description": "Check-in, relax at Laboni Beach, enjoy sunset."
+                      },
+                      {
+                        "day": 2,
+                        "title": "Inani Beach & Himchari",
+                        "description": "Day trip to Inani rocky beach and Himchari waterfall."
+                      },
+                      {
+                        "day": 3,
+                        "title": "Departure",
+                        "description": "Morning shopping at Burmese market, airport transfer."
+                      }
+                    ],
+                    "terms": "Standard cancellation rules apply.",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Tours"
+        ],
+        "summary": "Edit a tour",
+        "operationId": "updateTour",
+        "description": "Send only the fields to change (at least one). The rules are checked against the whole tour as it would be saved, so publishing a tour with no itinerary, or shortening `durationDays` below an existing itinerary day, is refused. Setting `status` to `published` publishes it; setting it back from `archived` restores it. The audit log records which fields changed, never their values.\n\n**Access:** ADMIN, or STAFF with TOUR_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{3,60}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "country": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "destination": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "category": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z0-9_-]{3,60}$"
+                  },
+                  "durationDays": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 365
+                  },
+                  "priceCurrency": {
+                    "type": "string",
+                    "enum": [
+                      "BDT",
+                      "USD",
+                      "EUR"
+                    ]
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "b2bPrice": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "seats": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 100000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "published",
+                      "unpublished",
+                      "archived"
+                    ]
+                  },
+                  "rating": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 5
+                  },
+                  "coverImage": {
+                    "type": "string",
+                    "maxLength": 500
+                  },
+                  "gallery": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 500
+                    }
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "included": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "excluded": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "hotels": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "itinerary": {
+                    "maxItems": 365,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "day": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 365
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 150
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "day",
+                        "title",
+                        "description"
+                      ]
+                    }
+                  },
+                  "terms": {
+                    "type": "string",
+                    "maxLength": 5000
+                  }
+                }
+              },
+              "example": {
+                "price": 13000,
+                "seats": 30
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Tour updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Tour updated."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Tour"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Tour updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67241",
+                    "legacyId": "tour_205",
+                    "name": "Cox's Bazar Beach Escape",
+                    "country": "Bangladesh",
+                    "destination": "Cox's Bazar, Bangladesh",
+                    "category": {
+                      "_id": "6ac0a5f0eebc510147c67240",
+                      "name": "Beach & Resort",
+                      "slug": "beach-and-resort",
+                      "legacyId": "cat_beach",
+                      "isActive": true
+                    },
+                    "durationDays": 3,
+                    "priceCurrency": "BDT",
+                    "price": 13000,
+                    "seats": 30,
+                    "status": "published",
+                    "rating": 4.9,
+                    "coverImage": "https://picsum.photos/seed/coxs-bazar/900/560",
+                    "gallery": [],
+                    "description": "Experience the world longest natural sea beach with luxury resort stay and fresh seafood.",
+                    "included": [
+                      "2 nights hotel stay",
+                      "Breakfast included",
+                      "Beach tour & sunset view"
+                    ],
+                    "excluded": [
+                      "Personal expenses",
+                      "Shopping"
+                    ],
+                    "hotels": [
+                      "Ocean Paradise Hotel & Resort"
+                    ],
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival & Beach Sunset",
+                        "description": "Check-in, relax at Laboni Beach, enjoy sunset."
+                      },
+                      {
+                        "day": 2,
+                        "title": "Inani Beach & Himchari",
+                        "description": "Day trip to Inani rocky beach and Himchari waterfall."
+                      },
+                      {
+                        "day": 3,
+                        "title": "Departure",
+                        "description": "Morning shopping at Burmese market, airport transfer."
+                      }
+                    ],
+                    "terms": "Standard cancellation rules apply.",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "b2bPrice": 10000
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Tours"
+        ],
+        "summary": "Archive a tour",
+        "operationId": "archiveTour",
+        "description": "Sets `status` to `archived`. The tour leaves every public list and nothing is deleted, so records that point at it keep working. Repeating the call is harmless. A manager can publish it again with **Edit a tour**.\n\n**Access:** ADMIN, or STAFF with TOUR_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{3,60}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tour archived.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Tour archived."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Tour"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Tour archived.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67241",
+                    "legacyId": "tour_205",
+                    "name": "Cox's Bazar Beach Escape",
+                    "country": "Bangladesh",
+                    "destination": "Cox's Bazar, Bangladesh",
+                    "category": {
+                      "_id": "6ac0a5f0eebc510147c67240",
+                      "name": "Beach & Resort",
+                      "slug": "beach-and-resort",
+                      "legacyId": "cat_beach",
+                      "isActive": true
+                    },
+                    "durationDays": 3,
+                    "priceCurrency": "BDT",
+                    "price": 12500,
+                    "seats": 25,
+                    "status": "archived",
+                    "rating": 4.9,
+                    "coverImage": "https://picsum.photos/seed/coxs-bazar/900/560",
+                    "gallery": [],
+                    "description": "Experience the world longest natural sea beach with luxury resort stay and fresh seafood.",
+                    "included": [
+                      "2 nights hotel stay",
+                      "Breakfast included",
+                      "Beach tour & sunset view"
+                    ],
+                    "excluded": [
+                      "Personal expenses",
+                      "Shopping"
+                    ],
+                    "hotels": [
+                      "Ocean Paradise Hotel & Resort"
+                    ],
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival & Beach Sunset",
+                        "description": "Check-in, relax at Laboni Beach, enjoy sunset."
+                      },
+                      {
+                        "day": 2,
+                        "title": "Inani Beach & Himchari",
+                        "description": "Day trip to Inani rocky beach and Himchari waterfall."
+                      },
+                      {
+                        "day": 3,
+                        "title": "Departure",
+                        "description": "Morning shopping at Burmese market, airport transfer."
+                      }
+                    ],
+                    "terms": "Standard cancellation rules apply.",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "b2bPrice": 10000
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/tours/custom-requests": {
+      "post": {
+        "tags": [
+          "Custom tours"
+        ],
+        "summary": "Send a custom tour request",
+        "operationId": "createCustomTourRequest",
+        "description": "Only a signed-in **B2C customer** can send one. Agencies, staff and admins get `403`.\n\nThe owner is always the signed-in customer. `userId`, `status` and review fields in the body are ignored. The request starts as `NEW`. `endDate` must not be before `startDate`; `travelers` is at least 1; `transportation` defaults to `Private car`. Dates are `YYYY-MM-DD` or a full ISO date-time.\n\n**Access:** B2C.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customer": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+?[0-9]{8,15}$"
+                  },
+                  "destination": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "travelers": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100
+                  },
+                  "startDate": {
+                    "type": "string"
+                  },
+                  "endDate": {
+                    "type": "string"
+                  },
+                  "hotel": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "transportation": {
+                    "default": "Private car",
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 60
+                  },
+                  "activities": {
+                    "default": [],
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "requirements": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 2000
+                  },
+                  "itinerary": {
+                    "maxItems": 365,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "day": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 365
+                        },
+                        "title": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 150
+                        },
+                        "description": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "day",
+                        "title",
+                        "description"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "customer",
+                  "phone",
+                  "destination",
+                  "travelers",
+                  "startDate",
+                  "endDate",
+                  "hotel"
+                ]
+              },
+              "example": {
+                "customer": "Rahim Uddin",
+                "phone": "+8801712345678",
+                "destination": "Sajek Valley",
+                "travelers": 4,
+                "startDate": "2026-12-01",
+                "endDate": "2026-12-05",
+                "hotel": "3-star",
+                "transportation": "Private car",
+                "activities": [
+                  "Trekking",
+                  "Bonfire"
+                ],
+                "requirements": "Vegetarian meals",
+                "itinerary": [
+                  {
+                    "day": 1,
+                    "title": "Arrival",
+                    "description": "Check in"
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Your custom tour request was received.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Your custom tour request was received."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomTourRequest"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Your custom tour request was received.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67242",
+                    "userId": "6ac0a5f0eebc510147c6722a",
+                    "customer": "Rahim Uddin",
+                    "phone": "+8801712345678",
+                    "destination": "Sajek Valley",
+                    "travelers": 4,
+                    "startDate": "2026-12-01T00:00:00.000Z",
+                    "endDate": "2026-12-05T00:00:00.000Z",
+                    "hotel": "3-star",
+                    "transportation": "Private car",
+                    "activities": [
+                      "Trekking",
+                      "Bonfire"
+                    ],
+                    "requirements": "Vegetarian meals",
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival",
+                        "description": "Check in"
+                      }
+                    ],
+                    "status": "NEW",
+                    "reviewNote": "",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "Custom tours"
+        ],
+        "summary": "List custom tour requests",
+        "operationId": "listCustomTourRequests",
+        "description": "A B2C customer receives **their own** requests. A tour manager receives everyone's, with `userId` expanded to the customer's name, email and phone. Filter by `status`, search the customer name or destination. Newest first.\n\n**Access:** B2C (own requests), or ADMIN / STAFF with TOUR_MANAGE (all).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "10"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Part of the customer name or destination.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": ""
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "NEW, IN_REVIEW, QUOTED, CONFIRMED or CANCELLED.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "IN_REVIEW",
+                "QUOTED",
+                "CONFIRMED",
+                "CANCELLED",
+                ""
+              ]
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom tour requests fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Custom tour requests fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CustomTourRequest"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Custom tour requests fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67242",
+                      "userId": "6ac0a5f0eebc510147c6722a",
+                      "customer": "Rahim Uddin",
+                      "phone": "+8801712345678",
+                      "destination": "Sajek Valley",
+                      "travelers": 4,
+                      "startDate": "2026-12-01T00:00:00.000Z",
+                      "endDate": "2026-12-05T00:00:00.000Z",
+                      "hotel": "3-star",
+                      "transportation": "Private car",
+                      "activities": [
+                        "Trekking",
+                        "Bonfire"
+                      ],
+                      "requirements": "Vegetarian meals",
+                      "itinerary": [
+                        {
+                          "day": 1,
+                          "title": "Arrival",
+                          "description": "Check in"
+                        }
+                      ],
+                      "status": "NEW",
+                      "reviewNote": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/tours/custom-requests/{id}": {
+      "get": {
+        "tags": [
+          "Custom tours"
+        ],
+        "summary": "Get one custom tour request",
+        "operationId": "getCustomTourRequest",
+        "description": "A customer can read only their own request. Someone else's answers `404`, exactly like one that does not exist. The consultant's `reviewNote` (for example the quote) appears here.\n\n**Access:** B2C (own request), or ADMIN / STAFF with TOUR_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom tour request fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Custom tour request fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomTourRequest"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Custom tour request fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67242",
+                    "userId": "6ac0a5f0eebc510147c6722a",
+                    "customer": "Rahim Uddin",
+                    "phone": "+8801712345678",
+                    "destination": "Sajek Valley",
+                    "travelers": 4,
+                    "startDate": "2026-12-01T00:00:00.000Z",
+                    "endDate": "2026-12-05T00:00:00.000Z",
+                    "hotel": "3-star",
+                    "transportation": "Private car",
+                    "activities": [
+                      "Trekking",
+                      "Bonfire"
+                    ],
+                    "requirements": "Vegetarian meals",
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival",
+                        "description": "Check in"
+                      }
+                    ],
+                    "status": "NEW",
+                    "reviewNote": "",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
+    "/api/tours/custom-requests/{id}/status": {
+      "patch": {
+        "tags": [
+          "Custom tours"
+        ],
+        "summary": "Change the status of a custom tour request",
+        "operationId": "setCustomTourRequestStatus",
+        "description": "Allowed moves: `NEW` to `IN_REVIEW` or `CANCELLED`; `IN_REVIEW` to `QUOTED` or `CANCELLED`; `QUOTED` to `IN_REVIEW`, `CONFIRMED` or `CANCELLED`; `CONFIRMED` to `CANCELLED`. `CANCELLED` is final. Any other move answers `409 INVALID_TRANSITION`.\n\nA **tour manager** can make any allowed move and may add a `note` (for example the quote), shown to the customer. A **customer** can only cancel their own request, and only while it is `NEW`; any other change is `403`.\n\n**Access:** ADMIN / STAFF with TOUR_MANAGE (any allowed move), or B2C (cancel own NEW request).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "NEW",
+                      "IN_REVIEW",
+                      "QUOTED",
+                      "CONFIRMED",
+                      "CANCELLED"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              "example": {
+                "status": "QUOTED",
+                "note": "Total BDT 85,000 for four travelers."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Request status is now QUOTED.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Request status is now QUOTED."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/CustomTourRequest"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Request status is now QUOTED.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67242",
+                    "userId": "6ac0a5f0eebc510147c6722a",
+                    "customer": "Rahim Uddin",
+                    "phone": "+8801712345678",
+                    "destination": "Sajek Valley",
+                    "travelers": 4,
+                    "startDate": "2026-12-01T00:00:00.000Z",
+                    "endDate": "2026-12-05T00:00:00.000Z",
+                    "hotel": "3-star",
+                    "transportation": "Private car",
+                    "activities": [
+                      "Trekking",
+                      "Bonfire"
+                    ],
+                    "requirements": "Vegetarian meals",
+                    "itinerary": [
+                      {
+                        "day": 1,
+                        "title": "Arrival",
+                        "description": "Check in"
+                      }
+                    ],
+                    "status": "QUOTED",
+                    "reviewNote": "Total BDT 85,000 for four travelers.",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "reviewedBy": "6ac0a5f0eebc510147c6722b",
+                    "reviewedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `INVALID_TRANSITION`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "A request that is CANCELLED cannot become IN_REVIEW.",
+                  "code": "INVALID_TRANSITION"
+                }
+              }
+            }
+          },
+          "422": {
+            "$ref": "#/components/responses/ValidationError"
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -5963,7 +8091,15 @@
               "B2B_APPROVED",
               "B2B_REJECTED",
               "B2B_STATUS_CHANGED",
-              "DOCUMENT_REVIEWED"
+              "DOCUMENT_REVIEWED",
+              "PROFILE_UPDATED",
+              "CATEGORY_CREATED",
+              "CATEGORY_DEACTIVATED",
+              "TOUR_CREATED",
+              "TOUR_UPDATED",
+              "TOUR_ARCHIVED",
+              "CUSTOM_TOUR_REQUESTED",
+              "CUSTOM_TOUR_STATUS_CHANGED"
             ],
             "example": "LOGIN"
           },
@@ -6003,6 +8139,356 @@
           "_id",
           "action",
           "result"
+        ]
+      },
+      "ItineraryDay": {
+        "type": "object",
+        "properties": {
+          "day": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365,
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "Arrival & Beach Sunset"
+          },
+          "description": {
+            "type": "string",
+            "example": "Check-in, relax at Laboni Beach, enjoy sunset."
+          }
+        },
+        "required": [
+          "day",
+          "title",
+          "description"
+        ]
+      },
+      "TourCategory": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67240"
+          },
+          "name": {
+            "type": "string",
+            "example": "Beach & Resort"
+          },
+          "slug": {
+            "type": "string",
+            "example": "beach-and-resort"
+          },
+          "legacyId": {
+            "type": "string",
+            "example": "cat_beach",
+            "description": "The id the frontend used before the backend existed. Any endpoint that takes a category id accepts it."
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "slug",
+          "isActive"
+        ]
+      },
+      "Tour": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67241"
+          },
+          "legacyId": {
+            "type": "string",
+            "example": "tour_205",
+            "description": "The id the frontend used before the backend existed. Any endpoint that takes a tour id accepts it."
+          },
+          "name": {
+            "type": "string",
+            "example": "Cox's Bazar Beach Escape"
+          },
+          "country": {
+            "type": "string",
+            "example": "Bangladesh"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Cox's Bazar, Bangladesh"
+          },
+          "category": {
+            "description": "The category, expanded to its name, slug and legacy id.",
+            "$ref": "#/components/schemas/TourCategory"
+          },
+          "durationDays": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 365,
+            "example": 3
+          },
+          "priceCurrency": {
+            "type": "string",
+            "enum": [
+              "BDT",
+              "USD",
+              "EUR"
+            ],
+            "example": "BDT"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "example": 12500,
+            "description": "The public (B2C) price."
+          },
+          "b2bPrice": {
+            "type": "number",
+            "minimum": 0,
+            "example": 10000,
+            "description": "The partner price. **Only present** for an admin, staff with TOUR_MANAGE, or a B2B user whose partner is APPROVED. It is never in a public answer."
+          },
+          "seats": {
+            "type": "integer",
+            "minimum": 0,
+            "example": 25,
+            "description": "Total capacity."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "draft",
+              "published",
+              "unpublished",
+              "archived"
+            ],
+            "example": "published"
+          },
+          "rating": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 5,
+            "example": 4.9
+          },
+          "coverImage": {
+            "type": "string",
+            "example": "https://picsum.photos/seed/coxs-bazar/900/560"
+          },
+          "gallery": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "https://picsum.photos/seed/coxs-bazar-2/900/560"
+            }
+          },
+          "description": {
+            "type": "string",
+            "example": "Experience the world longest natural sea beach."
+          },
+          "included": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "2 nights hotel stay"
+            }
+          },
+          "excluded": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Personal expenses"
+            }
+          },
+          "hotels": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Ocean Paradise Hotel & Resort"
+            }
+          },
+          "itinerary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItineraryDay"
+            },
+            "description": "Always in ascending day order."
+          },
+          "terms": {
+            "type": "string",
+            "example": "Standard cancellation rules apply."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "_id",
+          "name",
+          "country",
+          "destination",
+          "durationDays",
+          "priceCurrency",
+          "price",
+          "status",
+          "description",
+          "itinerary"
+        ]
+      },
+      "CustomTourRequest": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67242"
+          },
+          "userId": {
+            "description": "The customer who sent it. A plain id for the customer; an object with name, email and phone for a tour manager.",
+            "oneOf": [
+              {
+                "type": "string",
+                "example": "6ac0a5f0eebc510147c6722a"
+              },
+              {
+                "type": "object",
+                "properties": {
+                  "_id": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string",
+                    "example": "Rahim Uddin"
+                  },
+                  "email": {
+                    "type": "string",
+                    "example": "rahim@example.com"
+                  },
+                  "phone": {
+                    "type": "string",
+                    "example": "+8801712345678"
+                  }
+                }
+              }
+            ]
+          },
+          "customer": {
+            "type": "string",
+            "example": "Rahim Uddin"
+          },
+          "phone": {
+            "type": "string",
+            "example": "+8801712345678"
+          },
+          "destination": {
+            "type": "string",
+            "example": "Sajek Valley"
+          },
+          "travelers": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "example": 4
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "hotel": {
+            "type": "string",
+            "example": "3-star"
+          },
+          "transportation": {
+            "type": "string",
+            "example": "Private car"
+          },
+          "activities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "Trekking"
+            }
+          },
+          "requirements": {
+            "type": "string",
+            "example": "Vegetarian meals"
+          },
+          "itinerary": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItineraryDay"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "IN_REVIEW",
+              "QUOTED",
+              "CONFIRMED",
+              "CANCELLED"
+            ],
+            "example": "NEW"
+          },
+          "reviewNote": {
+            "type": "string",
+            "example": "",
+            "description": "The consultant's note, for example the quote."
+          },
+          "reviewedBy": {
+            "type": "string"
+          },
+          "reviewedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "_id",
+          "userId",
+          "customer",
+          "destination",
+          "travelers",
+          "startDate",
+          "endDate",
+          "hotel",
+          "status"
         ]
       },
       "RbacCatalog": {

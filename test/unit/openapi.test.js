@@ -49,7 +49,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
 
     expect(undocumented).toEqual([]);
     expect(phantom).toEqual([]);
-    expect(real.size).toBe(47);
+    expect(real.size).toBe(60);
   });
 
   it('gives every operation a summary, a tag, an id, a success response and explicit access', () => {
@@ -129,6 +129,27 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
 
     const decide = spec.paths['/api/admin/b2b/{id}/approval'].patch.requestBody.content['application/json'].schema;
     expect(decide.properties.decision.enum).toEqual(['UNDER_REVIEW', 'APPROVED', 'REJECTED', 'SUSPENDED']);
+  });
+
+  it('documents the tour module: public reads accept an optional token, writes need one, and custom requests are B2C', () => {
+    const op = (method, p) => spec.paths[p][method];
+
+    [['get', '/api/tours'], ['get', '/api/tours/{id}'], ['get', '/api/tour-categories'], ['get', '/api/tour-categories/{id}']].forEach(([m, p]) =>
+      expect({ p, security: op(m, p).security }).toEqual({ p, security: [{}, { bearerAuth: [] }] })
+    );
+    [['post', '/api/tours'], ['patch', '/api/tours/{id}'], ['delete', '/api/tours/{id}'], ['post', '/api/tour-categories'], ['delete', '/api/tour-categories/{id}']].forEach(([m, p]) => {
+      expect({ m, p, security: op(m, p).security }).toEqual({ m, p, security: [{ bearerAuth: [] }] });
+      expect(op(m, p).description).toMatch(/TOUR_MANAGE/);
+    });
+    expect(op('post', '/api/tours/custom-requests').description).toMatch(/\*\*Access:\*\* B2C/);
+
+    const tourList = op('get', '/api/tours').parameters.map((x) => x.name);
+    expect(tourList).toEqual(['page', 'limit', 'search', 'category', 'country', 'destination', 'status', 'minPrice', 'maxPrice', 'durationDays', 'sort']);
+    const create = op('post', '/api/tours').requestBody.content['application/json'].schema;
+    expect(create.properties.priceCurrency.enum).toEqual(['BDT', 'USD', 'EUR']);
+    expect(create.properties.status.enum).toEqual(['draft', 'published', 'unpublished', 'archived']);
+    expect(create.properties.role).toBeUndefined();
+    expect(spec.components.schemas.Tour.properties.b2bPrice.description).toMatch(/Only present/);
   });
 
   it('lets web clients stay in web mode: the mobile header is documented but empty by default', () => {

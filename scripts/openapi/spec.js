@@ -38,6 +38,8 @@ const ERROR_MESSAGES = {
   ROLE_LOCKED: 'The role of B2B and B2C accounts cannot be changed.',
   PERMISSIONS_NOT_ASSIGNABLE: 'This role does not use a permission list.',
   TRADE_LICENSE_MISSING: 'A partner cannot be approved without a trade license document.',
+  CATEGORY_IN_USE: 'This category is used by 2 tours. Move or archive them first.',
+  INVALID_TRANSITION: 'A request that is CANCELLED cannot become IN_REVIEW.',
   DB_DOWN: 'Database is not reachable.'
 };
 
@@ -123,13 +125,16 @@ const buildOperation = (e) => {
     summary: e.summary,
     operationId: e.id,
     description: `${e.description}\n\n**Access:** ${e.access}.${e.notes ? `\n\n${e.notes}` : ''}`,
-    security: e.needsAuth ? [{ bearerAuth: [] }] : []
+    // optionalAuth: usable without a token, and the answer changes with one (an empty requirement means "no token needed")
+    security: e.needsAuth ? [{ bearerAuth: [] }] : e.optionalAuth ? [{}, { bearerAuth: [] }] : []
   };
 
   // ---- parameters
   const parameters = [];
   if (e.params) parameters.push(...parametersFrom(e.params, 'path', e.paramExamples));
-  if (e.query) parameters.push(...parametersFrom(e.query, 'query', e.queryExample));
+  // queryBlank: filters shown EMPTY by default (an empty query value means "not given"), so a first call in
+  // Postman is not narrowed by placeholder text.
+  if (e.query) parameters.push(...parametersFrom(e.query, 'query', { ...Object.fromEntries((e.queryBlank || []).map((k) => [k, ''])), ...e.queryExample }, e.queryDocs));
   if (e.mobileHeader) parameters.push(headerParam);
   if (parameters.length) op.parameters = parameters;
 
