@@ -114,7 +114,7 @@
   <div>
     <nav class="toc">
       <a href="#b2c">B2C</a><a href="#firebase">Firebase</a><a href="#b2b">B2B</a><a href="#session">Session</a>
-      <a href="#reset">Password reset</a><a href="#setup">Staff setup</a><a href="#admin">Admin</a><a href="#staffb2b">Staff / B2B / B2C</a>
+      <a href="#reset">Password reset</a><a href="#setup">Staff setup</a><a href="#admin">Admin</a><a href="#staffb2b">Staff / B2B / B2C</a><a href="#tours">Tours</a>
     </nav>
 
     <section class="card" id="b2c">
@@ -397,6 +397,95 @@
         <p class="note">Owner, admin and permitted staff get the file. Anyone else gets 404, as if it does not exist.</p>
       </form>
     </section>
+
+    <section class="card" id="tours">
+      <h2>9. Tour packages</h2>
+      <p class="hint">Reading is public. Changing needs an admin, or staff with <code>TOUR_MANAGE</code>. Only a signed-in customer (B2C) can send a custom tour request. Sign in as different roles and compare: the B2B price appears only for admin, <code>TOUR_MANAGE</code> staff and an approved agency.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" class="ghost" data-call="GET /api/tour-categories" data-auth="optional">List categories</button>
+        <button type="button" class="ghost" data-call="GET /api/tours" data-auth="optional">List tours</button>
+        <button type="button" class="ghost" data-call="GET /api/tours/custom-requests">List custom requests</button>
+      </div>
+      <form data-route="GET /api/tours" data-auth="optional">
+        <h3>Search tours <span class="route">GET /api/tours</span></h3>
+        <div class="grid">
+          <label class="field"><span>search</span><input name="search" placeholder="beach"></label>
+          <label class="field"><span>category (id, or cat_beach, comma separated)</span><input name="category" placeholder="cat_beach"></label>
+          <label class="field"><span>minPrice</span><input name="minPrice" inputmode="numeric"></label>
+          <label class="field"><span>maxPrice</span><input name="maxPrice" inputmode="numeric"></label>
+          <label class="field"><span>sort</span><select name="sort"><option value="">newest first</option><option>price</option><option>-price</option><option>durationDays</option><option>-durationDays</option><option>-rating</option></select></label>
+          <label class="field"><span>status (managers only)</span><select name="status"><option value="">default</option><option>draft</option><option>published</option><option>unpublished</option><option>archived</option></select></label>
+        </div>
+        <button class="ghost">Search</button>
+      </form>
+      <form data-route="POST /api/tour-categories">
+        <h3>Create a category <span class="route">POST /api/tour-categories</span></h3>
+        <label class="field" style="max-width:320px"><span>name <b>*</b></span><input name="name" value="Beach &amp; Resort"></label>
+        <div style="margin-top:8px"><button>Create</button></div>
+        <p class="note">A name that exists (any letter case) answers 200 with the existing category instead of making a second one.</p>
+      </form>
+      <form data-route="POST /api/tours">
+        <h3>Create a tour <span class="route">POST /api/tours</span></h3>
+        <div class="grid">
+          <label class="field"><span>name <b>*</b></span><input name="name" value="Cox's Bazar Beach Escape"></label>
+          <label class="field"><span>country <b>*</b></span><input name="country" value="Bangladesh"></label>
+          <label class="field"><span>destination <b>*</b></span><input name="destination" value="Cox's Bazar, Bangladesh"></label>
+          <label class="field"><span>category (id or cat_beach)</span><input name="category" placeholder="cat_beach"></label>
+          <label class="field"><span>durationDays <b>*</b></span><input name="durationDays" value="3" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>priceCurrency <b>*</b></span><select name="priceCurrency"><option>BDT</option><option>USD</option><option>EUR</option></select></label>
+          <label class="field"><span>price <b>*</b></span><input name="price" value="12500" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>b2bPrice</span><input name="b2bPrice" value="10000" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>seats</span><input name="seats" value="25" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>status</span><select name="status"><option>draft</option><option>published</option><option>unpublished</option><option>archived</option></select></label>
+          <label class="field"><span>description <b>*</b></span><input name="description" value="The longest natural sea beach."></label>
+        </div>
+        <label class="field"><span>itinerary (JSON list; days unique, none after durationDays; a published tour needs one)</span><textarea name="itinerary" rows="4" data-json="true">[{"day":1,"title":"Arrival &amp; Beach Sunset","description":"Check-in, relax at Laboni Beach, enjoy sunset."},{"day":2,"title":"Departure","description":"Airport transfer."}]</textarea></label>
+        <div style="margin-top:8px"><button>Create tour</button></div>
+      </form>
+      <form data-route="PATCH /api/tours/{id}">
+        <h3>Edit a tour <span class="route">PATCH /api/tours/:id</span></h3>
+        <div class="grid">
+          <label class="field"><span>id (or tour_205) <b>*</b></span><input name="id" placeholder="tour id"></label>
+          <label class="field"><span>price</span><input name="price" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>seats</span><input name="seats" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>status</span><select name="status"><option value="">unchanged</option><option>draft</option><option>published</option><option>unpublished</option><option>archived</option></select></label>
+        </div>
+        <button class="ghost">Save</button>
+        <p class="note">Only the fields you fill are changed. Publishing a tour without an itinerary is refused.</p>
+      </form>
+      <form data-route="DELETE /api/tours/{id}">
+        <h3>Archive a tour <span class="route">DELETE /api/tours/:id</span></h3>
+        <label class="field" style="max-width:320px"><span>id <b>*</b></span><input name="id" placeholder="tour id"></label>
+        <div style="margin-top:8px"><button class="danger">Archive</button></div>
+        <p class="note">Nothing is deleted: the tour leaves the public list and can be published again.</p>
+      </form>
+      <form data-route="POST /api/tours/custom-requests">
+        <h3>Send a custom tour request (customers only) <span class="route">POST /api/tours/custom-requests</span></h3>
+        <div class="grid">
+          <label class="field"><span>customer <b>*</b></span><input name="customer" value="Rahim Uddin"></label>
+          <label class="field"><span>phone <b>*</b></span><input name="phone" value="+8801712345678"></label>
+          <label class="field"><span>destination <b>*</b></span><input name="destination" value="Sajek Valley"></label>
+          <label class="field"><span>travelers <b>*</b></span><input name="travelers" value="4" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>startDate <b>*</b></span><input name="startDate" type="date" value="2026-12-01"></label>
+          <label class="field"><span>endDate <b>*</b></span><input name="endDate" type="date" value="2026-12-05"></label>
+          <label class="field"><span>hotel preference <b>*</b></span><input name="hotel" value="3-star"></label>
+          <label class="field"><span>activities (comma separated)</span><input name="activities" value="Trekking,Bonfire" data-list="true"></label>
+          <label class="field"><span>requirements</span><input name="requirements" value="Vegetarian meals"></label>
+        </div>
+        <button>Send request</button>
+        <p class="note">Anyone but a signed-in customer gets 401 or 403. The end date cannot be before the start date.</p>
+      </form>
+      <form data-route="PATCH /api/tours/custom-requests/{id}/status">
+        <h3>Change a request's status <span class="route">PATCH /api/tours/custom-requests/:id/status</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="request id"></label>
+          <label class="field"><span>status <b>*</b></span><select name="status"><option>IN_REVIEW</option><option>QUOTED</option><option>CONFIRMED</option><option>CANCELLED</option></select></label>
+          <label class="field"><span>note (the quote)</span><input name="note"></label>
+        </div>
+        <button>Change status</button>
+        <p class="note">Staff with <code>TOUR_MANAGE</code> and admins follow NEW, IN_REVIEW, QUOTED, CONFIRMED. A customer can only cancel their own request while it is NEW.</p>
+      </form>
+    </section>
   </div>
 
   <aside class="log">
@@ -506,7 +595,7 @@
     if (query && [...Object.keys(query)].length) url += '?' + new URLSearchParams(query);
     const headers = {};
     if (state.mobile) headers['X-Client-Type'] = 'mobile';
-    if (auth && state.accessToken) headers.Authorization = 'Bearer ' + state.accessToken;
+    if (auth && state.accessToken) headers.Authorization = 'Bearer ' + state.accessToken; // auth=false sends no token; optional-auth routes are called with auth=true and simply work without one
 
     let body;
     if (json !== undefined) { headers['Content-Type'] = 'application/json'; body = JSON.stringify(json); }
@@ -556,7 +645,12 @@
       if (path.includes(`{${k}}`)) { path = path.replace(`{${k}}`, encodeURIComponent(String(v).trim())); continue; }
       if (String(v).trim() === '') continue;
       const input = form.elements[k];
-      fields[k] = input && input.dataset && input.dataset.list === 'true' ? String(v).split(',').map((s) => s.trim()).filter(Boolean) : String(v).trim();
+      const text = String(v).trim();
+      const kind = (input && input.dataset) || {};
+      if (kind.list === 'true') fields[k] = text.split(',').map((s) => s.trim()).filter(Boolean);
+      else if (kind.number === 'true') fields[k] = Number(text); // sent as a number, as the API requires
+      else if (kind.json === 'true') { try { fields[k] = JSON.parse(text); } catch { fields[k] = text; } } // bad JSON goes as text so the API shows its 422
+      else fields[k] = text;
     }
 
     if (method === 'GET') return { method, path, query: fields };

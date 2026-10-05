@@ -39,7 +39,11 @@ const act = async (page, click) => {
 const submitForm = (page, route, values = {}) =>
   act(page, async () => {
     const f = form(page, route);
-    for (const [name, value] of Object.entries(values)) await f.locator(`[name="${name}"]`).fill(value);
+    for (const [name, value] of Object.entries(values)) {
+      const field = f.locator(`[name="${name}"]`);
+      if ((await field.evaluate((el) => el.tagName)) === 'SELECT') await field.selectOption(value);
+      else await field.fill(value);
+    }
     await f.locator('button:not([type="button"])').first().click();
   });
 
