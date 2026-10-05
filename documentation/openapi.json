@@ -3,7 +3,7 @@
   "info": {
     "title": "Travel Management Platform: Auth and RBAC API",
     "version": "1.0.0",
-    "description": "Authentication and role-based access for the travel platform. Four roles share one login system: **ADMIN, STAFF, B2B, B2C**.\n\n## Quick start in Postman\n\n1. **Import** this file (File, Import). Postman builds a collection with one folder per area.\n2. Open the collection's **Variables**. `baseUrl` is already set to `http://localhost:5000`; change it for another server. Add a variable named `bearerToken` (leave it empty).\n3. Run **Auth, Log in**. Copy `data.accessToken` from the response into the `bearerToken` variable. Every request marked with a lock then works.\n4. The access token lasts 15 minutes. Run **Refresh tokens** to get a new one (Postman keeps the refresh cookie for you).\n\nTo try a role other than the one you registered, log in as that account and replace `bearerToken`.\nThe first admin is created with `npm run seed`; more admins and staff are created by an admin (**Admin: users, Create staff**).\n\n## Roles\n\n| Role | How the account is created | Can reach |\n| --- | --- | --- |\n| **B2C** | Registers, or continues with Google | Own profile and own records |\n| **B2B** | Registers (multipart), then an admin approves | Own profile and documents; operational routes once APPROVED |\n| **STAFF** | Invited by an admin | Only what the permissions granted allow |\n| **ADMIN** | First one by seed script, later ones invited | Everything under `/api/admin` |\n\nThe role is **never** accepted from a request body. The endpoint decides it.\n\n## Tokens\n\n- **Access token:** JWT, 15 minutes, sent as `Authorization: Bearer <token>`.\n- **Refresh token:** 7 days, rotates on every use. Web clients get it as an httpOnly cookie scoped to `/api/auth`. Send the header `X-Client-Type: mobile` to receive it in the JSON body instead.\n- A suspension, role change or password change takes effect on the next request.\n\n## Responses\n\nSuccess: `{ \"success\": true, \"message\": \"...\", \"data\": ..., \"meta\": { total, page, limit, totalPages } }` (`meta` on lists only).\nError: `{ \"success\": false, \"message\": \"...\", \"code\": \"SOME_CODE\", \"errors\": [{ \"field\", \"message\" }] }`. Branch on `code`, not on `message`.\n\n| Status | Meaning |\n| --- | --- |\n| 400 | Bad request, or a rejected code, token or file |\n| 401 | Not signed in, or the token is invalid or expired |\n| 403 | Signed in, but role, permission or account status does not allow it |\n| 404 | Not found, **or a record that belongs to someone else** |\n| 409 | Conflict with the current state |\n| 413 | File or body too large |\n| 422 | Validation failed (`errors` lists each field) |\n| 429 | Rate limited (see `Retry-After`) |\n| 503 | A dependency is unavailable |\n\n## Ids\n\nAll ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.\n\n## Rate limits\n\nEach sensitive route has its own limit, stated on the route. All `/api` routes are also limited to 300 requests per 15 minutes per IP."
+    "description": "Authentication and role-based access for the travel platform. Four roles share one login system: **ADMIN, STAFF, B2B, B2C**.\n\n## Quick start in Postman\n\n1. **Import** this file (File, Import). Postman builds a collection with one folder per area.\n2. Open the collection's **Variables**. `baseUrl` is already set to `http://localhost:5000`; change it for another server. Add a variable named `bearerToken` (leave it empty).\n3. Run **Auth, Log in**. Copy `data.accessToken` from the response into the `bearerToken` variable. Every request marked with a lock then works.\n4. The access token lasts 15 minutes. Run **Refresh tokens** to get a new one (Postman keeps the refresh cookie for you).\n\nTo try a role other than the one you registered, log in as that account and replace `bearerToken`.\nThe first admin is created with `npm run seed`; more admins and staff are created by an admin (**Admin: users, Create staff**).\n\n## Roles\n\n| Role | How the account is created | Can reach |\n| --- | --- | --- |\n| **B2C** | Registers, or continues with Google | Own profile and own records |\n| **B2B** | Registers (multipart), then an admin approves | Own profile and documents; operational routes once APPROVED |\n| **STAFF** | Invited by an admin | Only what the permissions granted allow |\n| **ADMIN** | First one by seed script, later ones invited | Everything under `/api/admin` |\n\nThe role is **never** accepted from a request body. The endpoint decides it.\n\n## Tokens\n\n- **Access token:** JWT, 15 minutes, sent as `Authorization: Bearer <token>`.\n- **Refresh token:** 7 days, rotates on every use. Web clients get it as an httpOnly cookie scoped to `/api/auth`. Send the header `X-Client-Type: mobile` to receive it in the JSON body instead.\n- A suspension, role change or password change takes effect on the next request.\n\n## Responses\n\nSuccess: `{ \"success\": true, \"message\": \"...\", \"data\": ..., \"meta\": { total, page, limit, totalPages }, \"pagination\": { same object } }` (`meta` and `pagination` on lists only; they are identical, read either).\nError: `{ \"success\": false, \"message\": \"...\", \"code\": \"SOME_CODE\", \"errors\": [{ \"field\", \"message\" }] }`. Branch on `code`, not on `message`.\n\n| Status | Meaning |\n| --- | --- |\n| 400 | Bad request, or a rejected code, token or file |\n| 401 | Not signed in, or the token is invalid or expired |\n| 403 | Signed in, but role, permission or account status does not allow it |\n| 404 | Not found, **or a record that belongs to someone else** |\n| 409 | Conflict with the current state |\n| 413 | File or body too large |\n| 422 | Validation failed (`errors` lists each field) |\n| 429 | Rate limited (see `Retry-After`) |\n| 503 | A dependency is unavailable |\n\n## Ids\n\nAll ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.\n\n## Rate limits\n\nEach sensitive route has its own limit, stated on the route. All `/api` routes are also limited to 300 requests per 15 minutes per IP."
   },
   "servers": [
     {
@@ -2833,6 +2833,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -2870,6 +2874,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,
@@ -3664,6 +3674,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -3692,6 +3706,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,
@@ -4650,6 +4670,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -4693,6 +4717,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,
@@ -5311,6 +5341,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -5339,6 +5373,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,
@@ -5543,6 +5583,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -5565,6 +5609,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,
@@ -6022,6 +6072,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -6090,6 +6144,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,
@@ -7257,6 +7317,10 @@
                     },
                     "meta": {
                       "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
                     }
                   },
                   "required": [
@@ -7298,6 +7362,12 @@
                     }
                   ],
                   "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
                     "total": 42,
                     "page": 1,
                     "limit": 10,

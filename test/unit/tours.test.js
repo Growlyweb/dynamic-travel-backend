@@ -393,3 +393,88 @@ describe('what Postman and other tools send', () => {
     expect((await request(app).post('/api/tours').set('Authorization', 'Bearer ').send(tourBody())).status).toBe(401);
   });
 });
+
+describe('pagination', () => {
+  const insert = (count) =>
+    Tour.insertMany(
+      Array.from({ length: count }, (_, i) => ({
+        name: `Tour ${String(i).padStart(2, '0')}`,
+        country: 'Bangladesh',
+        destination: 'Dhaka',
+        durationDays: 1,
+        priceCurrency: 'BDT',
+        price: 100, // the same price on purpose: sorting by it must still give stable pages
+        status: 'published',
+        description: 'd',
+        itinerary: [day(1)]
+      }))
+    );
+  const page = async (query) => (await request(app).get(`/api/tours${query}`)).body;
+
+  it('every list carries `pagination` and `meta`, and they are the same object', async () => {
+    const staff = await createUser({ role: ROLES.STAFF, permissions: ['TOUR_MANAGE'] });
+    await makeCategory('Beach & Resort');
+    await create(admin);
+
+    const lists = [
+      ['/api/tours', null],
+      ['/api/tour-categories', null],
+      ['/api/tours/custom-requests', staff],
+      ['/api/admin/users', admin],
+      ['/api/admin/audit-logs', admin],
+      ['/api/admin/b2b', admin]
+    ];
+    for (const [url, user] of lists) {
+      const res = await send('get', url, user);
+      expect({ url, status: res.status }).toEqual({ url, status: 200 });
+      expect(res.body.pagination).toBeDefined();
+      expect({ url, same: res.body.pagination }).toEqual({ url, same: res.body.meta });
+      expect(Object.keys(res.body.pagination).sort()).toEqual(['limit', 'page', 'total', 'totalPages']);
+    }
+    // an answer that is not a list has neither
+    const one = await request(app).get('/api/tours/' + (await Tour.findOne())._id);
+    expect(one.body.pagination).toBeUndefined();
+    expect(one.body.meta).toBeUndefined();
+  });
+
+  it('reports the right numbers on the first, middle, last and an out-of-range page', async () => {
+    await insert(25);
+
+    expect((await page('?limit=10&page=1')).pagination).toEqual({ total: 25, page: 1, limit: 10, totalPages: 3 });
+    expect((await page('?limit=10&page=3')).data).toHaveLength(5);
+    const beyond = await page('?limit=10&page=4');
+    expect(beyond.data).toEqual([]); // an empty page, not an error
+    expect(beyond.pagination).toEqual({ total: 25, page: 4, limit: 10, totalPages: 3 });
+  });
+
+  it('an empty result is total 0 on page 1 of 1', async () => {
+    expect((await page('?search=nothing')).pagination).toEqual({ total: 0, page: 1, limit: 10, totalPages: 1 });
+  });
+
+  it('the page size defaults to 10, is capped at 100, and 0 falls back to the default', async () => {
+    await insert(120);
+
+    expect((await page('')).pagination.limit).toBe(10);
+    expect((await page('?limit=0')).pagination.limit).toBe(10);
+    const big = await page('?limit=1000');
+    expect(big.pagination).toMatchObject({ limit: 100, totalPages: 2 });
+    expect(big.data).toHaveLength(100);
+    expect((await page('?page=0')).pagination.page).toBe(1);
+  });
+
+  it('a negative or fractional page is refused', async () => {
+    for (const query of ['?page=-1', '?page=1.5', '?limit=-5', '?limit=abc']) {
+      expect({ query, status: (await request(app).get(`/api/tours${query}`)).status }).toEqual({ query, status: 422 });
+    }
+  });
+
+  it('paging through tours with equal prices shows every tour exactly once', async () => {
+    await insert(25);
+
+    const seen = [];
+    for (let p = 1; p <= 3; p += 1) seen.push(...(await page(`?sort=price&limit=10&page=${p}`)).data.map((t) => t.name));
+
+    expect(seen).toHaveLength(25);
+    expect(new Set(seen).size).toBe(25);
+  });
+});

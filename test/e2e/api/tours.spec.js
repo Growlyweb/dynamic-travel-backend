@@ -112,6 +112,7 @@ test.describe('tour packages over real HTTP', () => {
     const page = await json(await ctx.get(`/api/tours?category=${categoryId}&sort=price&limit=2&page=2`));
     expect(page.data.map((t) => t.name.replace(`${tag} `, ''))).toEqual(['Charlie']);
     expect(page.meta).toEqual({ total: 3, page: 2, limit: 2, totalPages: 2 });
+    expect(page.pagination).toEqual(page.meta); // the handoff's name for the same object
   });
 
   test('draft, unpublish, archive and restore: the public list follows, nothing is ever deleted', async ({ client }) => {

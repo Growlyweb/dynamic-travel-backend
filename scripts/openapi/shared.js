@@ -83,14 +83,14 @@ const bool = (example) => ({ type: 'boolean', example });
 const ref = (name) => ({ $ref: `#/components/schemas/${name}` });
 const arrayOf = (items) => ({ type: 'array', items });
 
-// { success, message, data?, meta? } wrapped around a data schema
+// { success, message, data?, meta?, pagination? } wrapped around a data schema
 const envelope = (dataSchema, { paginated = false, message = 'OK' } = {}) =>
   obj(
     {
       success: bool(true),
       message: str(message),
       ...(dataSchema ? { data: dataSchema } : {}),
-      ...(paginated ? { meta: ref('PaginationMeta') } : {})
+      ...(paginated ? { meta: ref('PaginationMeta'), pagination: { description: 'The same object as `meta`, under the name the tour handoff uses.', ...ref('PaginationMeta') } } : {})
     },
     ['success', 'message']
   );

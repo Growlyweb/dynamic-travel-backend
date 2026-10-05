@@ -117,7 +117,7 @@ Permission keys: `TOUR_MANAGE` already existed in `config/rbac.json` and is reus
 
 Where the build differs from the plan:
 
-- Steps 1 to 12 are done. The tour list uses `meta` (not `pagination`) like every other list, see 4.2.
+- Steps 1 to 12 are done. Lists carry both `meta` and `pagination`, see 4.2.
 - `PUT` is not offered, only `PATCH` (a partial update). The handoff said "PUT/PATCH"; one verb avoids two meanings.
 - A tour also carries `legacyId` (for `tour_205`), not only categories. `GET` accepts either id.
 - An empty query value (`?status=`) counts as not given, for every route that validates a query. Postman sends blank filters.
@@ -126,8 +126,8 @@ Where the build differs from the plan:
 
 ### 4.2 Response shape
 
-Decided: the new endpoints use the envelope the rest of the API already uses: `{ success, message, data, meta: { total, page, limit, totalPages } }`.
-The handoff's example named the object `pagination`. The frontend needs to read `meta` for tours as it does for every other list, or the key can be renamed for all lists together later.
+Decided: every list answers with both `meta` and `pagination`, the same object `{ total, page, limit, totalPages }`.
+`meta` is what the rest of the API already used, `pagination` is the name the handoff asked for, and both come from the one shared `sendResponse`, so the auth lists (users, partners, audit logs) have it too. Nothing existing breaks.
 
 ### 4.3 Questions and decisions
 
@@ -151,7 +151,7 @@ The handoff's example named the object `pagination`. The frontend needs to read 
 
 ### 4.4 Left to do in this module
 
-- [ ] **Frontend hand-over:** the list key is `meta` (not `pagination`), `b2bPrice` is absent for anyone not allowed to see it (do not treat a missing field as 0), and either id form is accepted while the `cat_` and `tour_` ids are phased out.
+- [ ] **Frontend hand-over:** lists carry `meta` and `pagination` (the same object), `b2bPrice` is absent for anyone not allowed to see it (do not treat a missing field as 0), and either id form is accepted while the `cat_` and `tour_` ids are phased out.
 - [ ] **Emails for custom requests:** tell the customer when the status changes (a quote is waiting), and tell the consultants when a new request arrives. The audit entries already exist; only the trigger and the wording in `services/notificationService.js` are missing. Needs the general EmailJS template from section 1.1.
 - [ ] **Image upload** for `coverImage` and `gallery` (today they are http or https links). Needs a public image store, separate from `storage/private`.
 - [ ] **Booking and seat availability.** `seats` is total capacity. When a booking module exists it must track availability on its own.

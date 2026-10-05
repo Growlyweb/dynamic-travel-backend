@@ -75,7 +75,7 @@ The role is **never** accepted from a request body. The endpoint decides it.
 
 ## Responses
 
-Success: \`{ "success": true, "message": "...", "data": ..., "meta": { total, page, limit, totalPages } }\` (\`meta\` on lists only).
+Success: \`{ "success": true, "message": "...", "data": ..., "meta": { total, page, limit, totalPages }, "pagination": { same object } }\` (\`meta\` and \`pagination\` on lists only; they are identical, read either).
 Error: \`{ "success": false, "message": "...", "code": "SOME_CODE", "errors": [{ "field", "message" }] }\`. Branch on \`code\`, not on \`message\`.
 
 | Status | Meaning |
@@ -188,7 +188,7 @@ const buildOperation = (e) => {
       : {
           'application/json': {
             schema: envelope(s.schema && s.schema.type === 'object' && !s.schema.properties && !s.schema.$ref ? undefined : s.schema, { paginated: Boolean(s.paginated), message: s.message }),
-            example: SUCCESS(s.message, s.example, s.paginated ? { meta: exMeta } : {})
+            example: SUCCESS(s.message, s.example, s.paginated ? { meta: exMeta, pagination: exMeta } : {})
           }
         };
     res[String(s.status)] = { description: s.message, ...(headers ? { headers } : {}), content };

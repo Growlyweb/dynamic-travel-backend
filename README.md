@@ -33,7 +33,7 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
 | Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
-| Automated tests | 364 unit and integration (Jest), 108 end-to-end (Playwright) |
+| Automated tests | 370 unit and integration (Jest), 108 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
@@ -293,7 +293,7 @@ Run `npm run seed:tours` once to load the 8 starting categories (their old front
 - A published tour needs at least one itinerary day, no day may be after `durationDays`, days are unique and always returned in ascending order. Currency is `BDT`, `USD` or `EUR`. Prices, seats and durations cannot be negative. `coverImage` and `gallery` are http or https links.
 - Tour list: `search` (name, destination, country), `category` (one id or several, comma separated), `country`, `destination`, `status` (managers), `minPrice`, `maxPrice`, `durationDays`, `sort` (`createdAt`, `price`, `durationDays`, `rating`, a leading `-` for descending), `page`, `limit`. Newest first by default. A blank value counts as not given.
 - Custom request moves: `NEW` to `IN_REVIEW` or `CANCELLED`; `IN_REVIEW` to `QUOTED` or `CANCELLED`; `QUOTED` to `IN_REVIEW`, `CONFIRMED` or `CANCELLED`; `CONFIRMED` to `CANCELLED`. `CANCELLED` is final. Anything else is `409 INVALID_TRANSITION`.
-- The list envelope is the one the rest of this API uses: `{ success, message, data, meta: { total, page, limit, totalPages } }`. The handoff called the object `pagination`; it is `meta` here so every list looks the same.
+- Every list answers `{ success, message, data, meta, pagination }`. `meta` and `pagination` are the same object, `{ total, page, limit, totalPages }`: `meta` is the name this API has always used, `pagination` is the name the tour handoff asks for. Read either. A page past the end is an empty list with `200`, `page=0` and `limit=0` fall back to the defaults, and a negative or fractional value is `422`. Default page size is 10, the maximum 100.
 - Edits write the audit log (`TOUR_CREATED`, `TOUR_UPDATED`, `TOUR_ARCHIVED`, `CATEGORY_CREATED`, `CATEGORY_DEACTIVATED`, `CUSTOM_TOUR_REQUESTED`, `CUSTOM_TOUR_STATUS_CHANGED`) with field names or status moves, never prices or text.
 
 ## Rules worth knowing
