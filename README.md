@@ -32,7 +32,8 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Audit log, rate limits, hardening, central errors | Done |
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
-| Automated tests | 265 unit and integration (Jest), 95 end-to-end (Playwright) |
+| Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
+| Automated tests | 364 unit and integration (Jest), 108 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
@@ -42,6 +43,7 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 npm install
 npm run setup            # creates .env if missing, and fills the three secrets that are empty or "replace-me"
 npm run seed             # creates the first ADMIN from ADMIN_SEED_* (needs MongoDB running)
+npm run seed:tours       # creates the 8 starting tour categories and the Cox's Bazar sample tour (safe to run again)
 npm run dev              # http://localhost:5000
 npm run console          # browser test page at http://localhost:5173 (needs the API running)
 npm test                 # runs the whole suite against an in-memory MongoDB
@@ -67,7 +69,7 @@ It is OpenAPI 3.0.3, so it also opens in Swagger UI, Insomnia and similar tools.
 **Import into Postman**
 
 1. Postman, **File > Import**, choose `documentation/openapi.json`.
-2. You get a collection with 47 requests in folders (Auth, Customer, Agency, Staff, Admin, Documents, System). Request bodies are pre-filled with valid examples.
+2. You get a collection with 60 requests in folders (Auth, Customer, Agency, Staff, Admin, Documents, Tour categories, Tours, Custom tours, System). Request bodies are pre-filled with valid examples.
 3. In the collection's **Variables**, `baseUrl` is `http://localhost:5000`. Add a variable named `bearerToken` and leave it empty.
 4. Send **Auth > Log in**, copy `data.accessToken` from the response into `bearerToken`. Every request with a lock now works.
 5. The token lasts 15 minutes. **Refresh tokens** issues a new one (Postman keeps the refresh cookie).
@@ -103,6 +105,7 @@ Start the API first (`npm run dev`).
 | Password reset | Request a code, check it, set a new password |
 | Admin | Roles and permissions from `rbac.json`, users, staff invites, status, approvals, document review, audit log |
 | Role areas | Each role's endpoints, plus the private document download |
+| Tour packages | Search and filter tours, create categories and tours, edit and archive, send a custom tour request as a customer, answer it as a manager |
 
 - The right-hand panel logs every request and response. Passwords are masked, and ids from responses become chips you can click to paste into the focused field.
 - "Client" switches between **web** (refresh token in an `httpOnly` cookie) and **mobile** (refresh token in the response body).
@@ -116,8 +119,8 @@ Start the API first (`npm run dev`).
 `npm run e2e` checks the product the way a user meets it: real server processes, real HTTP, real cookies and CORS, and a real browser driving the test console.
 
 ```bash
-npm run e2e          # everything (95 tests, about 20 seconds)
-npm run e2e:api      # the API only, no browser (77 tests)
+npm run e2e          # everything (108 tests, about 20 seconds on a fast disk)
+npm run e2e:api      # the API only, no browser (88 tests)
 npm run e2e:ui       # the browser test console only (18 tests)
 ```
 
@@ -143,6 +146,7 @@ That provider is refused when `NODE_ENV=production`.
 | `api/admin` | Staff invites, permissions, suspend, role change, soft delete, audit log |
 | `api/profile-access` | Only the owner and an admin can change a profile, nothing can be changed through a foreign id |
 | `api/rbac-matrix` | Every role against every route group, anonymous included |
+| `api/tours` | Categories and tours over real HTTP: who sees the B2B price (7 kinds of caller), filters and paging, draft to archive to restore, access refusals, custom request journey and its status rules |
 | `api/security` | Helmet headers, CORS allow-list, no private fields in any response, codes and invite links never in a response, no static folders, hostile input |
 | `api/rate-limit` | Each limiter blocks at its limit, with `Retry-After` |
 | `ui/console` | Full customer, agency and admin journeys clicked in Chrome, file upload and download, mobile mode, the 429 note |
@@ -266,6 +270,31 @@ Send the access token as `Authorization: Bearer <accessToken>`.
 | BLOCKED, INACTIVE | Login denied. |
 
 A suspension, role change or password change takes effect at once: `authenticate` reloads the user on every request and compares `tokenVersion`.
+
+## Tour packages
+
+Categories, tours and custom tour requests (spec: `documentation/Dynamic_Travel_Tour_Package_Backend_Handoff.md`, decisions: `documentation/ToDo.md` section 4).
+Run `npm run seed:tours` once to load the 8 starting categories (their old frontend ids `cat_beach` and so on are kept in `legacyId`) and the sample tour `tour_205`.
+
+| Who | Can |
+| --- | --- |
+| Anyone, no token | Read published tours and active categories |
+| Admin, staff with `TOUR_MANAGE` | Create, edit and archive tours and categories; see drafts, unpublished and archived tours; read and answer every custom request |
+| Approved B2B partner | Read tours **with `b2bPrice`** |
+| B2C customer | Send a custom tour request, read their own, cancel their own while it is `NEW` |
+| Staff without `TOUR_MANAGE`, B2B, admin | Cannot send a custom request (admin and TOUR_MANAGE staff manage them instead) |
+
+- **`b2bPrice` never leaves the API for anyone else.** It is removed in one place (`present()` in `services/tourService.js`), so no route can forget to. A B2B user still waiting for approval does not get it.
+- Reads accept an optional token: no token is a visitor, a wrong token is `401`, and a header with nothing after `Bearer ` (what Postman sends for an empty variable) is a visitor.
+- A tour that is not published is a `404` for the public, the same as one that does not exist.
+- **Delete means archive.** Tours become `archived` and categories get `isActive: false`. Nothing is removed. A category that active tours use cannot be removed (`CATEGORY_IN_USE`).
+- Category names are unique in any letter case and spacing, enforced by a unique index. Creating a name that exists returns the existing category with `200`.
+- Either id works wherever an id is accepted: the new one (24 hex characters) or the old frontend one (`cat_beach`, `tour_205`).
+- A published tour needs at least one itinerary day, no day may be after `durationDays`, days are unique and always returned in ascending order. Currency is `BDT`, `USD` or `EUR`. Prices, seats and durations cannot be negative. `coverImage` and `gallery` are http or https links.
+- Tour list: `search` (name, destination, country), `category` (one id or several, comma separated), `country`, `destination`, `status` (managers), `minPrice`, `maxPrice`, `durationDays`, `sort` (`createdAt`, `price`, `durationDays`, `rating`, a leading `-` for descending), `page`, `limit`. Newest first by default. A blank value counts as not given.
+- Custom request moves: `NEW` to `IN_REVIEW` or `CANCELLED`; `IN_REVIEW` to `QUOTED` or `CANCELLED`; `QUOTED` to `IN_REVIEW`, `CONFIRMED` or `CANCELLED`; `CONFIRMED` to `CANCELLED`. `CANCELLED` is final. Anything else is `409 INVALID_TRANSITION`.
+- The list envelope is the one the rest of this API uses: `{ success, message, data, meta: { total, page, limit, totalPages } }`. The handoff called the object `pagination`; it is `meta` here so every list looks the same.
+- Edits write the audit log (`TOUR_CREATED`, `TOUR_UPDATED`, `TOUR_ARCHIVED`, `CATEGORY_CREATED`, `CATEGORY_DEACTIVATED`, `CUSTOM_TOUR_REQUESTED`, `CUSTOM_TOUR_STATUS_CHANGED`) with field names or status moves, never prices or text.
 
 ## Rules worth knowing
 
@@ -399,6 +428,18 @@ Production never returns stack traces or internal messages.
 | PATCH | `/b2b/:id/approval` | `APPROVED` (needs a trade license), `REJECTED`, `UNDER_REVIEW`, `SUSPENDED` |
 | PATCH | `/b2b/:id/documents/:docId` | Mark a document `VERIFIED` or `REJECTED` |
 | GET | `/audit-logs` | Security events |
+
+### Tour packages (`/api/tour-categories`, `/api/tours`)
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET | `/api/tour-categories`, `/api/tour-categories/:id` | Public (optional token) |
+| POST, DELETE | `/api/tour-categories`, `/api/tour-categories/:id` | ADMIN, or STAFF with `TOUR_MANAGE` |
+| GET | `/api/tours`, `/api/tours/:id` | Public (optional token; the B2B price only for admin, `TOUR_MANAGE` staff and approved agencies) |
+| POST, PATCH, DELETE | `/api/tours`, `/api/tours/:id` | ADMIN, or STAFF with `TOUR_MANAGE` (DELETE archives) |
+| POST | `/api/tours/custom-requests` | B2C only |
+| GET | `/api/tours/custom-requests`, `/api/tours/custom-requests/:id` | B2C (own), ADMIN / `TOUR_MANAGE` staff (all) |
+| PATCH | `/api/tours/custom-requests/:id/status` | ADMIN / `TOUR_MANAGE` staff (any allowed move), B2C (cancel own `NEW` request) |
 
 ### Role areas
 

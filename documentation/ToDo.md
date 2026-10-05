@@ -89,14 +89,14 @@ Frontend rules to hand over:
 - [ ] Shared storage for `storage/private` if more than one instance runs, and back it up together with the database.
 - [ ] `npm audit` reports moderate issues that come from `firebase-admin` through packages we do not use (Firestore, Storage), and a high one in `braces` (dev only, via nodemon). Re-check when `firebase-admin` releases a fix.
 
-## 4. Tour packages module (planned, not started)
+## 4. Tour packages module (built)
 
 Source: `documentation/Dynamic_Travel_Tour_Package_Backend_Handoff.md`.
 It replaces the frontend mock stores for tour categories, tour packages and custom tour requests with persistent REST APIs.
 The module reuses the guards from the auth layer and follows the same layering (route, middleware, zod validation, controller, service, model).
-The blocking questions in 4.3 are answered. The ones still marked open have a default in the plan and do not block the start.
+It is built and tested on branch `feat/tourPackage-oct-05`; section 4.1 records what was done and where the build differs from the first plan.
 
-### 4.1 Plan
+### 4.1 Plan and what was built
 
 | Step | Work | Notes |
 | --- | --- | --- |
@@ -113,15 +113,23 @@ The blocking questions in 4.3 are answered. The ones still marked open have a de
 | 11 | Tests | Jest: one case per role per route, duplicate category, invalid dates and prices, missing tour id, `b2bPrice` hidden or shown, archived tours hidden. Playwright: add the new routes to the role matrix, a manage-and-publish journey, a custom request journey. |
 | 12 | Docs | Endpoints in `scripts/openapi/endpoints.js` then `npm run openapi`. README endpoint tables, user stories for each role, and the test console gets a Tours section. |
 
-Permission keys: `TOUR_MANAGE` already exists in `config/rbac.json` ("Manage tour packages and custom tours").
-The plan reuses it for categories, tours and custom requests, and adds a `TOUR_VIEW` key only if the answer to Q3 needs one.
+Permission keys: `TOUR_MANAGE` already existed in `config/rbac.json` and is reused for categories, tours and custom requests. No new key was added.
+
+Where the build differs from the plan:
+
+- Steps 1 to 12 are done. The tour list uses `meta` (not `pagination`) like every other list, see 4.2.
+- `PUT` is not offered, only `PATCH` (a partial update). The handoff said "PUT/PATCH"; one verb avoids two meanings.
+- A tour also carries `legacyId` (for `tour_205`), not only categories. `GET` accepts either id.
+- An empty query value (`?status=`) counts as not given, for every route that validates a query. Postman sends blank filters.
+- `GET` routes with an optional token treat a header with nothing after `Bearer ` as a visitor (Postman sends that for an empty variable).
+- Re-creating the name of a removed category switches that category on again instead of adding a second one.
 
 ### 4.2 Response shape
 
-The handoff asks for `{ success, message, data }` and a `pagination` object on lists.
-The existing list responses must be checked first (`utils/response.js`, `buildMeta` in `utils/pagination.js`), and the new endpoints must match what the API already returns, so the frontend sees one list format everywhere.
+Decided: the new endpoints use the envelope the rest of the API already uses: `{ success, message, data, meta: { total, page, limit, totalPages } }`.
+The handoff's example named the object `pagination`. The frontend needs to read `meta` for tours as it does for every other list, or the key can be renamed for all lists together later.
 
-### 4.3 Open questions (kept open on purpose)
+### 4.3 Questions and decisions
 
 - [x] **Q1. URL layout.** Decided: flat URLs as in the handoff (`/api/tour-categories`, `/api/tours`), public reads, writes behind `authenticate` and `requirePermission(TOUR_MANAGE)`.
 - [x] **Q2. Who writes.** Decided: admin, and staff holding `TOUR_MANAGE`. No new permission.
@@ -139,7 +147,17 @@ The existing list responses must be checked first (`utils/response.js`, `buildMe
 - [x] **Q14. Itinerary.** Decided: no count rule. Days are unique positive integers. A published tour needs at least one day, and no day above `durationDays`.
 - [x] **Q15. Filters.** Decided: `search` matches name, destination and country (case-insensitive). Default sort is newest first, and `sort` accepts `price`, `durationDays`, `rating`, `createdAt` with a leading minus for descending. `category` takes one id or several, comma separated. `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match. Page size is 10 by default and 100 at most.
 - [x] **Q16. Category ids.** Decided: the frontend's `cat_...` ids are kept in `legacyId`, and `GET` accepts either id. Responses carry the new id and `legacyId`.
-- [ ] **Q17. Ownership of this module.** The handoff names a backend developer for it. Confirm that this is to be built in this repository, by the same person as the auth part, before work starts.
+- [x] **Q17. Ownership.** Decided: built in this repository on `feat/tourPackage-oct-05`, branched from `main` after PR #1 was merged.
+
+### 4.4 Left to do in this module
+
+- [ ] **Frontend hand-over:** the list key is `meta` (not `pagination`), `b2bPrice` is absent for anyone not allowed to see it (do not treat a missing field as 0), and either id form is accepted while the `cat_` and `tour_` ids are phased out.
+- [ ] **Emails for custom requests:** tell the customer when the status changes (a quote is waiting), and tell the consultants when a new request arrives. The audit entries already exist; only the trigger and the wording in `services/notificationService.js` are missing. Needs the general EmailJS template from section 1.1.
+- [ ] **Image upload** for `coverImage` and `gallery` (today they are http or https links). Needs a public image store, separate from `storage/private`.
+- [ ] **Booking and seat availability.** `seats` is total capacity. When a booking module exists it must track availability on its own.
+- [ ] **Reviews and rating.** `rating` is staff-edited until a review module can compute it.
+- [ ] **Limits on tour writes.** Create, edit and archive rely on the general 300 per 15 minutes per IP, like the other signed-in writes (see section 2).
+- [ ] **Text search at scale.** Search uses a case-insensitive pattern on three fields, which is fine for a catalogue of hundreds. Add a text index if the catalogue grows into the thousands.
 
 ## 5. Outside this part (other modules)
 
@@ -151,7 +169,7 @@ Section numbers refer to `Dynamic Travel Agency web - Google Docs.md`.
 | --- | --- | --- |
 | Public website content | 13 | none (public) |
 | Visa processing, checklist, apply, status check, notifications | 14 to 17 | B2C: ownership by user. Staff: `VISA_VIEW`, `VISA_UPDATE`. |
-| Dedicated and custom tours (planned in section 4), flight inquiries | 18, 19 | Staff: `TOUR_MANAGE`, `FLIGHT_INQUIRY_MANAGE`. |
+| Dedicated tours and custom tour requests (built, see section 4), flight inquiries | 18, 19 | Staff: `TOUR_MANAGE`, `FLIGHT_INQUIRY_MANAGE`. |
 | B2B dashboard, passport pickup, commission and wallet, invoices | 21 to 24 | `requireApprovedPartner` plus ownership by `partnerId`. Staff: `PASSPORT_VIEW`, `PASSPORT_UPDATE`. |
 | Membership and corporate subscription | 25 | Ownership by user. |
 | Admin dashboard, reports | 27 | `requireRole(ADMIN)`, or `REPORT_VIEW` for staff. |

@@ -146,11 +146,28 @@ As a customer, I want to confirm my phone number, so that the platform can trust
 - Through Firebase phone sign-in, or through an SMS gateway. The choice is still open.
 - Status: **Open** (decision pending, see `ToDo.md`).
 
-### B2C-9: My applications, documents, tours, flight inquiries and notifications
+### B2C-9: My applications, documents, flight inquiries and notifications
 As a customer, I want to apply for services and follow their progress, so that I can plan my trip.
 
 - Each of these records will be locked to its owner with the ownership check.
 - Status: **Planned** (other modules).
+
+### B2C-10: Browse tour packages
+As a visitor or customer, I want to search and filter published tours, so that I can find a trip that fits my budget and dates.
+
+- No account is needed. I search by name, destination or country, filter by category, price and duration, and sort by price, duration, rating or newest.
+- I only see published tours. A draft or archived tour is `404`, the same as one that does not exist.
+- I never see the partner price.
+- Endpoints: `GET /api/tours`, `GET /api/tours/:id`, `GET /api/tour-categories`. Status: **Built**.
+
+### B2C-11: Ask for a custom tour
+As a customer, I want to describe the trip I have in mind, so that a consultant can plan and price it for me.
+
+- I send my destination, travelers, dates, hotel preference, transport, activities, requirements and a draft itinerary. The end date cannot be before the start date.
+- The request is mine: nobody else can read it, and I cannot name another owner. Only customers can send one.
+- I follow its status (`NEW`, `IN_REVIEW`, `QUOTED`, `CONFIRMED`) and read the consultant's note, such as the quote.
+- I can cancel it while it is still `NEW`.
+- Endpoints: `POST /api/tours/custom-requests`, `GET /api/tours/custom-requests`, `PATCH /api/tours/custom-requests/:id/status`. Status: **Built**.
 
 ---
 
@@ -212,6 +229,12 @@ As an approved agency, I want to submit passports, request pickups, see commissi
 - The approval gate (`requireApprovedPartner`) is built and tested, and every record will be locked to my partner id.
 - Status: **Planned** (other modules).
 
+### B2B-9: See the partner price
+As an approved agency, I want to see the partner price on every tour, so that I can quote my own customers.
+
+- The price appears only after an admin approved my partner. While my application is pending, rejected or suspended I see the public price only.
+- Endpoints: the same tour endpoints; `b2bPrice` is added for me. Status: **Built**.
+
 ---
 
 ## STAFF: the team member
@@ -250,6 +273,15 @@ As a staff member with `DOCUMENT_VERIFY`, I want to mark a partner's document ve
 - Without these permissions I get `403` (review) or `404` (download).
 - Reviewing a document does not approve the agency. That stays an admin decision.
 - Endpoint: `PATCH /api/staff/partners/:id/documents/:docId`. Status: **Built**.
+
+### STAFF-7: Manage tour packages
+As a staff member with the tour permission, I want to create categories and tours, publish or unpublish them and answer custom tour requests, so that the catalogue stays current.
+
+- I need `TOUR_MANAGE`. Without it I see what the public sees and every change is `403`.
+- I can see drafts, unpublished and archived tours and the partner price.
+- "Delete" archives a tour or switches a category off. Nothing is lost.
+- I read every custom request with the customer's contact details, move it along (`IN_REVIEW`, `QUOTED`, `CONFIRMED`, `CANCELLED`) and leave a note.
+- Status: **Built**.
 
 ### STAFF-6: My daily tasks and assigned records
 As a staff member, I want to see the visa, passport and document items assigned to me, so that I know what to work on.
@@ -367,6 +399,14 @@ As a developer, I want to add a permission in one place, so that new features ca
 
 - Add one line to `permissions` in `config/rbac.json` and restart. It then appears in validation, the API and the admin pickers.
 - A mistake in the file stops the server from starting, with a clear message.
+- Status: **Built**.
+
+### ADMIN-13: Manage tour packages
+As an admin, I want to run the tour catalogue and answer custom requests, so that the website shows current trips and customers get quotes.
+
+- Everything a `TOUR_MANAGE` staff member can do (STAFF-7), without needing the permission.
+- I can hand the same work to staff by granting `TOUR_MANAGE`; I can take it back at any time and it stops at once.
+- `npm run seed:tours` loads the 8 starting categories and the sample tour.
 - Status: **Built**.
 
 ### ADMIN-12: Two-factor sign-in for admins
