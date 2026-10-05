@@ -89,7 +89,59 @@ Frontend rules to hand over:
 - [ ] Shared storage for `storage/private` if more than one instance runs, and back it up together with the database.
 - [ ] `npm audit` reports moderate issues that come from `firebase-admin` through packages we do not use (Firestore, Storage), and a high one in `braces` (dev only, via nodemon). Re-check when `firebase-admin` releases a fix.
 
-## 4. Outside this part (other modules)
+## 4. Tour packages module (planned, not started)
+
+Source: `documentation/Dynamic_Travel_Tour_Package_Backend_Handoff.md`.
+It replaces the frontend mock stores for tour categories, tour packages and custom tour requests with persistent REST APIs.
+The module reuses the guards from the auth layer and follows the same layering (route, middleware, zod validation, controller, service, model).
+The blocking questions in 4.3 are answered. The ones still marked open have a default in the plan and do not block the start.
+
+### 4.1 Plan
+
+| Step | Work | Notes |
+| --- | --- | --- |
+| 1 | `TourCategory` model, with `name`, `nameKey` (lower-cased, unique index), `slug`, `legacyId` (the frontend's `cat_beach` style id), `isActive` | Case-insensitive uniqueness comes from the `nameKey` index, so it holds under concurrent requests. |
+| 2 | `Tour` model with an embedded `itinerary` array (`day`, `title`, `description`) | `status` enum: `draft`, `published`, `unpublished`, `archived`. Itinerary days must be unique positive integers and are returned in ascending order. |
+| 3 | `CustomTourRequest` model | Fields from handoff section 8, plus `userId` when the sender is signed in, and a `status` workflow. Proposed statuses: `NEW`, `IN_REVIEW`, `QUOTED`, `CONFIRMED`, `CANCELLED`. |
+| 4 | `validations/tour.validation.js` | zod schemas strip unknown fields. No negative `price`, `b2bPrice`, `seats` or `durationDays`. `endDate` on or after `startDate`. `travelers` at least 1. Status from the enum only. |
+| 5 | Services: `tourCategoryService`, `tourService`, `customTourService` | No `req` or `res` inside. List filters: `search`, `category`, `country`, `destination`, `status`, `minPrice`, `maxPrice`, `durationDays`, `page`, `limit`, `sort`, using `utils/pagination.js`. |
+| 6 | Controllers and routes | Public reads, writes behind `authenticate` and `requirePermission(TOUR_MANAGE)`. See question Q1 for the URL layout. |
+| 7 | Visibility rules in the service layer, not the route | The public sees only `published` tours. `b2bPrice` is removed from the response unless the caller is ADMIN, STAFF with `TOUR_MANAGE`, or a B2B user with an APPROVED partner. |
+| 8 | Delete means archive | Tours become `archived`, categories become `isActive: false`. A category that still has tours cannot be removed. |
+| 9 | Audit log | New actions for tour and category create, update, archive, and for custom request status changes. Field names only, never values, as for profile edits. |
+| 10 | Seed script `npm run seed:tours` | Idempotent. Creates the 8 default categories (keeping their `cat_` ids in `legacyId`) and the Cox's Bazar Beach Escape sample tour. |
+| 11 | Tests | Jest: one case per role per route, duplicate category, invalid dates and prices, missing tour id, `b2bPrice` hidden or shown, archived tours hidden. Playwright: add the new routes to the role matrix, a manage-and-publish journey, a custom request journey. |
+| 12 | Docs | Endpoints in `scripts/openapi/endpoints.js` then `npm run openapi`. README endpoint tables, user stories for each role, and the test console gets a Tours section. |
+
+Permission keys: `TOUR_MANAGE` already exists in `config/rbac.json` ("Manage tour packages and custom tours").
+The plan reuses it for categories, tours and custom requests, and adds a `TOUR_VIEW` key only if the answer to Q3 needs one.
+
+### 4.2 Response shape
+
+The handoff asks for `{ success, message, data }` and a `pagination` object on lists.
+The existing list responses must be checked first (`utils/response.js`, `buildMeta` in `utils/pagination.js`), and the new endpoints must match what the API already returns, so the frontend sees one list format everywhere.
+
+### 4.3 Open questions (kept open on purpose)
+
+- [x] **Q1. URL layout.** Decided: flat URLs as in the handoff (`/api/tour-categories`, `/api/tours`), public reads, writes behind `authenticate` and `requirePermission(TOUR_MANAGE)`.
+- [x] **Q2. Who writes.** Decided: admin, and staff holding `TOUR_MANAGE`. No new permission.
+- [x] **Q3. Read-only permission.** Decided: not needed, so no `TOUR_VIEW`. Draft, unpublished and archived tours are visible to admin and `TOUR_MANAGE` staff only.
+- [x] **Q4. Who sends a custom request.** Decided: B2C users only (signed in). Anonymous visitors, B2B, staff and admin cannot submit. Every request has a `userId`.
+- [x] **Q5. Who reads and updates.** Decided: a B2C user reads only their own requests. Admin and `TOUR_MANAGE` staff list all and change status. The customer may cancel their own request while it is `NEW`.
+- [x] **Q6. Statuses.** Decided: `NEW`, `IN_REVIEW`, `QUOTED`, `CONFIRMED`, `CANCELLED`. Transitions to be fixed in the validation file and tested.
+- [x] **Q7. `b2bPrice`.** Decided: only admin, `TOUR_MANAGE` staff and B2B users with an APPROVED partner. Never in a public response.
+- [x] **Q8. Public visibility.** Decided: the public sees `published` tours only. An unpublished tour is not reachable by direct link either.
+- [x] **Q9. Duplicate category name.** Decided: no two categories share a name in any letter case. Creating a duplicate returns the existing record with 200, as the frontend mock does.
+- [x] **Q10. `seats`.** Decided: total capacity, a plain number set by staff. Availability is a booking-module concern later.
+- [x] **Q11. `rating`.** Decided: optional, staff-editable, validated 0 to 5.
+- [x] **Q12. Currency.** Decided: fixed list `BDT`, `USD`, `EUR`, kept in config.
+- [x] **Q13. Images.** Decided: `coverImage` and `gallery` are http(s) URL strings only. Upload is a later task.
+- [x] **Q14. Itinerary.** Decided: no count rule. Days are unique positive integers. A published tour needs at least one day, and no day above `durationDays`.
+- [x] **Q15. Filters.** Decided: `search` matches name, destination and country (case-insensitive). Default sort is newest first, and `sort` accepts `price`, `durationDays`, `rating`, `createdAt` with a leading minus for descending. `category` takes one id or several, comma separated. `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match. Page size is 10 by default and 100 at most.
+- [x] **Q16. Category ids.** Decided: the frontend's `cat_...` ids are kept in `legacyId`, and `GET` accepts either id. Responses carry the new id and `legacyId`.
+- [ ] **Q17. Ownership of this module.** The handoff names a backend developer for it. Confirm that this is to be built in this repository, by the same person as the auth part, before work starts.
+
+## 5. Outside this part (other modules)
 
 None of this exists yet, and none of it is part of the auth work.
 When these modules are built they reuse the guards from this layer (`authenticate`, `requireRole`, `requirePermission`, `checkOwnership`, `requireApprovedPartner`).
@@ -99,7 +151,7 @@ Section numbers refer to `Dynamic Travel Agency web - Google Docs.md`.
 | --- | --- | --- |
 | Public website content | 13 | none (public) |
 | Visa processing, checklist, apply, status check, notifications | 14 to 17 | B2C: ownership by user. Staff: `VISA_VIEW`, `VISA_UPDATE`. |
-| Dedicated and custom tours, flight inquiries | 18, 19 | Staff: `TOUR_MANAGE`, `FLIGHT_INQUIRY_MANAGE`. |
+| Dedicated and custom tours (planned in section 4), flight inquiries | 18, 19 | Staff: `TOUR_MANAGE`, `FLIGHT_INQUIRY_MANAGE`. |
 | B2B dashboard, passport pickup, commission and wallet, invoices | 21 to 24 | `requireApprovedPartner` plus ownership by `partnerId`. Staff: `PASSPORT_VIEW`, `PASSPORT_UPDATE`. |
 | Membership and corporate subscription | 25 | Ownership by user. |
 | Admin dashboard, reports | 27 | `requireRole(ADMIN)`, or `REPORT_VIEW` for staff. |
@@ -107,7 +159,7 @@ Section numbers refer to `Dynamic Travel Agency web - Google Docs.md`.
 | Notification catalogue (SMS and email triggers) | 31 | Use `services/notificationService.js` and `utils/mailer.js`. |
 | Deployment, hosting, backups | 35, 36 | Not backend code. |
 
-## 5. Removed on purpose
+## 6. Removed on purpose
 
 Kept out of this project because they are not part of the auth work.
 They were removed from the code base and can be rebuilt from this list if a module needs them.
