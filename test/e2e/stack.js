@@ -81,7 +81,9 @@ process.on('SIGTERM', () => shutdown(0));
     COOKIE_SECURE: 'false',
     COOKIE_DOMAIN: '',
     OTP_EXPIRES_MINUTES: '10',
-    OTP_RESEND_COOLDOWN_SECONDS: '2', // real servers use 60; short here so the replacement can be tested
+    OTP_RESEND_COOLDOWN_SECONDS: '2',
+    // No nightly timer in a test run: tests make a membership lapse themselves when they need one.
+    MEMBERSHIP_EXPIRY_JOB: 'false', // real servers use 60; short here so the replacement can be tested
     STAFF_INVITE_EXPIRES_HOURS: '48',
     EMAIL_PROVIDER: 'file',
     MAIL_OUTBOX_FILE: cfg.MAIL_FILE,

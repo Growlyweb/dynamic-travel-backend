@@ -20,6 +20,11 @@ const MATRIX = [
   ['/api/b2b/documents', 403, 403, 200, 403],
   ['/api/b2b/overview', 403, 403, 403, 403], // this agency is still PENDING
   ['/api/b2c/profile', 403, 403, 403, 200],
+  ['/api/membership-plans', 200, 403, 403, 403], // staff here have no MEMBERSHIP_MANAGE
+  ['/api/memberships', 200, 403, 403, 403],
+  ['/api/membership-stats', 200, 403, 403, 403],
+  ['/api/membership-report/periods', 200, 403, 403, 403],
+  ['/api/b2c/memberships', 403, 403, 403, 200], // a customer reads their own
   ['/api/tours/custom-requests', 200, 403, 403, 200] // admin reads all, a customer reads their own, staff here have no TOUR_MANAGE
 ];
 
