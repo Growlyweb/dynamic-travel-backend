@@ -3,6 +3,7 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const auditService = require('./auditService');
 const partnerService = require('./partnerService');
+const membershipService = require('./membershipService');
 
 // "My own profile" for every role. The user id always comes from the verified token (req.user.id),
 // never from the URL or body, so one person can only ever read or change their own record.
@@ -26,6 +27,8 @@ const update = async (userId, { name, phone, address, businessType }) => {
     user.phoneVerified = false; // a new number has not been verified yet
   }
   await user.save();
+  // A customer's memberships keep a copy of their name and phone for display and search. Keep it current.
+  if (user.role === ROLES.B2C && (name !== undefined || phone !== undefined)) await membershipService.syncCustomerDetails(user);
 
   let partner = null;
   if (user.role === ROLES.B2B) {

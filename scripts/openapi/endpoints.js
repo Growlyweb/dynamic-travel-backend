@@ -6,7 +6,8 @@ const user = require('../../validations/user.validation');
 const partner = require('../../validations/partner.validation');
 const profile = require('../../validations/profile.validation');
 const tours = require('../../validations/tour.validation');
-const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, NOW, ID } = require('./shared');
+const membership = require('../../validations/membership.validation');
+const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, exPlan, exMembership, exStats, exPeriod, NOW, ID } = require('./shared');
 
 // ---- tags (order = order in Postman folders)
 const TAGS = [
@@ -20,6 +21,9 @@ const TAGS = [
   { name: 'Documents', description: 'Private business documents, served only after an ownership check.' },
   { name: 'Tour categories', description: 'Reading is public. Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
   { name: 'Tours', description: 'Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
+  { name: 'Membership plans', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. The plans an admin sells. Answers are { items, total } or the object itself, not the usual envelope.' },
+  { name: 'Memberships', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Assign a plan to a B2C customer, record the payment, cancel, extend, delete.' },
+  { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' },
   { name: 'Custom tours', description: 'A B2C customer sends and follows their own request; tour managers answer it.' },
   { name: 'System', description: 'Health and version.' }
 ];
@@ -41,6 +45,13 @@ const SESSION_NOTE =
   'Send the header `X-Client-Type: mobile` to get it in the JSON body as `refreshToken` instead.';
 
 const ok = (status, message, schema, example, opts = {}) => ({ status, message, schema, example, ...opts });
+
+// Membership answers are not wrapped in { success, message, data }: a list is { items, total }, a single answer is the
+// object itself, and a delete is { success, id }.
+const listOf = (name) => obj({ items: arrayOf(ref(name)), total: { type: 'integer', example: 1 } }, ['items', 'total']);
+const deleted = () => obj({ success: bool(true), id: str('6ac0a5f0eebc510147c67250') }, ['success', 'id']);
+// A failed validation of a membership route is 400, with the first message and the field list.
+const invalid = (message, field) => ({ codes: ['VALIDATION_ERROR'], message, fields: [{ field, message }] });
 
 // shared success shapes
 const SESSION = ref('Session');
@@ -567,6 +578,135 @@ const endpoints = [
     body: tours.setCustomRequestStatus, bodyExample: { status: 'QUOTED', note: 'Total BDT 85,000 for four travelers.' },
     success: ok(200, 'Request status is now QUOTED.', ref('CustomTourRequest'), exCustomRequest({ status: 'QUOTED', reviewNote: 'Total BDT 85,000 for four travelers.', reviewedBy: '6ac0a5f0eebc510147c6722b', reviewedAt: NOW })),
     errors: { 401: true, 403: true, 404: true, 409: ['INVALID_TRANSITION'], 422: true }
+  },
+
+  // =============================================================== MEMBERSHIP PLANS
+  {
+    method: 'get', path: '/api/membership-plans', tag: 'Membership plans', id: 'listMembershipPlans',
+    summary: 'List membership plans',
+    description: 'Every plan, **inactive ones included**, sorted by `sortOrder`. The dashboard hides inactive plans itself where needed.\n\n**Answer shape:** `{ items, total }`, with no `success` or `data` wrapper and with `id` instead of `_id`. All membership routes answer this way.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, query: membership.listPlans, queryBlank: ['search'], queryDocs: { search: 'Part of the plan name, ignoring letter case.' },
+    success: ok(200, 'Plans fetched.', obj({}), undefined, { raw: { items: [exPlan()], total: 1 }, rawSchema: listOf('MembershipPlan') }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/membership-plans', tag: 'Membership plans', id: 'createMembershipPlan',
+    summary: 'Create a membership plan',
+    description: 'The server sets `id`, `sortOrder` (the highest so far plus 1) and the timestamps. The name is unique in any letter case and spacing. `maxDiscountAmount` of `0` or `null` means no cap and is saved as `null`. Empty features are dropped. Unknown fields are ignored. The tour and visa discounts are separate, so a plan can give 10% on tours and 5% on visas.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, body: membership.createPlan,
+    bodyExample: { name: 'Gold', durationValue: 1, durationUnit: 'year', price: 4500, tourDiscountPercent: 10, visaDiscountPercent: 10, maxDiscountAmount: 3000, description: 'Best value - a full year of member pricing.', features: ['10% off tour packages', '10% off visa processing'], isActive: true },
+    success: ok(201, 'Plan created.', obj({}), undefined, { raw: exPlan(), rawSchema: ref('MembershipPlan') }),
+    errors: { 400: invalid('Duration must be at least 1.', 'body.durationValue'), 401: true, 403: true, 409: ['PLAN_NAME_TAKEN'] }
+  },
+  {
+    method: 'put', path: '/api/membership-plans/{id}', tag: 'Membership plans', id: 'updateMembershipPlan',
+    summary: 'Edit a membership plan',
+    description: 'The dashboard sends the whole plan back, so `id`, `sortOrder` and the timestamps are ignored. `name`, `durationValue`, `durationUnit` and `price` are required; any other field that is left out stays as it is. The name check skips the plan being edited. **Memberships already sold are never changed**: each keeps its own copy of the plan (`planSnapshot`).',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    body: membership.updatePlan, bodyExample: { name: 'Gold', durationValue: 1, durationUnit: 'year', price: 5000, tourDiscountPercent: 10, visaDiscountPercent: 10, maxDiscountAmount: 3000, description: 'Best value', features: ['10% off tour packages'], isActive: true },
+    success: ok(200, 'Plan updated.', obj({}), undefined, { raw: exPlan({ price: 5000 }), rawSchema: ref('MembershipPlan') }),
+    errors: { 400: invalid('Price cannot be negative.', 'body.price'), 401: true, 403: true, 404: true, 409: ['PLAN_NAME_TAKEN'] }
+  },
+  {
+    method: 'patch', path: '/api/membership-plans/{id}/toggle', tag: 'Membership plans', id: 'toggleMembershipPlan',
+    summary: 'Activate or deactivate a plan',
+    description: 'No request body. Flips `isActive` and returns the plan. An inactive plan cannot be assigned to a customer (`Plan not available`). Memberships already sold carry on.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    success: ok(200, 'Plan updated.', obj({}), undefined, { raw: exPlan({ isActive: false }), rawSchema: ref('MembershipPlan') }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true }
+  },
+  {
+    method: 'delete', path: '/api/membership-plans/{id}', tag: 'Membership plans', id: 'deleteMembershipPlan',
+    summary: 'Delete a membership plan',
+    description: 'Only a plan that no membership ever used can be deleted, **including memberships that were later deleted or expired**. Otherwise the answer is `409`: deactivate the plan instead.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    success: ok(200, 'Plan deleted.', obj({}), undefined, { raw: { success: true, id: '6ac0a5f0eebc510147c67250' }, rawSchema: deleted() }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true, 409: ['PLAN_IN_USE'] }
+  },
+
+  // =============================================================== MEMBERSHIPS
+  {
+    method: 'get', path: '/api/memberships', tag: 'Memberships', id: 'listMemberships',
+    summary: 'List memberships',
+    description:
+      'Newest start date first. Every item carries the **effective status** and a computed `daysLeft`: a membership whose end date has passed is reported as `expired` even if the nightly job has not saved that yet.\n\n' +
+      '- `status` matches the effective status: `active` excludes lapsed rows, `expired` includes them.\n' +
+      '- `expiringIn=7` keeps active memberships with 0 to 7 days left.\n' +
+      '- `search` matches the customer name, phone and email by plain text, ignoring letter case.\n' +
+      '- Deleted memberships are never listed. There is no pagination.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, query: membership.listMemberships,
+    queryBlank: ['status', 'planId', 'expiringIn', 'search'], queryDocs: { status: 'pending, active, expired or cancelled (the effective status).', planId: 'Only memberships of this plan.', expiringIn: 'Active memberships with at most this many days left.', search: 'Part of the customer name, phone or email.' },
+    success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [exMembership()], total: 1 }, rawSchema: listOf('Membership') }), errors: { 400: invalid('Invalid status.', 'query.status'), 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/memberships', tag: 'Memberships', id: 'createMembership',
+    summary: 'Assign a plan to a customer and record the payment',
+    description:
+      'Checks, in this order: the customer exists (`404`), is a B2C customer (`400`), the plan exists and is active (`400 Plan not available`), and the customer has no active membership (`409`). A membership that has lapsed never blocks a renewal.\n\n' +
+      'The membership keeps a copy of the plan (`planSnapshot`). The end date is the start date plus the plan length minus one day, at 23:59:59.999 in Asia/Dhaka: a 15-day plan starting 1 Oct ends on 15 Oct. `startDate` is `YYYY-MM-DD` and defaults to today in Asia/Dhaka. A future start date is still `active`.\n\n' +
+      'The payment is saved as `paid` with the amount **from the plan** (the request cannot set it). `trxId` is only kept for the record and may be empty.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, body: membership.createMembership,
+    bodyExample: { customerId: '6ac0a5f0eebc510147c6722a', planId: '6ac0a5f0eebc510147c67250', paymentMethod: 'bkash', trxId: 'BKX88231A', startDate: '2026-10-07' },
+    success: ok(201, 'Membership created.', obj({}), undefined, { raw: exMembership(), rawSchema: ref('Membership') }),
+    errors: {
+      400: { codes: ['NOT_B2C', 'PLAN_NOT_AVAILABLE', 'VALIDATION_ERROR'], message: 'Membership is only for B2C customers', fields: undefined },
+      401: true, 403: true, 404: true, 409: ['ALREADY_ACTIVE']
+    }
+  },
+  {
+    method: 'patch', path: '/api/memberships/{id}/cancel', tag: 'Memberships', id: 'cancelMembership',
+    summary: 'Cancel a membership',
+    description: 'Allowed for an active or pending membership. Sets `status` to `cancelled` with `cancelledAt` and the optional `reason` (up to 500 characters). Discounts stop at once. The payment status is **not** changed: refunds are handled by hand.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam, body: membership.cancelMembership, bodyRequired: false,
+    bodyExample: { reason: 'Customer request, refund issued.' },
+    success: ok(200, 'Membership cancelled.', obj({}), undefined, { raw: exMembership({ status: 'cancelled', cancelledAt: NOW, cancelReason: 'Customer request, refund issued.' }), rawSchema: ref('Membership') }),
+    errors: { 400: invalid('Reason must be at most 500 characters.', 'body.reason'), 401: true, 403: true, 404: true, 409: { codes: ['INVALID_STATE'], message: 'Only active or pending memberships can be cancelled.' } }
+  },
+  {
+    method: 'patch', path: '/api/memberships/{id}/extend', tag: 'Memberships', id: 'extendMembership',
+    summary: 'Extend a membership',
+    description: 'Adds `days` (1 to 3650) to the current end date and keeps the 23:59:59.999 time, in Asia/Dhaka. Only an effectively **active** membership can be extended; a lapsed, cancelled or expired one answers `409`.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam, body: membership.extendMembership, bodyExample: { days: 7 },
+    success: ok(200, 'Membership extended.', obj({}), undefined, { raw: exMembership({ endDate: '2026-11-06T17:59:59.999Z', daysLeft: 38 }), rawSchema: ref('Membership') }),
+    errors: { 400: invalid('Days must be at least 1.', 'body.days'), 401: true, 403: true, 404: true, 409: { codes: ['INVALID_STATE'], message: 'Only active memberships can be extended.' } }
+  },
+  {
+    method: 'delete', path: '/api/memberships/{id}', tag: 'Memberships', id: 'deleteMembership',
+    summary: 'Delete a membership',
+    description: 'A **soft delete**: the membership leaves every list and count, and no longer blocks the customer from buying again, but the record and its payment are kept, so the **revenue stays in the reports**. A deleted membership answers `404` afterwards.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    success: ok(200, 'Membership deleted.', obj({}), undefined, { raw: { success: true, id: '6ac0a5f0eebc510147c67251' }, rawSchema: deleted() }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true }
+  },
+  {
+    method: 'get', path: '/api/customers/{customerId}/memberships', tag: 'Memberships', id: 'listCustomerMemberships',
+    summary: 'Memberships of one customer',
+    description: 'The full history of one customer, newest first, with the effective status and `daysLeft`. Used by the customer profile page. This answer has `items` only, with no `total`. An unknown customer answers `404`.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.customerParam, paramExamples: { customerId: '6ac0a5f0eebc510147c6722a' },
+    success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [exMembership()] }, rawSchema: obj({ items: arrayOf(ref('Membership')) }, ['items']) }), errors: { 400: invalid('Invalid id.', 'params.customerId'), 401: true, 403: true, 404: true }
+  },
+
+  // =============================================================== MEMBERSHIP REPORTS
+  {
+    method: 'get', path: '/api/membership-stats', tag: 'Membership reports', id: 'getMembershipStats',
+    summary: 'Membership numbers for the dashboard',
+    description:
+      'Everything the cards and charts need, in one object. Memberships are counted by their effective status; deleted ones are not counted, but their payments still count in revenue. Months and days follow Asia/Dhaka.\n\n' +
+      '- `expiredThisMonth` counts expired memberships (not cancelled ones) whose end date is in the current month.\n' +
+      '- `revenueByMonth` always has exactly 6 entries, the last 6 calendar months, oldest first, with `0` for a month without payments.\n' +
+      '- `planDistribution` has one entry per existing plan, including plans with 0 memberships.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true,
+    success: ok(200, 'Stats fetched.', obj({}), undefined, { raw: exStats, rawSchema: ref('MembershipStats') }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/membership-report/periods', tag: 'Membership reports', id: 'getMembershipPeriods',
+    summary: 'Sales by period',
+    description: 'The last 6 periods, oldest first. `mode=monthly` (the default) gives 6 calendar months, and the current one is labelled "(to date)". `mode=half` gives 6 fifteen-day periods (the 1st to the 15th, the 16th to the end of the month), ending with the one we are in. Each period runs from 00:00:00.000 of its first day to 23:59:59.999 of its last, in Asia/Dhaka.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, query: membership.reportPeriods, queryExample: { mode: 'monthly' },
+    success: ok(200, 'Report fetched.', obj({}), undefined, { raw: { items: [exPeriod] }, rawSchema: obj({ items: arrayOf(ref('MembershipPeriod')) }, ['items']) }), errors: { 400: invalid('mode must be monthly or half.', 'query.mode'), 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/b2c/memberships', tag: 'Customer (B2C)', id: 'listMyMemberships',
+    summary: 'My memberships',
+    description: 'A customer reads **their own** memberships, newest first, with the effective status and `daysLeft`. The customer always comes from the token. The admin\'s internal `cancelReason` is left out. Use `status=active` for the profile page. Read-only: a customer cannot sell, cancel or extend one.',
+    access: 'B2C', needsAuth: true, query: membership.listOwnMemberships, queryBlank: ['status'], queryDocs: { status: 'pending, active, expired or cancelled (the effective status).' },
+    success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [(({ cancelReason, ...rest }) => rest)(exMembership())], total: 1 }, rawSchema: listOf('Membership') }), errors: { 400: invalid('Invalid status.', 'query.status'), 401: true, 403: true }
   },
 
   // =============================================================== SYSTEM

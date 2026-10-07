@@ -3,7 +3,7 @@
   "info": {
     "title": "Travel Management Platform: Auth and RBAC API",
     "version": "1.0.0",
-    "description": "Authentication and role-based access for the travel platform. Four roles share one login system: **ADMIN, STAFF, B2B, B2C**.\n\n## Quick start in Postman\n\n1. **Import** this file (File, Import). Postman builds a collection with one folder per area.\n2. Open the collection's **Variables**. `baseUrl` is already set to `http://localhost:5000`; change it for another server. Add a variable named `bearerToken` (leave it empty).\n3. Run **Auth, Log in**. Copy `data.accessToken` from the response into the `bearerToken` variable. Every request marked with a lock then works.\n4. The access token lasts 15 minutes. Run **Refresh tokens** to get a new one (Postman keeps the refresh cookie for you).\n\nTo try a role other than the one you registered, log in as that account and replace `bearerToken`.\nThe first admin is created with `npm run seed`; more admins and staff are created by an admin (**Admin: users, Create staff**).\n\n## Roles\n\n| Role | How the account is created | Can reach |\n| --- | --- | --- |\n| **B2C** | Registers, or continues with Google | Own profile and own records |\n| **B2B** | Registers (multipart), then an admin approves | Own profile and documents; operational routes once APPROVED |\n| **STAFF** | Invited by an admin | Only what the permissions granted allow |\n| **ADMIN** | First one by seed script, later ones invited | Everything under `/api/admin` |\n\nThe role is **never** accepted from a request body. The endpoint decides it.\n\n## Tokens\n\n- **Access token:** JWT, 15 minutes, sent as `Authorization: Bearer <token>`.\n- **Refresh token:** 7 days, rotates on every use. Web clients get it as an httpOnly cookie scoped to `/api/auth`. Send the header `X-Client-Type: mobile` to receive it in the JSON body instead.\n- A suspension, role change or password change takes effect on the next request.\n\n## Responses\n\nSuccess: `{ \"success\": true, \"message\": \"...\", \"data\": ..., \"meta\": { total, page, limit, totalPages }, \"pagination\": { same object } }` (`meta` and `pagination` on lists only; they are identical, read either).\nError: `{ \"success\": false, \"message\": \"...\", \"code\": \"SOME_CODE\", \"errors\": [{ \"field\", \"message\" }] }`. Branch on `code`, not on `message`.\n\n| Status | Meaning |\n| --- | --- |\n| 400 | Bad request, or a rejected code, token or file |\n| 401 | Not signed in, or the token is invalid or expired |\n| 403 | Signed in, but role, permission or account status does not allow it |\n| 404 | Not found, **or a record that belongs to someone else** |\n| 409 | Conflict with the current state |\n| 413 | File or body too large |\n| 422 | Validation failed (`errors` lists each field) |\n| 429 | Rate limited (see `Retry-After`) |\n| 503 | A dependency is unavailable |\n\n## Ids\n\nAll ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.\n\n## Rate limits\n\nEach sensitive route has its own limit, stated on the route. All `/api` routes are also limited to 300 requests per 15 minutes per IP."
+    "description": "Authentication and role-based access for the travel platform. Four roles share one login system: **ADMIN, STAFF, B2B, B2C**.\n\n## Quick start in Postman\n\n1. **Import** this file (File, Import). Postman builds a collection with one folder per area.\n2. Open the collection's **Variables**. `baseUrl` is already set to `http://localhost:5000`; change it for another server. Add a variable named `bearerToken` (leave it empty).\n3. Run **Auth, Log in**. Copy `data.accessToken` from the response into the `bearerToken` variable. Every request marked with a lock then works.\n4. The access token lasts 15 minutes. Run **Refresh tokens** to get a new one (Postman keeps the refresh cookie for you).\n\nTo try a role other than the one you registered, log in as that account and replace `bearerToken`.\nThe first admin is created with `npm run seed`; more admins and staff are created by an admin (**Admin: users, Create staff**).\n\n## Roles\n\n| Role | How the account is created | Can reach |\n| --- | --- | --- |\n| **B2C** | Registers, or continues with Google | Own profile and own records |\n| **B2B** | Registers (multipart), then an admin approves | Own profile and documents; operational routes once APPROVED |\n| **STAFF** | Invited by an admin | Only what the permissions granted allow |\n| **ADMIN** | First one by seed script, later ones invited | Everything under `/api/admin` |\n\nThe role is **never** accepted from a request body. The endpoint decides it.\n\n## Tokens\n\n- **Access token:** JWT, 15 minutes, sent as `Authorization: Bearer <token>`.\n- **Refresh token:** 7 days, rotates on every use. Web clients get it as an httpOnly cookie scoped to `/api/auth`. Send the header `X-Client-Type: mobile` to receive it in the JSON body instead.\n- A suspension, role change or password change takes effect on the next request.\n\n## Responses\n\nSuccess: `{ \"success\": true, \"message\": \"...\", \"data\": ..., \"meta\": { total, page, limit, totalPages }, \"pagination\": { same object } }` (`meta` and `pagination` on lists only; they are identical, read either).\n\n**Membership routes are the exception.** They answer in the shapes of the dashboard: a list is `{ \"items\": [...], \"total\": n }`, a single answer is the object itself, ids are called `id`, and a delete is `{ \"success\": true, \"id\": \"...\" }`. Errors keep the usual shape, and a failed validation there is `400`.\nError: `{ \"success\": false, \"message\": \"...\", \"code\": \"SOME_CODE\", \"errors\": [{ \"field\", \"message\" }] }`. Branch on `code`, not on `message`.\n\n| Status | Meaning |\n| --- | --- |\n| 400 | Bad request, or a rejected code, token or file |\n| 401 | Not signed in, or the token is invalid or expired |\n| 403 | Signed in, but role, permission or account status does not allow it |\n| 404 | Not found, **or a record that belongs to someone else** |\n| 409 | Conflict with the current state |\n| 413 | File or body too large |\n| 422 | Validation failed (`errors` lists each field) |\n| 429 | Rate limited (see `Retry-After`) |\n| 503 | A dependency is unavailable |\n\n## Ids\n\nAll ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.\n\n## Rate limits\n\nEach sensitive route has its own limit, stated on the route. All `/api` routes are also limited to 300 requests per 15 minutes per IP."
   },
   "servers": [
     {
@@ -51,6 +51,18 @@
     {
       "name": "Tours",
       "description": "Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE."
+    },
+    {
+      "name": "Membership plans",
+      "description": "ADMIN, or STAFF with MEMBERSHIP_MANAGE. The plans an admin sells. Answers are { items, total } or the object itself, not the usual envelope."
+    },
+    {
+      "name": "Memberships",
+      "description": "ADMIN, or STAFF with MEMBERSHIP_MANAGE. Assign a plan to a B2C customer, record the payment, cancel, extend, delete."
+    },
+    {
+      "name": "Membership reports",
+      "description": "ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period."
     },
     {
       "name": "Custom tours",
@@ -3774,7 +3786,7 @@
                     ]
                   },
                   "permissions": {
-                    "maxItems": 14,
+                    "maxItems": 15,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -3791,6 +3803,7 @@
                         "B2B_VIEW",
                         "B2B_MANAGE",
                         "TOUR_MANAGE",
+                        "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
                         "REPORT_VIEW"
                       ]
@@ -3920,7 +3933,7 @@
                     "pattern": "^\\+?[0-9]{8,15}$"
                   },
                   "permissions": {
-                    "maxItems": 14,
+                    "maxItems": 15,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -3937,6 +3950,7 @@
                         "B2B_VIEW",
                         "B2B_MANAGE",
                         "TOUR_MANAGE",
+                        "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
                         "REPORT_VIEW"
                       ]
@@ -4213,7 +4227,7 @@
                     ]
                   },
                   "permissions": {
-                    "maxItems": 14,
+                    "maxItems": 15,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -4230,6 +4244,7 @@
                         "B2B_VIEW",
                         "B2B_MANAGE",
                         "TOUR_MANAGE",
+                        "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
                         "REPORT_VIEW"
                       ]
@@ -4362,7 +4377,7 @@
                 "type": "object",
                 "properties": {
                   "permissions": {
-                    "maxItems": 14,
+                    "maxItems": 15,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -4379,6 +4394,7 @@
                         "B2B_VIEW",
                         "B2B_MANAGE",
                         "TOUR_MANAGE",
+                        "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
                         "REPORT_VIEW"
                       ]
@@ -7641,6 +7657,1745 @@
         }
       }
     },
+    "/api/membership-plans": {
+      "get": {
+        "tags": [
+          "Membership plans"
+        ],
+        "summary": "List membership plans",
+        "operationId": "listMembershipPlans",
+        "description": "Every plan, **inactive ones included**, sorted by `sortOrder`. The dashboard hides inactive plans itself where needed.\n\n**Answer shape:** `{ items, total }`, with no `success` or `data` wrapper and with `id` instead of `_id`. All membership routes answer this way.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Part of the plan name, ignoring letter case.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plans fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MembershipPlan"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "6ac0a5f0eebc510147c67250",
+                      "name": "Gold",
+                      "durationValue": 1,
+                      "durationUnit": "year",
+                      "price": 4500,
+                      "tourDiscountPercent": 10,
+                      "visaDiscountPercent": 10,
+                      "maxDiscountAmount": 3000,
+                      "description": "Best value - a full year of member pricing.",
+                      "features": [
+                        "10% off tour packages",
+                        "10% off visa processing"
+                      ],
+                      "isActive": true,
+                      "sortOrder": 4,
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "total": 1
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Membership plans"
+        ],
+        "summary": "Create a membership plan",
+        "operationId": "createMembershipPlan",
+        "description": "The server sets `id`, `sortOrder` (the highest so far plus 1) and the timestamps. The name is unique in any letter case and spacing. `maxDiscountAmount` of `0` or `null` means no cap and is saved as `null`. Empty features are dropped. Unknown fields are ignored. The tour and visa discounts are separate, so a plan can give 10% on tours and 5% on visas.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "durationValue": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650
+                  },
+                  "durationUnit": {
+                    "type": "string",
+                    "enum": [
+                      "day",
+                      "month",
+                      "year"
+                    ]
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "tourDiscountPercent": {
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "visaDiscountPercent": {
+                    "default": 0,
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "maxDiscountAmount": {
+                    "nullable": true,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "description": {
+                    "default": "",
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "features": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200
+                    }
+                  },
+                  "isActive": {
+                    "default": true,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "durationValue",
+                  "durationUnit",
+                  "price"
+                ]
+              },
+              "example": {
+                "name": "Gold",
+                "durationValue": 1,
+                "durationUnit": "year",
+                "price": 4500,
+                "tourDiscountPercent": 10,
+                "visaDiscountPercent": 10,
+                "maxDiscountAmount": 3000,
+                "description": "Best value - a full year of member pricing.",
+                "features": [
+                  "10% off tour packages",
+                  "10% off visa processing"
+                ],
+                "isActive": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Plan created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPlan"
+                },
+                "example": {
+                  "id": "6ac0a5f0eebc510147c67250",
+                  "name": "Gold",
+                  "durationValue": 1,
+                  "durationUnit": "year",
+                  "price": 4500,
+                  "tourDiscountPercent": 10,
+                  "visaDiscountPercent": 10,
+                  "maxDiscountAmount": 3000,
+                  "description": "Best value - a full year of member pricing.",
+                  "features": [
+                    "10% off tour packages",
+                    "10% off visa processing"
+                  ],
+                  "isActive": true,
+                  "sortOrder": 4,
+                  "createdAt": "2026-10-03T06:51:28.261Z",
+                  "updatedAt": "2026-10-03T06:51:28.261Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Duration must be at least 1.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.durationValue",
+                      "message": "Duration must be at least 1."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `PLAN_NAME_TAKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Another plan already uses this name.",
+                  "code": "PLAN_NAME_TAKEN"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/membership-plans/{id}": {
+      "put": {
+        "tags": [
+          "Membership plans"
+        ],
+        "summary": "Edit a membership plan",
+        "operationId": "updateMembershipPlan",
+        "description": "The dashboard sends the whole plan back, so `id`, `sortOrder` and the timestamps are ignored. `name`, `durationValue`, `durationUnit` and `price` are required; any other field that is left out stays as it is. The name check skips the plan being edited. **Memberships already sold are never changed**: each keeps its own copy of the plan (`planSnapshot`).\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "durationValue": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650
+                  },
+                  "durationUnit": {
+                    "type": "string",
+                    "enum": [
+                      "day",
+                      "month",
+                      "year"
+                    ]
+                  },
+                  "price": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "tourDiscountPercent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "visaDiscountPercent": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "maxDiscountAmount": {
+                    "nullable": true,
+                    "type": "number",
+                    "minimum": 0
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 1000
+                  },
+                  "features": {
+                    "maxItems": 30,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 200
+                    }
+                  },
+                  "isActive": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "durationValue",
+                  "durationUnit",
+                  "price"
+                ]
+              },
+              "example": {
+                "name": "Gold",
+                "durationValue": 1,
+                "durationUnit": "year",
+                "price": 5000,
+                "tourDiscountPercent": 10,
+                "visaDiscountPercent": 10,
+                "maxDiscountAmount": 3000,
+                "description": "Best value",
+                "features": [
+                  "10% off tour packages"
+                ],
+                "isActive": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Plan updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPlan"
+                },
+                "example": {
+                  "id": "6ac0a5f0eebc510147c67250",
+                  "name": "Gold",
+                  "durationValue": 1,
+                  "durationUnit": "year",
+                  "price": 5000,
+                  "tourDiscountPercent": 10,
+                  "visaDiscountPercent": 10,
+                  "maxDiscountAmount": 3000,
+                  "description": "Best value - a full year of member pricing.",
+                  "features": [
+                    "10% off tour packages",
+                    "10% off visa processing"
+                  ],
+                  "isActive": true,
+                  "sortOrder": 4,
+                  "createdAt": "2026-10-03T06:51:28.261Z",
+                  "updatedAt": "2026-10-03T06:51:28.261Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Price cannot be negative.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.price",
+                      "message": "Price cannot be negative."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `PLAN_NAME_TAKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Another plan already uses this name.",
+                  "code": "PLAN_NAME_TAKEN"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Membership plans"
+        ],
+        "summary": "Delete a membership plan",
+        "operationId": "deleteMembershipPlan",
+        "description": "Only a plan that no membership ever used can be deleted, **including memberships that were later deleted or expired**. Otherwise the answer is `409`: deactivate the plan instead.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plan deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "example": "6ac0a5f0eebc510147c67250"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "id"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "id": "6ac0a5f0eebc510147c67250"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid id.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "Invalid id."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `PLAN_IN_USE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "This plan has memberships. Deactivate it instead of deleting it.",
+                  "code": "PLAN_IN_USE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/membership-plans/{id}/toggle": {
+      "patch": {
+        "tags": [
+          "Membership plans"
+        ],
+        "summary": "Activate or deactivate a plan",
+        "operationId": "toggleMembershipPlan",
+        "description": "No request body. Flips `isActive` and returns the plan. An inactive plan cannot be assigned to a customer (`Plan not available`). Memberships already sold carry on.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Plan updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipPlan"
+                },
+                "example": {
+                  "id": "6ac0a5f0eebc510147c67250",
+                  "name": "Gold",
+                  "durationValue": 1,
+                  "durationUnit": "year",
+                  "price": 4500,
+                  "tourDiscountPercent": 10,
+                  "visaDiscountPercent": 10,
+                  "maxDiscountAmount": 3000,
+                  "description": "Best value - a full year of member pricing.",
+                  "features": [
+                    "10% off tour packages",
+                    "10% off visa processing"
+                  ],
+                  "isActive": false,
+                  "sortOrder": 4,
+                  "createdAt": "2026-10-03T06:51:28.261Z",
+                  "updatedAt": "2026-10-03T06:51:28.261Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid id.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "Invalid id."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/memberships": {
+      "get": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "List memberships",
+        "operationId": "listMemberships",
+        "description": "Newest start date first. Every item carries the **effective status** and a computed `daysLeft`: a membership whose end date has passed is reported as `expired` even if the nightly job has not saved that yet.\n\n- `status` matches the effective status: `active` excludes lapsed rows, `expired` includes them.\n- `expiringIn=7` keeps active memberships with 0 to 7 days left.\n- `search` matches the customer name, phone and email by plain text, ignoring letter case.\n- Deleted memberships are never listed. There is no pagination.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "pending, active, expired or cancelled (the effective status).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "expired",
+                "cancelled",
+                ""
+              ]
+            },
+            "example": ""
+          },
+          {
+            "name": "planId",
+            "in": "query",
+            "required": false,
+            "description": "Only memberships of this plan.",
+            "schema": {
+              "type": "string",
+              "pattern": "^$|^[0-9a-fA-F]{24}$"
+            },
+            "example": ""
+          },
+          {
+            "name": "expiringIn",
+            "in": "query",
+            "required": false,
+            "description": "Active memberships with at most this many days left.",
+            "schema": {
+              "type": "string",
+              "pattern": "^$|^\\d{1,4}$"
+            },
+            "example": ""
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Part of the customer name, phone or email.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Memberships fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Membership"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "6ac0a5f0eebc510147c67251",
+                      "customerId": "6ac0a5f0eebc510147c6722a",
+                      "customerName": "Emma Wilson",
+                      "customerEmail": "emma@example.com",
+                      "customerPhone": "+44 20 7946 0958",
+                      "planId": "6ac0a5f0eebc510147c67250",
+                      "planSnapshot": {
+                        "name": "Silver",
+                        "durationValue": 6,
+                        "durationUnit": "month",
+                        "price": 2500,
+                        "tourDiscountPercent": 10,
+                        "visaDiscountPercent": 10,
+                        "maxDiscountAmount": 1500
+                      },
+                      "startDate": "2026-10-06T18:00:00.000Z",
+                      "endDate": "2027-04-05T17:59:59.999Z",
+                      "status": "active",
+                      "daysLeft": 181,
+                      "payment": {
+                        "method": "bkash",
+                        "amount": 2500,
+                        "trxId": "BKX88231A",
+                        "status": "paid",
+                        "paidAt": "2026-10-03T06:51:28.261Z"
+                      },
+                      "source": "admin",
+                      "cancelledAt": null,
+                      "cancelReason": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid status.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.status",
+                      "message": "Invalid status."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "Assign a plan to a customer and record the payment",
+        "operationId": "createMembership",
+        "description": "Checks, in this order: the customer exists (`404`), is a B2C customer (`400`), the plan exists and is active (`400 Plan not available`), and the customer has no active membership (`409`). A membership that has lapsed never blocks a renewal.\n\nThe membership keeps a copy of the plan (`planSnapshot`). The end date is the start date plus the plan length minus one day, at 23:59:59.999 in Asia/Dhaka: a 15-day plan starting 1 Oct ends on 15 Oct. `startDate` is `YYYY-MM-DD` and defaults to today in Asia/Dhaka. A future start date is still `active`.\n\nThe payment is saved as `paid` with the amount **from the plan** (the request cannot set it). `trxId` is only kept for the record and may be empty.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "customerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "planId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "paymentMethod": {
+                    "type": "string",
+                    "enum": [
+                      "bkash",
+                      "nagad",
+                      "bank",
+                      "cash",
+                      "online"
+                    ]
+                  },
+                  "trxId": {
+                    "type": "string",
+                    "maxLength": 100
+                  },
+                  "startDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  }
+                },
+                "required": [
+                  "customerId",
+                  "planId",
+                  "paymentMethod"
+                ]
+              },
+              "example": {
+                "customerId": "6ac0a5f0eebc510147c6722a",
+                "planId": "6ac0a5f0eebc510147c67250",
+                "paymentMethod": "bkash",
+                "trxId": "BKX88231A",
+                "startDate": "2026-10-07"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Membership created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                },
+                "example": {
+                  "id": "6ac0a5f0eebc510147c67251",
+                  "customerId": "6ac0a5f0eebc510147c6722a",
+                  "customerName": "Emma Wilson",
+                  "customerEmail": "emma@example.com",
+                  "customerPhone": "+44 20 7946 0958",
+                  "planId": "6ac0a5f0eebc510147c67250",
+                  "planSnapshot": {
+                    "name": "Silver",
+                    "durationValue": 6,
+                    "durationUnit": "month",
+                    "price": 2500,
+                    "tourDiscountPercent": 10,
+                    "visaDiscountPercent": 10,
+                    "maxDiscountAmount": 1500
+                  },
+                  "startDate": "2026-10-06T18:00:00.000Z",
+                  "endDate": "2027-04-05T17:59:59.999Z",
+                  "status": "active",
+                  "daysLeft": 181,
+                  "payment": {
+                    "method": "bkash",
+                    "amount": 2500,
+                    "trxId": "BKX88231A",
+                    "status": "paid",
+                    "paidAt": "2026-10-03T06:51:28.261Z"
+                  },
+                  "source": "admin",
+                  "cancelledAt": null,
+                  "cancelReason": "",
+                  "createdAt": "2026-10-03T06:51:28.261Z",
+                  "updatedAt": "2026-10-03T06:51:28.261Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `NOT_B2C`, `PLAN_NOT_AVAILABLE`, `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Membership is only for B2C customers",
+                  "code": "NOT_B2C"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `ALREADY_ACTIVE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Customer already has an active membership - cancel or wait for expiry first.",
+                  "code": "ALREADY_ACTIVE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/{id}/cancel": {
+      "patch": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "Cancel a membership",
+        "operationId": "cancelMembership",
+        "description": "Allowed for an active or pending membership. Sets `status` to `cancelled` with `cancelledAt` and the optional `reason` (up to 500 characters). Discounts stop at once. The payment status is **not** changed: refunds are handled by hand.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": false,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                }
+              },
+              "example": {
+                "reason": "Customer request, refund issued."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Membership cancelled.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                },
+                "example": {
+                  "id": "6ac0a5f0eebc510147c67251",
+                  "customerId": "6ac0a5f0eebc510147c6722a",
+                  "customerName": "Emma Wilson",
+                  "customerEmail": "emma@example.com",
+                  "customerPhone": "+44 20 7946 0958",
+                  "planId": "6ac0a5f0eebc510147c67250",
+                  "planSnapshot": {
+                    "name": "Silver",
+                    "durationValue": 6,
+                    "durationUnit": "month",
+                    "price": 2500,
+                    "tourDiscountPercent": 10,
+                    "visaDiscountPercent": 10,
+                    "maxDiscountAmount": 1500
+                  },
+                  "startDate": "2026-10-06T18:00:00.000Z",
+                  "endDate": "2027-04-05T17:59:59.999Z",
+                  "status": "cancelled",
+                  "daysLeft": 181,
+                  "payment": {
+                    "method": "bkash",
+                    "amount": 2500,
+                    "trxId": "BKX88231A",
+                    "status": "paid",
+                    "paidAt": "2026-10-03T06:51:28.261Z"
+                  },
+                  "source": "admin",
+                  "cancelledAt": "2026-10-03T06:51:28.261Z",
+                  "cancelReason": "Customer request, refund issued.",
+                  "createdAt": "2026-10-03T06:51:28.261Z",
+                  "updatedAt": "2026-10-03T06:51:28.261Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Reason must be at most 500 characters.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.reason",
+                      "message": "Reason must be at most 500 characters."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `INVALID_STATE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Only active or pending memberships can be cancelled.",
+                  "code": "INVALID_STATE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/{id}/extend": {
+      "patch": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "Extend a membership",
+        "operationId": "extendMembership",
+        "description": "Adds `days` (1 to 3650) to the current end date and keeps the 23:59:59.999 time, in Asia/Dhaka. Only an effectively **active** membership can be extended; a lapsed, cancelled or expired one answers `409`.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "days": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 3650
+                  }
+                },
+                "required": [
+                  "days"
+                ]
+              },
+              "example": {
+                "days": 7
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Membership extended.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Membership"
+                },
+                "example": {
+                  "id": "6ac0a5f0eebc510147c67251",
+                  "customerId": "6ac0a5f0eebc510147c6722a",
+                  "customerName": "Emma Wilson",
+                  "customerEmail": "emma@example.com",
+                  "customerPhone": "+44 20 7946 0958",
+                  "planId": "6ac0a5f0eebc510147c67250",
+                  "planSnapshot": {
+                    "name": "Silver",
+                    "durationValue": 6,
+                    "durationUnit": "month",
+                    "price": 2500,
+                    "tourDiscountPercent": 10,
+                    "visaDiscountPercent": 10,
+                    "maxDiscountAmount": 1500
+                  },
+                  "startDate": "2026-10-06T18:00:00.000Z",
+                  "endDate": "2026-11-06T17:59:59.999Z",
+                  "status": "active",
+                  "daysLeft": 38,
+                  "payment": {
+                    "method": "bkash",
+                    "amount": 2500,
+                    "trxId": "BKX88231A",
+                    "status": "paid",
+                    "paidAt": "2026-10-03T06:51:28.261Z"
+                  },
+                  "source": "admin",
+                  "cancelledAt": null,
+                  "cancelReason": "",
+                  "createdAt": "2026-10-03T06:51:28.261Z",
+                  "updatedAt": "2026-10-03T06:51:28.261Z"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Days must be at least 1.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.days",
+                      "message": "Days must be at least 1."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `INVALID_STATE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Only active memberships can be extended.",
+                  "code": "INVALID_STATE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/memberships/{id}": {
+      "delete": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "Delete a membership",
+        "operationId": "deleteMembership",
+        "description": "A **soft delete**: the membership leaves every list and count, and no longer blocks the customer from buying again, but the record and its payment are kept, so the **revenue stays in the reports**. A deleted membership answers `404` afterwards.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "example": "6ac0a5f0eebc510147c67250"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "id"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "id": "6ac0a5f0eebc510147c67251"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid id.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "Invalid id."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/customers/{customerId}/memberships": {
+      "get": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "Memberships of one customer",
+        "operationId": "listCustomerMemberships",
+        "description": "The full history of one customer, newest first, with the effective status and `daysLeft`. Used by the customer profile page. This answer has `items` only, with no `total`. An unknown customer answers `404`.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "customerId",
+            "in": "path",
+            "required": true,
+            "description": "customerId",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6722a"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Memberships fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Membership"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "6ac0a5f0eebc510147c67251",
+                      "customerId": "6ac0a5f0eebc510147c6722a",
+                      "customerName": "Emma Wilson",
+                      "customerEmail": "emma@example.com",
+                      "customerPhone": "+44 20 7946 0958",
+                      "planId": "6ac0a5f0eebc510147c67250",
+                      "planSnapshot": {
+                        "name": "Silver",
+                        "durationValue": 6,
+                        "durationUnit": "month",
+                        "price": 2500,
+                        "tourDiscountPercent": 10,
+                        "visaDiscountPercent": 10,
+                        "maxDiscountAmount": 1500
+                      },
+                      "startDate": "2026-10-06T18:00:00.000Z",
+                      "endDate": "2027-04-05T17:59:59.999Z",
+                      "status": "active",
+                      "daysLeft": 181,
+                      "payment": {
+                        "method": "bkash",
+                        "amount": 2500,
+                        "trxId": "BKX88231A",
+                        "status": "paid",
+                        "paidAt": "2026-10-03T06:51:28.261Z"
+                      },
+                      "source": "admin",
+                      "cancelledAt": null,
+                      "cancelReason": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid id.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.customerId",
+                      "message": "Invalid id."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
+    "/api/membership-stats": {
+      "get": {
+        "tags": [
+          "Membership reports"
+        ],
+        "summary": "Membership numbers for the dashboard",
+        "operationId": "getMembershipStats",
+        "description": "Everything the cards and charts need, in one object. Memberships are counted by their effective status; deleted ones are not counted, but their payments still count in revenue. Months and days follow Asia/Dhaka.\n\n- `expiredThisMonth` counts expired memberships (not cancelled ones) whose end date is in the current month.\n- `revenueByMonth` always has exactly 6 entries, the last 6 calendar months, oldest first, with `0` for a month without payments.\n- `planDistribution` has one entry per existing plan, including plans with 0 memberships.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Stats fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MembershipStats"
+                },
+                "example": {
+                  "total": 7,
+                  "active": 5,
+                  "expiringIn7": 1,
+                  "expiredThisMonth": 1,
+                  "revenueThisMonth": 1400,
+                  "revenueByMonth": [
+                    {
+                      "label": "May",
+                      "value": 0
+                    },
+                    {
+                      "label": "Jun",
+                      "value": 0
+                    },
+                    {
+                      "label": "Jul",
+                      "value": 0
+                    },
+                    {
+                      "label": "Aug",
+                      "value": 2500
+                    },
+                    {
+                      "label": "Sep",
+                      "value": 900
+                    },
+                    {
+                      "label": "Oct",
+                      "value": 1400
+                    }
+                  ],
+                  "planDistribution": [
+                    {
+                      "label": "Starter",
+                      "value": 1
+                    },
+                    {
+                      "label": "Basic",
+                      "value": 3
+                    },
+                    {
+                      "label": "Silver",
+                      "value": 2
+                    },
+                    {
+                      "label": "Gold",
+                      "value": 1
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/membership-report/periods": {
+      "get": {
+        "tags": [
+          "Membership reports"
+        ],
+        "summary": "Sales by period",
+        "operationId": "getMembershipPeriods",
+        "description": "The last 6 periods, oldest first. `mode=monthly` (the default) gives 6 calendar months, and the current one is labelled \"(to date)\". `mode=half` gives 6 fifteen-day periods (the 1st to the 15th, the 16th to the end of the month), ending with the one we are in. Each period runs from 00:00:00.000 of its first day to 23:59:59.999 of its last, in Asia/Dhaka.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "mode",
+            "in": "query",
+            "required": false,
+            "description": "mode",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "monthly",
+                "half"
+              ]
+            },
+            "example": "monthly"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Report fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/MembershipPeriod"
+                      }
+                    }
+                  },
+                  "required": [
+                    "items"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "monthly-2026-10-01",
+                      "label": "Oct 2026 (to date)",
+                      "start": "2026-10-01",
+                      "end": "2026-10-31",
+                      "newCount": 3,
+                      "revenue": 1400,
+                      "expiredCount": 1,
+                      "cancelledCount": 0
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "mode must be monthly or half.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.mode",
+                      "message": "mode must be monthly or half."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/b2c/memberships": {
+      "get": {
+        "tags": [
+          "Customer (B2C)"
+        ],
+        "summary": "My memberships",
+        "operationId": "listMyMemberships",
+        "description": "A customer reads **their own** memberships, newest first, with the effective status and `daysLeft`. The customer always comes from the token. The admin's internal `cancelReason` is left out. Use `status=active` for the profile page. Read-only: a customer cannot sell, cancel or extend one.\n\n**Access:** B2C.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "pending, active, expired or cancelled (the effective status).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "expired",
+                "cancelled",
+                ""
+              ]
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Memberships fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Membership"
+                      }
+                    },
+                    "total": {
+                      "type": "integer",
+                      "example": 1
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "total"
+                  ]
+                },
+                "example": {
+                  "items": [
+                    {
+                      "id": "6ac0a5f0eebc510147c67251",
+                      "customerId": "6ac0a5f0eebc510147c6722a",
+                      "customerName": "Emma Wilson",
+                      "customerEmail": "emma@example.com",
+                      "customerPhone": "+44 20 7946 0958",
+                      "planId": "6ac0a5f0eebc510147c67250",
+                      "planSnapshot": {
+                        "name": "Silver",
+                        "durationValue": 6,
+                        "durationUnit": "month",
+                        "price": 2500,
+                        "tourDiscountPercent": 10,
+                        "visaDiscountPercent": 10,
+                        "maxDiscountAmount": 1500
+                      },
+                      "startDate": "2026-10-06T18:00:00.000Z",
+                      "endDate": "2027-04-05T17:59:59.999Z",
+                      "status": "active",
+                      "daysLeft": 181,
+                      "payment": {
+                        "method": "bkash",
+                        "amount": 2500,
+                        "trxId": "BKX88231A",
+                        "status": "paid",
+                        "paidAt": "2026-10-03T06:51:28.261Z"
+                      },
+                      "source": "admin",
+                      "cancelledAt": null,
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid status.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.status",
+                      "message": "Invalid status."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
     "/": {
       "get": {
         "tags": [
@@ -8169,7 +9924,15 @@
               "TOUR_UPDATED",
               "TOUR_ARCHIVED",
               "CUSTOM_TOUR_REQUESTED",
-              "CUSTOM_TOUR_STATUS_CHANGED"
+              "CUSTOM_TOUR_STATUS_CHANGED",
+              "MEMBERSHIP_PLAN_CREATED",
+              "MEMBERSHIP_PLAN_UPDATED",
+              "MEMBERSHIP_PLAN_TOGGLED",
+              "MEMBERSHIP_PLAN_DELETED",
+              "MEMBERSHIP_CREATED",
+              "MEMBERSHIP_CANCELLED",
+              "MEMBERSHIP_EXTENDED",
+              "MEMBERSHIP_DELETED"
             ],
             "example": "LOGIN"
           },
@@ -8559,6 +10322,389 @@
           "endDate",
           "hotel",
           "status"
+        ]
+      },
+      "MembershipPlan": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67250"
+          },
+          "name": {
+            "type": "string",
+            "example": "Gold",
+            "description": "Unique in any letter case."
+          },
+          "durationValue": {
+            "type": "integer",
+            "minimum": 1,
+            "example": 1
+          },
+          "durationUnit": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month",
+              "year"
+            ],
+            "example": "year"
+          },
+          "price": {
+            "type": "number",
+            "minimum": 0,
+            "example": 4500,
+            "description": "BDT."
+          },
+          "tourDiscountPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 10
+          },
+          "visaDiscountPercent": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "example": 10
+          },
+          "maxDiscountAmount": {
+            "type": "number",
+            "nullable": true,
+            "minimum": 0,
+            "example": 3000,
+            "description": "Per-booking cap in BDT. null means no cap."
+          },
+          "description": {
+            "type": "string",
+            "example": "Best value"
+          },
+          "features": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "10% off tour packages"
+            }
+          },
+          "isActive": {
+            "type": "boolean",
+            "example": true
+          },
+          "sortOrder": {
+            "type": "integer",
+            "example": 4
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "durationValue",
+          "durationUnit",
+          "price",
+          "isActive",
+          "sortOrder"
+        ]
+      },
+      "Membership": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67251"
+          },
+          "customerId": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c6722a"
+          },
+          "customerName": {
+            "type": "string",
+            "example": "Emma Wilson",
+            "description": "Copied from the customer. Kept in step when the customer edits their name."
+          },
+          "customerEmail": {
+            "type": "string",
+            "example": "emma@example.com"
+          },
+          "customerPhone": {
+            "type": "string",
+            "example": "+8801712345678"
+          },
+          "planId": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67250"
+          },
+          "planSnapshot": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "example": "Silver"
+              },
+              "durationValue": {
+                "type": "integer",
+                "example": 6
+              },
+              "durationUnit": {
+                "type": "string",
+                "enum": [
+                  "day",
+                  "month",
+                  "year"
+                ]
+              },
+              "price": {
+                "type": "number",
+                "example": 2500
+              },
+              "tourDiscountPercent": {
+                "type": "number",
+                "example": 10
+              },
+              "visaDiscountPercent": {
+                "type": "number",
+                "example": 10
+              },
+              "maxDiscountAmount": {
+                "type": "number",
+                "nullable": true,
+                "example": 1500
+              }
+            }
+          },
+          "startDate": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "endDate": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time",
+            "description": "Always 23:59:59.999 in Asia/Dhaka."
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "active",
+              "expired",
+              "cancelled"
+            ],
+            "example": "active",
+            "description": "The effective status: a stored active whose end date has passed is returned as expired."
+          },
+          "daysLeft": {
+            "type": "integer",
+            "example": 181,
+            "description": "Computed on every read, counted up. Negative once the end has passed."
+          },
+          "payment": {
+            "type": "object",
+            "properties": {
+              "method": {
+                "type": "string",
+                "enum": [
+                  "bkash",
+                  "nagad",
+                  "bank",
+                  "cash",
+                  "online"
+                ],
+                "example": "bkash"
+              },
+              "amount": {
+                "type": "number",
+                "example": 2500
+              },
+              "trxId": {
+                "type": "string",
+                "example": "BKX88231A"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "unpaid",
+                  "paid",
+                  "refunded"
+                ],
+                "example": "paid"
+              },
+              "paidAt": {
+                "type": "string",
+                "example": "2026-10-03T06:51:28.261Z",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "admin",
+              "online"
+            ],
+            "example": "admin"
+          },
+          "cancelledAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "example": "",
+            "description": "The admin's internal note. Not shown to the customer."
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "customerId",
+          "planId",
+          "planSnapshot",
+          "startDate",
+          "endDate",
+          "status",
+          "daysLeft",
+          "payment"
+        ]
+      },
+      "MembershipStats": {
+        "type": "object",
+        "properties": {
+          "total": {
+            "type": "integer",
+            "example": 7
+          },
+          "active": {
+            "type": "integer",
+            "example": 5
+          },
+          "expiringIn7": {
+            "type": "integer",
+            "example": 1
+          },
+          "expiredThisMonth": {
+            "type": "integer",
+            "example": 1
+          },
+          "revenueThisMonth": {
+            "type": "number",
+            "example": 1400
+          },
+          "revenueByMonth": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "example": "Oct"
+                },
+                "value": {
+                  "type": "number",
+                  "example": 1400
+                }
+              }
+            },
+            "description": "Always 6 entries, oldest first."
+          },
+          "planDistribution": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "example": "Gold"
+                },
+                "value": {
+                  "type": "integer",
+                  "example": 1
+                }
+              }
+            }
+          }
+        },
+        "required": [
+          "total",
+          "active",
+          "expiringIn7",
+          "expiredThisMonth",
+          "revenueThisMonth",
+          "revenueByMonth",
+          "planDistribution"
+        ]
+      },
+      "MembershipPeriod": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "monthly-2026-10-01",
+            "description": "{mode}-{start}. Unique, usable as a row key."
+          },
+          "label": {
+            "type": "string",
+            "example": "Oct 2026 (to date)"
+          },
+          "start": {
+            "type": "string",
+            "example": "2026-10-01"
+          },
+          "end": {
+            "type": "string",
+            "example": "2026-10-31"
+          },
+          "newCount": {
+            "type": "integer",
+            "example": 3,
+            "description": "Memberships created in the period."
+          },
+          "revenue": {
+            "type": "number",
+            "example": 1400,
+            "description": "Payments received in the period."
+          },
+          "expiredCount": {
+            "type": "integer",
+            "example": 1,
+            "description": "Not cancelled, ended in the period, and already in the past."
+          },
+          "cancelledCount": {
+            "type": "integer",
+            "example": 0
+          }
+        },
+        "required": [
+          "id",
+          "label",
+          "start",
+          "end",
+          "newCount",
+          "revenue",
+          "expiredCount",
+          "cancelledCount"
         ]
       },
       "RbacCatalog": {

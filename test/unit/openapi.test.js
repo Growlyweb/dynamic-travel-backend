@@ -49,7 +49,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
 
     expect(undocumented).toEqual([]);
     expect(phantom).toEqual([]);
-    expect(real.size).toBe(60);
+    expect(real.size).toBe(74);
   });
 
   it('gives every operation a summary, a tag, an id, a success response and explicit access', () => {
@@ -150,6 +150,43 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
     expect(create.properties.status.enum).toEqual(['draft', 'published', 'unpublished', 'archived']);
     expect(create.properties.role).toBeUndefined();
     expect(spec.components.schemas.Tour.properties.b2bPrice.description).toMatch(/Only present/);
+  });
+
+  it('documents the membership module in the dashboard\'s shapes: manager-only, { items, total }, id, and 400 for validation', () => {
+    const op = (method, p) => spec.paths[p][method];
+    const json = (response) => response.content['application/json'];
+    const managerRoutes = [
+      ['get', '/api/membership-plans'], ['post', '/api/membership-plans'], ['put', '/api/membership-plans/{id}'], ['patch', '/api/membership-plans/{id}/toggle'],
+      ['delete', '/api/membership-plans/{id}'], ['get', '/api/memberships'], ['post', '/api/memberships'], ['patch', '/api/memberships/{id}/cancel'],
+      ['patch', '/api/memberships/{id}/extend'], ['delete', '/api/memberships/{id}'], ['get', '/api/customers/{customerId}/memberships'],
+      ['get', '/api/membership-stats'], ['get', '/api/membership-report/periods']
+    ];
+
+    managerRoutes.forEach(([m, p]) => {
+      expect({ m, p, security: op(m, p).security }).toEqual({ m, p, security: [{ bearerAuth: [] }] });
+      expect(op(m, p).description).toMatch(/MEMBERSHIP_MANAGE/);
+    });
+    expect(op('get', '/api/b2c/memberships').description).toMatch(/\*\*Access:\*\* B2C/);
+
+    // lists are { items, total } with no envelope, a single answer is the object itself, delete is { success, id }
+    const list = json(op('get', '/api/membership-plans').responses['200']);
+    expect(Object.keys(list.schema.properties)).toEqual(['items', 'total']);
+    expect(Object.keys(list.example)).toEqual(['items', 'total']);
+    expect(Object.keys(json(op('get', '/api/customers/{customerId}/memberships').responses['200']).schema.properties)).toEqual(['items']);
+    expect(json(op('post', '/api/memberships').responses['201']).schema).toEqual({ $ref: '#/components/schemas/Membership' });
+    expect(Object.keys(json(op('delete', '/api/memberships/{id}').responses['200']).example)).toEqual(['success', 'id']);
+    expect(spec.components.schemas.Membership.properties).toHaveProperty('id');
+    expect(spec.components.schemas.Membership.properties).not.toHaveProperty('_id');
+
+    // validation failures on these routes are 400 (the rest of the API uses 422)
+    expect(op('post', '/api/membership-plans').responses).toHaveProperty('400');
+    expect(op('post', '/api/membership-plans').responses).not.toHaveProperty('422');
+
+    const create = op('post', '/api/memberships').requestBody.content['application/json'].schema;
+    expect(create.required).toEqual(expect.arrayContaining(['customerId', 'planId', 'paymentMethod']));
+    expect(create.properties.paymentMethod.enum).toEqual(['bkash', 'nagad', 'bank', 'cash', 'online']);
+    expect(create.properties.amount).toBeUndefined(); // the amount always comes from the plan
+    expect(op('get', '/api/membership-report/periods').parameters.map((x) => x.name)).toEqual(['mode']);
   });
 
   it('lets web clients stay in web mode: the mobile header is documented but empty by default', () => {

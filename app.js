@@ -18,6 +18,7 @@ const authRoutes = require('./routes/authRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const tourRoutes = require('./routes/tourRoutes');
 const tourCategoryRoutes = require('./routes/tourCategoryRoutes');
+const membershipRoutes = require('./routes/membershipRoutes');
 const adminRoutes = require('./routes/admin');
 const staffRoutes = require('./routes/staff');
 const b2bRoutes = require('./routes/b2b');
@@ -82,6 +83,9 @@ app.use('/api/documents', documentRoutes);
 // Tour packages. Reading is public; changing needs TOUR_MANAGE; custom requests are for B2C customers.
 app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/tours', tourRoutes);
+
+// Membership plans, memberships and reports. Mounted at /api with the guards on each route, see the file.
+app.use('/api', membershipRoutes);
 
 // Role areas (authenticate + requireRole applied once, inside each router's index)
 app.use('/api/admin', adminRoutes);

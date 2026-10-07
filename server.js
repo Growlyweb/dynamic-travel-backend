@@ -4,6 +4,7 @@ const env = require('./config/env');
 const connectDB = require('./config/db');
 const app = require('./app');
 const logger = require('./utils/logger');
+const membershipJob = require('./services/membershipJob');
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
 
@@ -17,11 +18,14 @@ const start = async () => {
     logger.info(`Server running in ${env.nodeEnv} mode on port ${env.port}`);
   });
 
+  const expiryTask = membershipJob.start();
+
   let shuttingDown = false;
   const shutdown = (signal) => {
     if (shuttingDown) return;
     shuttingDown = true;
     logger.info(`${signal} received. Shutting down.`);
+    if (expiryTask) expiryTask.stop();
 
     // Idle keep-alive connections would otherwise hold server.close() open.
     const forceExit = setTimeout(() => {

@@ -40,6 +40,11 @@ const ERROR_MESSAGES = {
   TRADE_LICENSE_MISSING: 'A partner cannot be approved without a trade license document.',
   CATEGORY_IN_USE: 'This category is used by 2 tours. Move or archive them first.',
   INVALID_TRANSITION: 'A request that is CANCELLED cannot become IN_REVIEW.',
+  PLAN_NAME_TAKEN: 'Another plan already uses this name.',
+  PLAN_IN_USE: 'This plan has memberships. Deactivate it instead of deleting it.',
+  ALREADY_ACTIVE: 'Customer already has an active membership - cancel or wait for expiry first.',
+  NOT_B2C: 'Membership is only for B2C customers',
+  PLAN_NOT_AVAILABLE: 'Plan not available',
   DB_DOWN: 'Database is not reachable.'
 };
 
@@ -76,6 +81,8 @@ The role is **never** accepted from a request body. The endpoint decides it.
 ## Responses
 
 Success: \`{ "success": true, "message": "...", "data": ..., "meta": { total, page, limit, totalPages }, "pagination": { same object } }\` (\`meta\` and \`pagination\` on lists only; they are identical, read either).
+
+**Membership routes are the exception.** They answer in the shapes of the dashboard: a list is \`{ "items": [...], "total": n }\`, a single answer is the object itself, ids are called \`id\`, and a delete is \`{ "success": true, "id": "..." }\`. Errors keep the usual shape, and a failed validation there is \`400\`.
 Error: \`{ "success": false, "message": "...", "code": "SOME_CODE", "errors": [{ "field", "message" }] }\`. Branch on \`code\`, not on \`message\`.
 
 | Status | Meaning |
@@ -112,6 +119,10 @@ const headerParam = {
 
 const errorResponse = (status, codes) => {
   if (codes === true) return { $ref: `#/components/responses/${STATUS_TO_COMPONENT[status]}` };
+  // { codes, message, fields }: an error with its own example message (used by the membership routes)
+  if (!Array.isArray(codes)) {
+    return errorBody(`${STATUS_TEXT[status]}. Possible error codes: ${codes.codes.map((c) => `\`${c}\``).join(', ')}.`, errorExample(codes.message, codes.codes[0], codes.fields));
+  }
   const first = codes[0];
   return errorBody(
     `${STATUS_TEXT[status]}. Possible error codes: ${codes.map((c) => `\`${c}\``).join(', ')}.`,

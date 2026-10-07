@@ -104,8 +104,14 @@ const AUDIT_ENUM = [
   'REGISTER', 'EMAIL_VERIFIED', 'LOGIN', 'LOGIN_FAILED', 'LOGOUT', 'TOKEN_REUSE_DETECTED', 'PASSWORD_CHANGED',
   'PASSWORD_RESET', 'USER_CREATED', 'ACCOUNT_ACTIVATED', 'ACCOUNT_SUSPENDED', 'ACCOUNT_STATUS_CHANGED', 'ROLE_CHANGED',
   'PERMISSION_CHANGED', 'B2B_APPROVED', 'B2B_REJECTED', 'B2B_STATUS_CHANGED', 'DOCUMENT_REVIEWED', 'PROFILE_UPDATED',
-  'CATEGORY_CREATED', 'CATEGORY_DEACTIVATED', 'TOUR_CREATED', 'TOUR_UPDATED', 'TOUR_ARCHIVED', 'CUSTOM_TOUR_REQUESTED', 'CUSTOM_TOUR_STATUS_CHANGED'
+  'CATEGORY_CREATED', 'CATEGORY_DEACTIVATED', 'TOUR_CREATED', 'TOUR_UPDATED', 'TOUR_ARCHIVED', 'CUSTOM_TOUR_REQUESTED', 'CUSTOM_TOUR_STATUS_CHANGED',
+  'MEMBERSHIP_PLAN_CREATED', 'MEMBERSHIP_PLAN_UPDATED', 'MEMBERSHIP_PLAN_TOGGLED', 'MEMBERSHIP_PLAN_DELETED',
+  'MEMBERSHIP_CREATED', 'MEMBERSHIP_CANCELLED', 'MEMBERSHIP_EXTENDED', 'MEMBERSHIP_DELETED'
 ];
+const MEMBERSHIP_STATUS_ENUM = ['pending', 'active', 'expired', 'cancelled'];
+const PAYMENT_METHOD_ENUM = ['bkash', 'nagad', 'bank', 'cash', 'online'];
+const PAYMENT_STATUS_ENUM = ['unpaid', 'paid', 'refunded'];
+const DURATION_UNIT_ENUM = ['day', 'month', 'year'];
 const TOUR_STATUS_ENUM = ['draft', 'published', 'unpublished', 'archived'];
 const CURRENCY_ENUM = ['BDT', 'USD', 'EUR'];
 const REQUEST_STATUS_ENUM = ['NEW', 'IN_REVIEW', 'QUOTED', 'CONFIRMED', 'CANCELLED'];
@@ -220,6 +226,60 @@ const exCustomRequest = (over = {}) => ({
   updatedAt: NOW,
   ...over
 });
+
+const exPlan = (over = {}) => ({
+  id: '6ac0a5f0eebc510147c67250',
+  name: 'Gold',
+  durationValue: 1,
+  durationUnit: 'year',
+  price: 4500,
+  tourDiscountPercent: 10,
+  visaDiscountPercent: 10,
+  maxDiscountAmount: 3000,
+  description: 'Best value - a full year of member pricing.',
+  features: ['10% off tour packages', '10% off visa processing'],
+  isActive: true,
+  sortOrder: 4,
+  createdAt: NOW,
+  updatedAt: NOW,
+  ...over
+});
+
+const exMembership = (over = {}) => ({
+  id: '6ac0a5f0eebc510147c67251',
+  customerId: '6ac0a5f0eebc510147c6722a',
+  customerName: 'Emma Wilson',
+  customerEmail: 'emma@example.com',
+  customerPhone: '+44 20 7946 0958',
+  planId: '6ac0a5f0eebc510147c67250',
+  planSnapshot: { name: 'Silver', durationValue: 6, durationUnit: 'month', price: 2500, tourDiscountPercent: 10, visaDiscountPercent: 10, maxDiscountAmount: 1500 },
+  startDate: '2026-10-06T18:00:00.000Z',
+  endDate: '2027-04-05T17:59:59.999Z',
+  status: 'active',
+  daysLeft: 181,
+  payment: { method: 'bkash', amount: 2500, trxId: 'BKX88231A', status: 'paid', paidAt: NOW },
+  source: 'admin',
+  cancelledAt: null,
+  cancelReason: '',
+  createdAt: NOW,
+  updatedAt: NOW,
+  ...over
+});
+
+const exStats = {
+  total: 7,
+  active: 5,
+  expiringIn7: 1,
+  expiredThisMonth: 1,
+  revenueThisMonth: 1400,
+  revenueByMonth: [
+    { label: 'May', value: 0 }, { label: 'Jun', value: 0 }, { label: 'Jul', value: 0 },
+    { label: 'Aug', value: 2500 }, { label: 'Sep', value: 900 }, { label: 'Oct', value: 1400 }
+  ],
+  planDistribution: [{ label: 'Starter', value: 1 }, { label: 'Basic', value: 3 }, { label: 'Silver', value: 2 }, { label: 'Gold', value: 1 }]
+};
+
+const exPeriod = { id: 'monthly-2026-10-01', label: 'Oct 2026 (to date)', start: '2026-10-01', end: '2026-10-31', newCount: 3, revenue: 1400, expiredCount: 1, cancelledCount: 0 };
 
 const exSession = (withUser = true) => ({
   accessToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YWMwYTVmMC4uLiJ9.signature',
@@ -398,6 +458,86 @@ const schemas = {
     },
     ['_id', 'userId', 'customer', 'destination', 'travelers', 'startDate', 'endDate', 'hotel', 'status']
   ),
+  MembershipPlan: obj(
+    {
+      id: str('6ac0a5f0eebc510147c67250'),
+      name: str('Gold', { description: 'Unique in any letter case.' }),
+      durationValue: { type: 'integer', minimum: 1, example: 1 },
+      durationUnit: { type: 'string', enum: DURATION_UNIT_ENUM, example: 'year' },
+      price: { type: 'number', minimum: 0, example: 4500, description: 'BDT.' },
+      tourDiscountPercent: { type: 'number', minimum: 0, maximum: 100, example: 10 },
+      visaDiscountPercent: { type: 'number', minimum: 0, maximum: 100, example: 10 },
+      maxDiscountAmount: { type: 'number', nullable: true, minimum: 0, example: 3000, description: 'Per-booking cap in BDT. null means no cap.' },
+      description: str('Best value'),
+      features: arrayOf(str('10% off tour packages')),
+      isActive: bool(true),
+      sortOrder: { type: 'integer', example: 4 },
+      createdAt: str(NOW, { format: 'date-time' }),
+      updatedAt: str(NOW, { format: 'date-time' })
+    },
+    ['id', 'name', 'durationValue', 'durationUnit', 'price', 'isActive', 'sortOrder']
+  ),
+  Membership: obj(
+    {
+      id: str('6ac0a5f0eebc510147c67251'),
+      customerId: str('6ac0a5f0eebc510147c6722a'),
+      customerName: str('Emma Wilson', { description: 'Copied from the customer. Kept in step when the customer edits their name.' }),
+      customerEmail: str('emma@example.com'),
+      customerPhone: str('+8801712345678'),
+      planId: str('6ac0a5f0eebc510147c67250'),
+      planSnapshot: obj({
+        name: str('Silver'),
+        durationValue: { type: 'integer', example: 6 },
+        durationUnit: { type: 'string', enum: DURATION_UNIT_ENUM },
+        price: { type: 'number', example: 2500 },
+        tourDiscountPercent: { type: 'number', example: 10 },
+        visaDiscountPercent: { type: 'number', example: 10 },
+        maxDiscountAmount: { type: 'number', nullable: true, example: 1500 }
+      }),
+      startDate: str(NOW, { format: 'date-time' }),
+      endDate: str(NOW, { format: 'date-time', description: 'Always 23:59:59.999 in Asia/Dhaka.' }),
+      status: { type: 'string', enum: MEMBERSHIP_STATUS_ENUM, example: 'active', description: 'The effective status: a stored active whose end date has passed is returned as expired.' },
+      daysLeft: { type: 'integer', example: 181, description: 'Computed on every read, counted up. Negative once the end has passed.' },
+      payment: obj({
+        method: { type: 'string', enum: PAYMENT_METHOD_ENUM, example: 'bkash' },
+        amount: { type: 'number', example: 2500 },
+        trxId: str('BKX88231A'),
+        status: { type: 'string', enum: PAYMENT_STATUS_ENUM, example: 'paid' },
+        paidAt: str(NOW, { format: 'date-time', nullable: true })
+      }),
+      source: { type: 'string', enum: ['admin', 'online'], example: 'admin' },
+      cancelledAt: str(NOW, { format: 'date-time', nullable: true }),
+      cancelReason: str('', { description: 'The admin\'s internal note. Not shown to the customer.' }),
+      createdAt: str(NOW, { format: 'date-time' }),
+      updatedAt: str(NOW, { format: 'date-time' })
+    },
+    ['id', 'customerId', 'planId', 'planSnapshot', 'startDate', 'endDate', 'status', 'daysLeft', 'payment']
+  ),
+  MembershipStats: obj(
+    {
+      total: { type: 'integer', example: 7 },
+      active: { type: 'integer', example: 5 },
+      expiringIn7: { type: 'integer', example: 1 },
+      expiredThisMonth: { type: 'integer', example: 1 },
+      revenueThisMonth: { type: 'number', example: 1400 },
+      revenueByMonth: { ...arrayOf(obj({ label: str('Oct'), value: { type: 'number', example: 1400 } })), description: 'Always 6 entries, oldest first.' },
+      planDistribution: arrayOf(obj({ label: str('Gold'), value: { type: 'integer', example: 1 } }))
+    },
+    ['total', 'active', 'expiringIn7', 'expiredThisMonth', 'revenueThisMonth', 'revenueByMonth', 'planDistribution']
+  ),
+  MembershipPeriod: obj(
+    {
+      id: str('monthly-2026-10-01', { description: '{mode}-{start}. Unique, usable as a row key.' }),
+      label: str('Oct 2026 (to date)'),
+      start: str('2026-10-01'),
+      end: str('2026-10-31'),
+      newCount: { type: 'integer', example: 3, description: 'Memberships created in the period.' },
+      revenue: { type: 'number', example: 1400, description: 'Payments received in the period.' },
+      expiredCount: { type: 'integer', example: 1, description: 'Not cancelled, ended in the period, and already in the past.' },
+      cancelledCount: { type: 'integer', example: 0 }
+    },
+    ['id', 'label', 'start', 'end', 'newCount', 'revenue', 'expiredCount', 'cancelledCount']
+  ),
   RbacCatalog: obj({
     roles: arrayOf(
       obj({
@@ -471,6 +611,6 @@ const STATUS_TEXT = {
 module.exports = {
   ID, NOW, toSchema, parametersFrom, SUCCESS, obj, str, bool, ref, arrayOf, envelope, errorExample, errorBody,
   schemas, responses, STATUS_TO_COMPONENT, STATUS_TEXT, rateHeaders,
-  exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, PASSWORD_RULES,
+  exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, exPlan, exMembership, exStats, exPeriod, PASSWORD_RULES,
   ENUMS: { TOUR_STATUS_ENUM, CURRENCY_ENUM, REQUEST_STATUS_ENUM, ROLES_ENUM, STATUS_ENUM, APPROVAL_ENUM, DOC_TYPE_ENUM, DOC_STATUS_ENUM, AUDIT_ENUM }
 };
