@@ -20,6 +20,9 @@ const adminRoutes = require('./routes/admin');
 const staffRoutes = require('./routes/staff');
 const b2bRoutes = require('./routes/b2b');
 const b2cRoutes = require('./routes/b2c');
+const dashboardRoutes = require('./routes/dashboardRoutes');
+const visaRoutes = require('./routes/visaRoutes');
+const membershipRoutes = require('./routes/membershipRoutes');
 
 const app = express();
 
@@ -73,6 +76,9 @@ app.get('/health', (req, res) => {
 
 // Public
 app.use('/api/auth', authRoutes);
+app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/visa', visaRoutes);
+app.use('/api', membershipRoutes);
 
 // Authenticated, ownership-checked file access
 app.use('/api/documents', documentRoutes);
