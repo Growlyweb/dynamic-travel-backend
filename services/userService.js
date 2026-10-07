@@ -72,9 +72,11 @@ const sendInvite = async (user) => {
   return notificationService.trySend(() => notificationService.staffInvite(user, token));
 };
 
-// Creates an internal (ADMIN or STAFF) account WITHOUT a password. The person sets it from the emailed
-// invite link (POST /api/auth/setup-account), which also activates the account.
-const createInternal = async (admin, { name, email, phone, role, permissions = [] }, context = {}) => {
+const bcrypt = require('bcryptjs');
+
+// Creates an internal (ADMIN or STAFF) account. If a password is provided, it hashes it,
+// verifies the account and activates it immediately. Otherwise an invite link is sent.
+const createInternal = async (admin, { name, email, phone, role, password, permissions = [] }, context = {}) => {
   if (!INTERNAL_ROLES.includes(role)) {
     throw new ApiError(400, `Only ${INTERNAL_ROLES.join(' and ')} accounts can be created by an admin.`);
   }
@@ -85,14 +87,17 @@ const createInternal = async (admin, { name, email, phone, role, permissions = [
     throw new ApiError(409, 'An account with this email or phone number already exists.');
   }
 
+  const passwordHash = password ? await bcrypt.hash(password, env.bcryptCost) : undefined;
+
   const user = await User.create({
     name,
     email,
     phone,
     role,
-    // Staff start with NOTHING and get only what the admin lists. Admins bypass permission checks.
+    passwordHash,
+    emailVerified: true,
     permissions: canHavePermissions(role) ? permissions : [],
-    status: USER_STATUS.PENDING
+    status: USER_STATUS.ACTIVE
   });
 
   await auditService.record({
@@ -103,7 +108,10 @@ const createInternal = async (admin, { name, email, phone, role, permissions = [
     meta: { role, permissions: user.permissions }
   });
 
-  const inviteSent = await sendInvite(user);
+  let inviteSent = false;
+  if (!password) {
+    inviteSent = await sendInvite(user);
+  }
   return { user, inviteSent };
 };
 

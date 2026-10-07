@@ -1,0 +1,13 @@
+{
+  "name": "dynamic-travel-api-tests",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Automated API test runner for Dynamic Travel Backend. Fills the Excel test sheet and writes an HTML report.",
+  "scripts": {
+    "test": "node run-tests.js"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "exceljs": "^4.4.0"
+  }
+}
