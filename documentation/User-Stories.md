@@ -474,3 +474,12 @@ As the platform, I want business documents served only after an ownership check,
 
 - Files live outside any public folder, with generated names and an extension taken from the checked file type.
 - Status: **Built**.
+
+### SYS-5: Try the API in a browser
+As a frontend developer or tester, I want to read and try every endpoint on one page, so that I can learn the API without writing code first.
+
+- A page at `/docs` lists every route in a fixed order: System, sign up, sign in, passwords, then the role areas, tours and membership. Inside a group the operations are sorted by path, then by method.
+- Each operation shows its parameters with descriptions, an editable example body, who may call it, the rate limit, and an example answer for every status code.
+- Logging in on the page fills the Authorize box by itself, so protected operations work straight away. The token is kept only on the page.
+- It is served by the API itself, so no CORS setting is needed. It is on in development and **never served in production**: there `/docs` answers 404 and no setting can change that.
+- Status: **Built**.

@@ -9,6 +9,7 @@ Mobile is not part of this phase, so this guide leaves out mobile token handling
 
 | What | Where |
 | --- | --- |
+| Try every endpoint in the browser | Swagger UI at `http://localhost:5000/docs` (development only: it is never served in production) |
 | Every endpoint, body, query, example response and error code | `documentation/openapi.json` (import into Postman, steps in `README.md`) |
 | Every flow clickable in a browser | `npm run console`, then open http://localhost:5173 |
 | Who may do what | `documentation/User-Stories.md` and the `config/rbac.json` file |
