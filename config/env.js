@@ -140,6 +140,17 @@ const env = {
     outboxFile: process.env.MAIL_OUTBOX_FILE || ''
   },
 
+  // The interactive API documentation (Swagger UI) at /docs. On in development and test, and NEVER in production: the
+  // page is public and lists every route and its fields. There is no setting that turns it on in production.
+  // API_DOCS_ENABLED=false switches it off in development too. API_DOCS_ENABLED=true in production is ignored
+  // (apiDocsOverrideIgnored lets the app say so at start-up).
+  apiDocsEnabled: !isProduction && process.env.API_DOCS_ENABLED !== 'false',
+  apiDocsOverrideIgnored: isProduction && process.env.API_DOCS_ENABLED === 'true',
+
+  // Marks lapsed memberships as expired every night at 00:05 (in APP_TIMEZONE) and once at start-up. Off under test,
+  // and the end-to-end stack switches it off too. Reads are always correct without it (see services/membershipService.js).
+  membershipExpiryJob: process.env.MEMBERSHIP_EXPIRY_JOB ? process.env.MEMBERSHIP_EXPIRY_JOB === 'true' : !isTest,
+
   // Used to print "valid till 12:48 PM" in emails. Set APP_TIMEZONE to your users' IANA zone.
   timezone: process.env.APP_TIMEZONE || 'Asia/Dhaka',
 

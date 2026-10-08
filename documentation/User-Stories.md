@@ -169,6 +169,14 @@ As a customer, I want to describe the trip I have in mind, so that a consultant 
 - I can cancel it while it is still `NEW`.
 - Endpoints: `POST /api/tours/custom-requests`, `GET /api/tours/custom-requests`, `PATCH /api/tours/custom-requests/:id/status`. Status: **Built**.
 
+### B2C-12: See my membership
+As a customer, I want to see my membership, so that I know my discount and when it ends.
+
+- I see my active membership and my history: plan, discounts, start and end, days left, and how I paid.
+- An expired membership shows as expired the moment its end date passes, with no delay.
+- I cannot buy, cancel or change one myself: an admin does it after my payment. I see only my own, and never the admin's internal notes.
+- Endpoint: `GET /api/b2c/memberships` (`?status=active` for the profile page). Status: **Built**. The discount itself is applied when booking, which is **Planned** (booking module).
+
 ---
 
 ## B2B: the agency
@@ -281,6 +289,16 @@ As a staff member with the tour permission, I want to create categories and tour
 - I can see drafts, unpublished and archived tours and the partner price.
 - "Delete" archives a tour or switches a category off. Nothing is lost.
 - I read every custom request with the customer's contact details, move it along (`IN_REVIEW`, `QUOTED`, `CONFIRMED`, `CANCELLED`) and leave a note.
+- Status: **Built**.
+
+### STAFF-8: Sell and manage memberships
+As a staff member with the membership permission, I want to sell memberships and keep the plans current, so that customers get their discount.
+
+- I need `MEMBERSHIP_MANAGE`. Without it every membership route is `403`.
+- I create and edit plans, switch them on and off, and delete a plan nobody used.
+- I assign a plan to a B2C customer and record the payment (method and transaction id, for the record). The amount comes from the plan, and an agency or admin cannot be sold one.
+- A customer can have only one active membership. I can cancel (with a reason), extend by days, or delete one.
+- I read the numbers: active, expiring in 7 days, expired this month, revenue by month, and sales by period.
 - Status: **Built**.
 
 ### STAFF-6: My daily tasks and assigned records
@@ -409,6 +427,15 @@ As an admin, I want to run the tour catalogue and answer custom requests, so tha
 - `npm run seed:tours` loads the 8 starting categories and the sample tour.
 - Status: **Built**.
 
+### ADMIN-14: Manage membership plans and sales
+As an admin, I want to sell memberships and watch the sales, so that I can run the loyalty programme.
+
+- Everything a `MEMBERSHIP_MANAGE` staff member can do (STAFF-8), without needing the permission. I can grant that permission to staff and take it back at once.
+- Editing a plan never changes a membership already sold: each keeps its own copy of the plan.
+- Deleting a membership hides it, but the money stays in the revenue reports.
+- `npm run seed:membership` loads four starting plans. Their prices are placeholders to replace with the real ones.
+- Status: **Built**.
+
 ### ADMIN-12: Two-factor sign-in for admins
 As an admin, I want a second factor on my login, so that a stolen password is not enough to reach the admin area.
 
@@ -446,4 +473,13 @@ As a frontend developer, I want one error shape, so that screens can react to a 
 As the platform, I want business documents served only after an ownership check, so that a guessed link exposes nothing.
 
 - Files live outside any public folder, with generated names and an extension taken from the checked file type.
+- Status: **Built**.
+
+### SYS-5: Try the API in a browser
+As a frontend developer or tester, I want to read and try every endpoint on one page, so that I can learn the API without writing code first.
+
+- A page at `/docs` lists every route in a fixed order: System, sign up, sign in, passwords, then the role areas, tours and membership. Inside a group the operations are sorted by path, then by method.
+- Each operation shows its parameters with descriptions, an editable example body, who may call it, the rate limit, and an example answer for every status code.
+- Logging in on the page fills the Authorize box by itself, so protected operations work straight away. The token is kept only on the page.
+- It is served by the API itself, so no CORS setting is needed. It is on in development and **never served in production**: there `/docs` answers 404 and no setting can change that.
 - Status: **Built**.

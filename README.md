@@ -33,8 +33,10 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | EmailJS delivery | Code done, needs your keys |
 | Phone OTP | Open on purpose (see `ToDo.md`) |
 | Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
-| Automated tests | 370 unit and integration (Jest), 108 end-to-end (Playwright) |
+| Membership plans, memberships and reports | Done (see "Membership" below). Prices are the spec's placeholders. |
+| Automated tests | 468 unit and integration (Jest), 130 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
+| Interactive API documentation (Swagger UI) | Done: http://localhost:5000/docs, with "Try it out" on every route |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
 
 ## Quick start
@@ -44,7 +46,8 @@ npm install
 npm run setup            # creates .env if missing, and fills the three secrets that are empty or "replace-me"
 npm run seed             # creates the first ADMIN from ADMIN_SEED_* (needs MongoDB running)
 npm run seed:tours       # creates the 8 starting tour categories and the Cox's Bazar sample tour (safe to run again)
-npm run dev              # http://localhost:5000
+npm run seed:membership  # creates the 4 starting membership plans, with placeholder prices (safe to run again)
+npm run dev              # http://localhost:5000 (interactive API docs at http://localhost:5000/docs)
 npm run console          # browser test page at http://localhost:5173 (needs the API running)
 npm test                 # runs the whole suite against an in-memory MongoDB
 ```
@@ -64,12 +67,28 @@ Without the four `EMAILJS_*` keys no email can be sent, so sign-up answers `otpS
 ## API documentation and Postman
 
 `documentation/openapi.json` describes every endpoint: parameters, request bodies (JSON and form-data), example responses, error codes, who may call it, and the rate limit.
-It is OpenAPI 3.0.3, so it also opens in Swagger UI, Insomnia and similar tools.
+It is OpenAPI 3.0.3, so it opens in Swagger UI, Postman, Insomnia and similar tools.
+
+**Swagger UI: try the API in the browser**
+
+Start the API (`npm run dev`) and open **http://localhost:5000/docs**.
+The page is served by the API itself, so "Try it out" sends the request to the same origin: no CORS setting is needed, and the refresh cookie works.
+
+1. Open the group **Auth: sign in and session**, then **Log in (email and password)**. The body is already filled in: replace it with real credentials (the first admin comes from `npm run seed`) and press **Execute**.
+2. A successful login puts the access token into the **Authorize** box by itself, and the padlock closes. Every operation with a lock now works. **Log out** clears it.
+3. Every operation shows its parameters with descriptions, an editable example body, who may call it, the rate limit, and an example answer for each status code (with the error codes it can return).
+
+- **Groups** come in a fixed order: System, the three Auth groups (sign up and verify, sign in and session, passwords), then Customer, Agency, Staff, the Admin groups, Documents, Tours, Membership. Inside a group, operations are sorted by path, then GET, POST, PUT, PATCH, DELETE. The sign-in flows keep the order you use them in. The order is set in `scripts/openapi/spec.js`, so Postman shows the same.
+- **Every group starts closed** and the search box finds a group. **Try it out** is already on.
+- The token is **not** written to the browser storage: it lives in the page, and a reload signs you out. It lasts 15 minutes anyway.
+- `http://localhost:5000/docs/openapi.json` is the raw file (the server address in it is set to this server). Postman can import it with **File > Import > Link**.
+- **Never in production.** When `NODE_ENV=production`, `/docs` and `/docs/openapi.json` answer 404, like any unknown URL, because the page is public and lists every route. There is **no setting that turns it on there**: `API_DOCS_ENABLED=true` is ignored (the server logs a warning at start-up). The documentation code is not even loaded, and `swagger-ui-express` is a dev dependency, so an install with `npm ci --omit=dev` does not contain it. In development and test it is on; `API_DOCS_ENABLED=false` turns it off there too.
+- It serves the same file the tests keep current (a test fails if `documentation/openapi.json` is stale or a route is undocumented), so it cannot describe a route that is not there.
 
 **Import into Postman**
 
 1. Postman, **File > Import**, choose `documentation/openapi.json`.
-2. You get a collection with 60 requests in folders (Auth, Customer, Agency, Staff, Admin, Documents, Tour categories, Tours, Custom tours, System). Request bodies are pre-filled with valid examples.
+2. You get a collection with 74 requests, in the same groups and order as Swagger UI (System, Auth: sign up and verify, Auth: sign in and session, Auth: passwords, Customer, Agency, Staff, Admin: users, Admin: agencies, Admin: audit, Documents, Tour categories, Tours, Custom tours, Membership plans, Memberships, Membership reports). Request bodies are pre-filled with valid examples.
 3. In the collection's **Variables**, `baseUrl` is `http://localhost:5000`. Add a variable named `bearerToken` and leave it empty.
 4. Send **Auth > Log in**, copy `data.accessToken` from the response into `bearerToken`. Every request with a lock now works.
 5. The token lasts 15 minutes. **Refresh tokens** issues a new one (Postman keeps the refresh cookie).
@@ -106,6 +125,7 @@ Start the API first (`npm run dev`).
 | Admin | Roles and permissions from `rbac.json`, users, staff invites, status, approvals, document review, audit log |
 | Role areas | Each role's endpoints, plus the private document download |
 | Tour packages | Search and filter tours, create categories and tours, edit and archive, send a custom tour request as a customer, answer it as a manager |
+| Membership | Plans, assigning a plan to a customer with the payment, extend, cancel, delete, the dashboard numbers and sales by period |
 
 - The right-hand panel logs every request and response. Passwords are masked, and ids from responses become chips you can click to paste into the focused field.
 - "Client" switches between **web** (refresh token in an `httpOnly` cookie) and **mobile** (refresh token in the response body).
@@ -119,9 +139,9 @@ Start the API first (`npm run dev`).
 `npm run e2e` checks the product the way a user meets it: real server processes, real HTTP, real cookies and CORS, and a real browser driving the test console.
 
 ```bash
-npm run e2e          # everything (108 tests, about 20 seconds on a fast disk)
-npm run e2e:api      # the API only, no browser (88 tests)
-npm run e2e:ui       # the browser test console only (18 tests)
+npm run e2e          # everything (130 tests, about 45 seconds on a fast disk)
+npm run e2e:api      # the API only, no browser (102 tests)
+npm run e2e:ui       # the browser tests only: the test console and Swagger UI (28 tests)
 ```
 
 You do not have to start anything first.
@@ -147,6 +167,8 @@ That provider is refused when `NODE_ENV=production`.
 | `api/profile-access` | Only the owner and an admin can change a profile, nothing can be changed through a foreign id |
 | `api/rbac-matrix` | Every role against every route group, anonymous included |
 | `api/tours` | Categories and tours over real HTTP: who sees the B2B price (7 kinds of caller), filters and paging, draft to archive to restore, access refusals, custom request journey and its status rules |
+| `api/membership` | Plans and memberships over real HTTP: the amount and end date, one active membership under a race, edits that never touch sold memberships, soft delete that keeps revenue, who may manage, the customer's own view |
+| `ui/docs` | Swagger UI in Chrome: no blocked script, the groups in order, `GET /health` run from the page, a login that fills the Authorize box, a protected route that then works, and no token in the browser storage |
 | `api/security` | Helmet headers, CORS allow-list, no private fields in any response, codes and invite links never in a response, no static folders, hostile input |
 | `api/rate-limit` | Each limiter blocks at its limit, with `Retry-After` |
 | `ui/console` | Full customer, agency and admin journeys clicked in Chrome, file upload and download, mobile mode, the 429 note |
@@ -296,6 +318,33 @@ Run `npm run seed:tours` once to load the 8 starting categories (their old front
 - Every list answers `{ success, message, data, meta, pagination }`. `meta` and `pagination` are the same object, `{ total, page, limit, totalPages }`: `meta` is the name this API has always used, `pagination` is the name the tour handoff asks for. Read either. A page past the end is an empty list with `200`, `page=0` and `limit=0` fall back to the defaults, and a negative or fractional value is `422`. Default page size is 10, the maximum 100.
 - Edits write the audit log (`TOUR_CREATED`, `TOUR_UPDATED`, `TOUR_ARCHIVED`, `CATEGORY_CREATED`, `CATEGORY_DEACTIVATED`, `CUSTOM_TOUR_REQUESTED`, `CUSTOM_TOUR_STATUS_CHANGED`) with field names or status moves, never prices or text.
 
+## Membership
+
+Membership plans, sold memberships and reports (spec: `documentation/Membership_Module_Backend_API_Spec.md`, decisions: `documentation/ToDo.md` section 5).
+An admin sells a plan to a **B2C customer**, records the payment that was made by hand, and the customer gets a percentage off tours and visa processing for a fixed period.
+Run `npm run seed:membership` once to load the four starting plans. **Their prices are placeholders from the spec**: change them from the dashboard.
+
+| Who | Can |
+| --- | --- |
+| Admin, staff with `MEMBERSHIP_MANAGE` | Create, edit, switch and delete plans. Assign a plan to a customer, cancel, extend and delete a membership. Read the stats and the sales-by-period reports. |
+| B2C customer | Read their own memberships, read-only (`GET /api/b2c/memberships`) |
+| Everyone else | Nothing |
+
+- **Answer shapes follow the dashboard's spec, not the usual envelope.** A list is `{ "items": [...], "total": n }` (the customer history has `items` only), a single answer is the object itself, ids are called `id`, and a delete is `{ "success": true, "id": "..." }`. Errors keep the usual shape with a `message`. A failed validation on these routes is `400`, as the spec asks. The other routes are not touched.
+- **One active membership per customer**, enforced by the database (a partial unique index), so two admins clicking at the same moment still make one. A membership that has lapsed, was cancelled or was deleted never blocks a renewal.
+- **A membership keeps a copy of the plan** (`planSnapshot`). Editing or deactivating a plan never changes a sold membership, and a discount is always read from the snapshot. A plan that any membership ever used cannot be deleted (`409`): deactivate it.
+- **The amount comes from the plan**, never from the request. The payment is saved as `paid`. The transaction id is typed in for the record, may be empty, and nothing checks it.
+- **End date: the start day counts as day 1.** The end is the start date plus the plan length, minus one day, at 23:59:59.999 in Asia/Dhaka. A 15-day plan starting 1 Oct ends at the end of 15 Oct. Month ends clamp (31 Jan plus 1 month is 28 Feb, so it ends on 27 Feb).
+- **Everything is worked out in Asia/Dhaka** (`APP_TIMEZONE`), never in server UTC. A membership made at 01:00 in Dhaka is dated that day there. A future start date is still `active` on creation.
+- **The status the API returns is the effective status.** A membership whose end date has passed is reported as `expired` with a negative `daysLeft`, at once, whether or not the nightly job has run. Filters, counts and stats all use it. `daysLeft` is computed on every read, counted up (3.2 days is 4).
+- **Nightly job.** At 00:05 Dhaka time, and once when the server starts, lapsed memberships get `expired` saved. It uses `node-cron` inside the app, is safe to run on several servers, and a failed run never stops the server. `MEMBERSHIP_EXPIRY_JOB=false` turns it off. Two servers each run it, which is harmless.
+- **Delete is soft.** A deleted membership leaves every list and count, but its payment stays in the revenue reports.
+- **Extend** adds whole days to the end date (1 to 3650) and only works on an active membership. **Cancel** works on an active or pending one, keeps the payment status as it is (refunds are handled by hand), and takes an optional reason.
+- The customer's name, phone and email are copied onto each membership for display and search, and the copies follow the customer's edits (their own profile, or an admin's).
+- **Stats and reports:** `GET /api/membership-stats` (cards, `revenueByMonth` with always 6 entries, `planDistribution` including plans with 0) and `GET /api/membership-report/periods` (`mode=monthly` or `half`, 6 periods oldest first, the current month labelled "(to date)").
+- **For the booking module:** `getActiveMembership(userId)` and `membershipDiscount(membership, type, amount)` in `services/membershipService.js` are built and tested. Nothing applies a discount yet.
+- Every change writes the audit log (`MEMBERSHIP_PLAN_*`, `MEMBERSHIP_*`) with field names or ids, never prices or transaction ids.
+
 ## Rules worth knowing
 
 **OTPs and links**
@@ -370,6 +419,8 @@ All are read in `config/env.js`.
 | `ADMIN_SEED_NAME`, `ADMIN_SEED_EMAIL`, `ADMIN_SEED_PASSWORD` | First admin for `npm run seed` | none |
 | `PRIVATE_STORAGE_DIR`, `LOG_LEVEL`, `LOG_PRETTY` | Document folder, log level, colored logs | `storage/private`, `info`, on in a dev terminal |
 | `RATE_LIMIT_ENABLED` | Turn rate limiting on or off (it is off only under test) | `true` |
+| `API_DOCS_ENABLED` | `false` turns off the Swagger UI page at `/docs` in development. It cannot turn it on in production, where it is always off. | on outside production |
+| `MEMBERSHIP_EXPIRY_JOB` | `false` turns off the nightly job that saves the expired status of lapsed memberships (also run once at start-up) | on (off under test) |
 | `SKIP_DOTENV` | `true` stops the server from reading `.env` (set by the E2E stack so a developer's own keys never leak into a test run) | off |
 
 Production refuses to boot without a real `MONGODB_URI`, two different JWT secrets of at least 32 characters, and EmailJS configured.
@@ -440,6 +491,20 @@ Production never returns stack traces or internal messages.
 | POST | `/api/tours/custom-requests` | B2C only |
 | GET | `/api/tours/custom-requests`, `/api/tours/custom-requests/:id` | B2C (own), ADMIN / `TOUR_MANAGE` staff (all) |
 | PATCH | `/api/tours/custom-requests/:id/status` | ADMIN / `TOUR_MANAGE` staff (any allowed move), B2C (cancel own `NEW` request) |
+
+### Membership (`/api`)
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET, POST | `/api/membership-plans` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` |
+| PUT, DELETE | `/api/membership-plans/:id` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` (DELETE only for a plan nobody used) |
+| PATCH | `/api/membership-plans/:id/toggle` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` |
+| GET, POST | `/api/memberships` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` (filters: `status`, `planId`, `expiringIn`, `search`) |
+| PATCH | `/api/memberships/:id/cancel`, `/api/memberships/:id/extend` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` |
+| DELETE | `/api/memberships/:id` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` (soft delete) |
+| GET | `/api/customers/:customerId/memberships` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` |
+| GET | `/api/membership-stats`, `/api/membership-report/periods` | ADMIN, or STAFF with `MEMBERSHIP_MANAGE` |
+| GET | `/api/b2c/memberships` | B2C (their own, read-only) |
 
 ### Role areas
 

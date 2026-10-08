@@ -6,12 +6,16 @@ const user = require('../../validations/user.validation');
 const partner = require('../../validations/partner.validation');
 const profile = require('../../validations/profile.validation');
 const tours = require('../../validations/tour.validation');
-const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, NOW, ID } = require('./shared');
+const membership = require('../../validations/membership.validation');
+const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, exPlan, exMembership, exStats, exPeriod, NOW, ID } = require('./shared');
 
 // ---- tags (order = order in Postman folders)
 const TAGS = [
-  { name: 'Auth', description: 'Registration, OTP, login, tokens, passwords. Public unless noted.' },
-  { name: 'Customer (B2C)', description: 'Endpoints for signed-in customers.' },
+  { name: 'System', description: 'Is the server up? Health and version. Public.' },
+  { name: 'Auth: sign up and verify', description: 'Register a customer or an agency, confirm the email code, resend it, and set the first password of an invited account. Public.' },
+  { name: 'Auth: sign in and session', description: 'Log in (email or Google), refresh the tokens, log out, and read who is signed in. Start here, then use the Authorize button.' },
+  { name: 'Auth: passwords', description: 'Forgot, check and reset a password with an emailed code, and change a password while signed in.' },
+  { name: 'Customer (B2C)', description: 'Endpoints for signed-in customers: profile and their own memberships.' },
   { name: 'Agency (B2B)', description: 'Endpoints for signed-in agencies. Operational routes need an APPROVED partner.' },
   { name: 'Staff', description: 'Endpoints for staff. Each feature needs a permission an admin granted.' },
   { name: 'Admin: users', description: 'ADMIN only. Accounts, invites, status, roles, permissions, roles catalog.' },
@@ -21,8 +25,14 @@ const TAGS = [
   { name: 'Tour categories', description: 'Reading is public. Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
   { name: 'Tours', description: 'Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
   { name: 'Custom tours', description: 'A B2C customer sends and follows their own request; tour managers answer it.' },
-  { name: 'System', description: 'Health and version.' }
+  { name: 'Membership plans', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. The plans an admin sells. Answers are { items, total } or the object itself, not the usual envelope.' },
+  { name: 'Memberships', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Assign a plan to a B2C customer, record the payment, cancel, extend, delete.' },
+  { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' }
 ];
+
+// Tags whose operations keep the order they are written in (a flow: sign up, then verify, then log in). Every other
+// tag is sorted by path, then by method (GET, POST, PUT, PATCH, DELETE), in scripts/openapi/spec.js.
+const FLOW_TAGS = new Set(['Auth: sign up and verify', 'Auth: sign in and session', 'Auth: passwords']);
 
 // ---- rate limit sentences
 const RATE = {
@@ -42,13 +52,20 @@ const SESSION_NOTE =
 
 const ok = (status, message, schema, example, opts = {}) => ({ status, message, schema, example, ...opts });
 
+// Membership answers are not wrapped in { success, message, data }: a list is { items, total }, a single answer is the
+// object itself, and a delete is { success, id }.
+const listOf = (name) => obj({ items: arrayOf(ref(name)), total: { type: 'integer', example: 1 } }, ['items', 'total']);
+const deleted = () => obj({ success: bool(true), id: str('6ac0a5f0eebc510147c67250') }, ['success', 'id']);
+// A failed validation of a membership route is 400, with the first message and the field list.
+const invalid = (message, field) => ({ codes: ['VALIDATION_ERROR'], message, fields: [{ field, message }] });
+
 // shared success shapes
 const SESSION = ref('Session');
 
 const endpoints = [
   // =============================================================== AUTH
   {
-    method: 'post', path: '/api/auth/register', tag: 'Auth', id: 'registerCustomer',
+    method: 'post', path: '/api/auth/register', tag: 'Auth: sign up and verify', id: 'registerCustomer',
     summary: 'Register a customer (B2C)',
     description:
       'Creates a customer account and emails a 6-digit verification code. The account is `PENDING` until the code is confirmed with **Verify email code**.\n\n' +
@@ -60,7 +77,7 @@ const endpoints = [
     notes: '`otpSent: false` means the account exists but the email could not be delivered. Use **Resend verification code**.'
   },
   {
-    method: 'post', path: '/api/auth/b2b/register', tag: 'Auth', id: 'registerAgency',
+    method: 'post', path: '/api/auth/b2b/register', tag: 'Auth: sign up and verify', id: 'registerAgency',
     summary: 'Register an agency (B2B)',
     description:
       'Creates an agency user (`PENDING`) and a partner record (`PENDING`), stores the uploaded documents privately, and emails a verification code.\n\n' +
@@ -82,7 +99,7 @@ const endpoints = [
     notes: 'A missing trade license answers 422 with `errors[0].field = "tradeLicense"`. If any check fails, no file is kept.'
   },
   {
-    method: 'post', path: '/api/auth/verify-otp', tag: 'Auth', id: 'verifyEmailCode',
+    method: 'post', path: '/api/auth/verify-otp', tag: 'Auth: sign up and verify', id: 'verifyEmailCode',
     summary: 'Verify email code',
     description:
       'Confirms the 6-digit code from the registration email. Activates the account and **signs the user in**. The code is valid 10 minutes, works once, and dies after 5 wrong tries.\n\n' +
@@ -92,7 +109,7 @@ const endpoints = [
     errors: { 400: ['INVALID_CODE'], 403: ['ACCOUNT_NOT_ACTIVE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/resend-otp', tag: 'Auth', id: 'resendEmailCode',
+    method: 'post', path: '/api/auth/resend-otp', tag: 'Auth: sign up and verify', id: 'resendEmailCode',
     summary: 'Resend verification code',
     description: 'Sends a new code and cancels the previous one. At least 60 seconds must pass between sends. The answer is identical whether or not the email exists, so it cannot be used to find registered addresses.\n\n' + RATE.otp,
     access: 'Public', body: auth.resendOtp, bodyExample: { email: 'rahim@example.com' },
@@ -100,17 +117,17 @@ const endpoints = [
     errors: { 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/login', tag: 'Auth', id: 'login',
+    method: 'post', path: '/api/auth/login', tag: 'Auth: sign in and session', id: 'login',
     summary: 'Log in (email and password)',
     description:
       'Works for every role. The answer is the same `Invalid credentials` whether the email is unknown, has no password, or the password is wrong.\n\n' +
-      '**After this call, put `data.accessToken` into the collection variable `bearerToken`.**\n\n' + SESSION_NOTE + '\n\n' + RATE.login,
+      '**The `accessToken` in the answer is what every protected route needs.** In Swagger UI it goes into the Authorize box by itself. In Postman, put it into the collection variable `bearerToken`.\n\n' + SESSION_NOTE + '\n\n' + RATE.login,
     access: 'Public', mobileHeader: true, body: auth.login, bodyExample: { email: 'rahim@example.com', password: 'Str0ng!Pass' },
     success: ok(200, 'Login successful.', SESSION, exSession(), { setsCookie: true }),
     errors: { 401: ['INVALID_CREDENTIALS'], 403: ['EMAIL_NOT_VERIFIED', 'ACCOUNT_NOT_ACTIVE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/firebase', tag: 'Auth', id: 'loginWithGoogle',
+    method: 'post', path: '/api/auth/firebase', tag: 'Auth: sign in and session', id: 'loginWithGoogle',
     summary: 'Continue with Google (Firebase ID token)',
     description:
       'The client signs in with Google through the Firebase SDK, then sends the Firebase **ID token** here. The API verifies it and answers with its own tokens.\n\n' +
@@ -123,11 +140,11 @@ const endpoints = [
     errors: { 401: ['FIREBASE_TOKEN_INVALID'], 403: ['FIREBASE_PROVIDER_NOT_ALLOWED', 'FIREBASE_UNVERIFIED', 'ACCOUNT_NOT_ACTIVE', 'REGISTRATION_CLOSED'], 409: ['ACCOUNT_TYPE_MISMATCH'], 422: true, 429: true, 503: ['FIREBASE_DISABLED'] }
   },
   {
-    method: 'post', path: '/api/auth/refresh', tag: 'Auth', id: 'refreshTokens',
+    method: 'post', path: '/api/auth/refresh', tag: 'Auth: sign in and session', id: 'refreshTokens',
     summary: 'Refresh tokens',
     description:
       'Swaps the refresh token for a new access token **and a new refresh token** (rotation). The old refresh token stops working.\n\n' +
-      '- **Web:** send nothing. The browser sends the `refreshToken` cookie, and Postman does too once a login has set it.\n' +
+      '- **Web:** send nothing. The browser sends the `refreshToken` cookie by itself (Swagger UI on this server too), and Postman does once a login has set it.\n' +
       '- **Mobile:** send the header `X-Client-Type: mobile` and put the token in the body.\n\n' +
       'Replaying an already-used refresh token is treated as theft and signs the user out on every device.\n\n' + RATE.refresh,
     access: 'Refresh token (cookie or body)', mobileHeader: true, body: auth.refresh, bodyExample: { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YWMwYTVmMCJ9.signature' }, bodyRequired: false,
@@ -135,7 +152,7 @@ const endpoints = [
     errors: { 401: ['SESSION_EXPIRED', 'TOKEN_INVALID'], 403: ['ACCOUNT_NOT_ACTIVE'], 429: true }
   },
   {
-    method: 'post', path: '/api/auth/logout', tag: 'Auth', id: 'logout',
+    method: 'post', path: '/api/auth/logout', tag: 'Auth: sign in and session', id: 'logout',
     summary: 'Log out',
     description: 'Ends this device\'s session. Set `allDevices` to `true` to end every session and cancel all live access tokens. The refresh token is read from the cookie (web) or the body (mobile).',
     access: 'Signed in (any role)', needsAuth: true, body: auth.logout, bodyExample: { allDevices: false }, bodyRequired: false,
@@ -143,7 +160,7 @@ const endpoints = [
     errors: { 401: true }
   },
   {
-    method: 'post', path: '/api/auth/forgot-password', tag: 'Auth', id: 'forgotPassword',
+    method: 'post', path: '/api/auth/forgot-password', tag: 'Auth: passwords', id: 'forgotPassword',
     summary: 'Forgot password: request a code',
     description: 'Emails a 6-digit reset code to an active account. The answer is identical whether or not the email exists.\n\n' + RATE.forgot,
     access: 'Public', body: auth.forgotPassword, bodyExample: { email: 'rahim@example.com' },
@@ -151,7 +168,7 @@ const endpoints = [
     errors: { 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/verify-reset-token', tag: 'Auth', id: 'checkResetCode',
+    method: 'post', path: '/api/auth/verify-reset-token', tag: 'Auth: passwords', id: 'checkResetCode',
     summary: 'Forgot password: check the code',
     description: 'Checks a reset code **without using it up**, so a screen can validate it before asking for the new password. It still counts as one of the 5 attempts.\n\n' + RATE.otp,
     access: 'Public', body: auth.verifyResetToken, bodyExample: { email: 'rahim@example.com', otp: '482913' },
@@ -159,7 +176,7 @@ const endpoints = [
     errors: { 400: ['INVALID_CODE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/reset-password', tag: 'Auth', id: 'resetPassword',
+    method: 'post', path: '/api/auth/reset-password', tag: 'Auth: passwords', id: 'resetPassword',
     summary: 'Forgot password: set the new password',
     description: 'Uses the code (once) and sets the new password. Every session and token issued before is cancelled, and the user gets a "password changed" email. A customer who joined with Google can use this to add a password.\n\n' + RATE.otp,
     access: 'Public', body: auth.resetPassword, bodyExample: { email: 'rahim@example.com', otp: '482913', newPassword: 'N3w!Passw0rd' },
@@ -167,7 +184,7 @@ const endpoints = [
     errors: { 400: ['INVALID_CODE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/setup-account', tag: 'Auth', id: 'setupInvitedAccount',
+    method: 'post', path: '/api/auth/setup-account', tag: 'Auth: sign up and verify', id: 'setupInvitedAccount',
     summary: 'Invited staff or admin: set the first password',
     description: 'An admin creates staff and admin accounts without a password. The invitation email carries a link with a token; this call spends it, sets the password and activates the account. The token works once and expires after 48 hours.\n\n' + RATE.otp,
     access: 'Public (invite token)', body: auth.setupAccount, bodyExample: { token: 'a3f1c9d27b8e4f60a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718', password: 'Sara@Pass12' },
@@ -175,7 +192,7 @@ const endpoints = [
     errors: { 400: ['INVALID_INVITE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/change-password', tag: 'Auth', id: 'changePassword',
+    method: 'post', path: '/api/auth/change-password', tag: 'Auth: passwords', id: 'changePassword',
     summary: 'Change password (signed in)',
     description: 'Requires the current password. Other devices are signed out; this device continues with the **fresh tokens in the response**, so store them.\n\n' + SESSION_NOTE + '\n\n' + RATE.change,
     access: 'Signed in (any role)', needsAuth: true, mobileHeader: true, body: auth.changePassword, bodyExample: { currentPassword: 'Str0ng!Pass', newPassword: 'N3w!Passw0rd' },
@@ -183,7 +200,7 @@ const endpoints = [
     errors: { 400: ['NO_PASSWORD_SET'], 401: ['WRONG_PASSWORD'], 422: true, 429: true }
   },
   {
-    method: 'get', path: '/api/auth/me', tag: 'Auth', id: 'getMe',
+    method: 'get', path: '/api/auth/me', tag: 'Auth: sign in and session', id: 'getMe',
     summary: 'Who am I',
     description: 'Returns the signed-in account with its role and permissions, plus the partner record for agencies. Use it to guard screens and menus. Never includes a password hash.',
     access: 'Signed in (any role)', needsAuth: true,
@@ -427,7 +444,7 @@ const endpoints = [
       '- an ADMIN, or STAFF with `DOCUMENT_VIEW`: any partner\'s documents\n' +
       '- a B2B user: only their own partner\'s documents\n' +
       '- anyone else: `404`, exactly as if the document did not exist\n\n' +
-      'The file arrives as an attachment and is never cached. In Postman use **Send and Download**.',
+      'The file arrives as an attachment and is never cached. In Swagger UI use the **Download file** link in the response. In Postman use **Send and Download**.',
     access: 'Owner, ADMIN, or STAFF with DOCUMENT_VIEW', needsAuth: true, params: partner.documentParam, paramExamples: { partnerId: '6ac0a5f0eebc510147c6722f', docId: '6ac0a5f0eebc510147c67230' },
     binary: true, errors: { 401: true, 404: true, 422: true }
   },
@@ -474,7 +491,7 @@ const endpoints = [
       '- `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match.\n' +
       '- `sort` is `createdAt`, `price`, `durationDays` or `rating`; a leading `-` means descending. Default `-createdAt` (newest first).\n\n' +
       '**`b2bPrice` is only in the answer for** an admin, staff with TOUR_MANAGE, and a B2B user whose partner is APPROVED. Everyone else never receives the field.\n\n' +
-      'A token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. In Postman, set the request\'s Authorization to Bearer Token `{{bearerToken}}` to see the signed-in view. ' + RATE.api,
+      'A token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. To see the signed-in view, authorize first (the Authorize button in Swagger UI, or the header `Authorization: Bearer <token>`; in Postman set the request\'s Authorization to Bearer Token `{{bearerToken}}`). ' + RATE.api,
     access: 'Public', optionalAuth: true, query: tours.listTours,
     queryDocs: {
       search: 'Matches name, destination and country, ignoring letter case. Special characters are plain text.',
@@ -569,6 +586,135 @@ const endpoints = [
     errors: { 401: true, 403: true, 404: true, 409: ['INVALID_TRANSITION'], 422: true }
   },
 
+  // =============================================================== MEMBERSHIP PLANS
+  {
+    method: 'get', path: '/api/membership-plans', tag: 'Membership plans', id: 'listMembershipPlans',
+    summary: 'List membership plans',
+    description: 'Every plan, **inactive ones included**, sorted by `sortOrder`. The dashboard hides inactive plans itself where needed.\n\n**Answer shape:** `{ items, total }`, with no `success` or `data` wrapper and with `id` instead of `_id`. All membership routes answer this way.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, query: membership.listPlans, queryBlank: ['search'], queryDocs: { search: 'Part of the plan name, ignoring letter case.' },
+    success: ok(200, 'Plans fetched.', obj({}), undefined, { raw: { items: [exPlan()], total: 1 }, rawSchema: listOf('MembershipPlan') }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/membership-plans', tag: 'Membership plans', id: 'createMembershipPlan',
+    summary: 'Create a membership plan',
+    description: 'The server sets `id`, `sortOrder` (the highest so far plus 1) and the timestamps. The name is unique in any letter case and spacing. `maxDiscountAmount` of `0` or `null` means no cap and is saved as `null`. Empty features are dropped. Unknown fields are ignored. The tour and visa discounts are separate, so a plan can give 10% on tours and 5% on visas.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, body: membership.createPlan,
+    bodyExample: { name: 'Gold', durationValue: 1, durationUnit: 'year', price: 4500, tourDiscountPercent: 10, visaDiscountPercent: 10, maxDiscountAmount: 3000, description: 'Best value - a full year of member pricing.', features: ['10% off tour packages', '10% off visa processing'], isActive: true },
+    success: ok(201, 'Plan created.', obj({}), undefined, { raw: exPlan(), rawSchema: ref('MembershipPlan') }),
+    errors: { 400: invalid('Duration must be at least 1.', 'body.durationValue'), 401: true, 403: true, 409: ['PLAN_NAME_TAKEN'] }
+  },
+  {
+    method: 'put', path: '/api/membership-plans/{id}', tag: 'Membership plans', id: 'updateMembershipPlan',
+    summary: 'Edit a membership plan',
+    description: 'The dashboard sends the whole plan back, so `id`, `sortOrder` and the timestamps are ignored. `name`, `durationValue`, `durationUnit` and `price` are required; any other field that is left out stays as it is. The name check skips the plan being edited. **Memberships already sold are never changed**: each keeps its own copy of the plan (`planSnapshot`).',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    body: membership.updatePlan, bodyExample: { name: 'Gold', durationValue: 1, durationUnit: 'year', price: 5000, tourDiscountPercent: 10, visaDiscountPercent: 10, maxDiscountAmount: 3000, description: 'Best value', features: ['10% off tour packages'], isActive: true },
+    success: ok(200, 'Plan updated.', obj({}), undefined, { raw: exPlan({ price: 5000 }), rawSchema: ref('MembershipPlan') }),
+    errors: { 400: invalid('Price cannot be negative.', 'body.price'), 401: true, 403: true, 404: true, 409: ['PLAN_NAME_TAKEN'] }
+  },
+  {
+    method: 'patch', path: '/api/membership-plans/{id}/toggle', tag: 'Membership plans', id: 'toggleMembershipPlan',
+    summary: 'Activate or deactivate a plan',
+    description: 'No request body. Flips `isActive` and returns the plan. An inactive plan cannot be assigned to a customer (`Plan not available`). Memberships already sold carry on.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    success: ok(200, 'Plan updated.', obj({}), undefined, { raw: exPlan({ isActive: false }), rawSchema: ref('MembershipPlan') }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true }
+  },
+  {
+    method: 'delete', path: '/api/membership-plans/{id}', tag: 'Membership plans', id: 'deleteMembershipPlan',
+    summary: 'Delete a membership plan',
+    description: 'Only a plan that no membership ever used can be deleted, **including memberships that were later deleted or expired**. Otherwise the answer is `409`: deactivate the plan instead.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    success: ok(200, 'Plan deleted.', obj({}), undefined, { raw: { success: true, id: '6ac0a5f0eebc510147c67250' }, rawSchema: deleted() }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true, 409: ['PLAN_IN_USE'] }
+  },
+
+  // =============================================================== MEMBERSHIPS
+  {
+    method: 'get', path: '/api/memberships', tag: 'Memberships', id: 'listMemberships',
+    summary: 'List memberships',
+    description:
+      'Newest start date first. Every item carries the **effective status** and a computed `daysLeft`: a membership whose end date has passed is reported as `expired` even if the nightly job has not saved that yet.\n\n' +
+      '- `status` matches the effective status: `active` excludes lapsed rows, `expired` includes them.\n' +
+      '- `expiringIn=7` keeps active memberships with 0 to 7 days left.\n' +
+      '- `search` matches the customer name, phone and email by plain text, ignoring letter case.\n' +
+      '- Deleted memberships are never listed. There is no pagination.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, query: membership.listMemberships,
+    queryBlank: ['status', 'planId', 'expiringIn', 'search'], queryDocs: { status: 'pending, active, expired or cancelled (the effective status).', planId: 'Only memberships of this plan.', expiringIn: 'Active memberships with at most this many days left.', search: 'Part of the customer name, phone or email.' },
+    success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [exMembership()], total: 1 }, rawSchema: listOf('Membership') }), errors: { 400: invalid('Invalid status.', 'query.status'), 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/memberships', tag: 'Memberships', id: 'createMembership',
+    summary: 'Assign a plan to a customer and record the payment',
+    description:
+      'Checks, in this order: the customer exists (`404`), is a B2C customer (`400`), the plan exists and is active (`400 Plan not available`), and the customer has no active membership (`409`). A membership that has lapsed never blocks a renewal.\n\n' +
+      'The membership keeps a copy of the plan (`planSnapshot`). The end date is the start date plus the plan length minus one day, at 23:59:59.999 in Asia/Dhaka: a 15-day plan starting 1 Oct ends on 15 Oct. `startDate` is `YYYY-MM-DD` and defaults to today in Asia/Dhaka. A future start date is still `active`.\n\n' +
+      'The payment is saved as `paid` with the amount **from the plan** (the request cannot set it). `trxId` is only kept for the record and may be empty.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, body: membership.createMembership,
+    bodyExample: { customerId: '6ac0a5f0eebc510147c6722a', planId: '6ac0a5f0eebc510147c67250', paymentMethod: 'bkash', trxId: 'BKX88231A', startDate: '2026-10-07' },
+    success: ok(201, 'Membership created.', obj({}), undefined, { raw: exMembership(), rawSchema: ref('Membership') }),
+    errors: {
+      400: { codes: ['NOT_B2C', 'PLAN_NOT_AVAILABLE', 'VALIDATION_ERROR'], message: 'Membership is only for B2C customers', fields: undefined },
+      401: true, 403: true, 404: true, 409: ['ALREADY_ACTIVE']
+    }
+  },
+  {
+    method: 'patch', path: '/api/memberships/{id}/cancel', tag: 'Memberships', id: 'cancelMembership',
+    summary: 'Cancel a membership',
+    description: 'Allowed for an active or pending membership. Sets `status` to `cancelled` with `cancelledAt` and the optional `reason` (up to 500 characters). Discounts stop at once. The payment status is **not** changed: refunds are handled by hand.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam, body: membership.cancelMembership, bodyRequired: false,
+    bodyExample: { reason: 'Customer request, refund issued.' },
+    success: ok(200, 'Membership cancelled.', obj({}), undefined, { raw: exMembership({ status: 'cancelled', cancelledAt: NOW, cancelReason: 'Customer request, refund issued.' }), rawSchema: ref('Membership') }),
+    errors: { 400: invalid('Reason must be at most 500 characters.', 'body.reason'), 401: true, 403: true, 404: true, 409: { codes: ['INVALID_STATE'], message: 'Only active or pending memberships can be cancelled.' } }
+  },
+  {
+    method: 'patch', path: '/api/memberships/{id}/extend', tag: 'Memberships', id: 'extendMembership',
+    summary: 'Extend a membership',
+    description: 'Adds `days` (1 to 3650) to the current end date and keeps the 23:59:59.999 time, in Asia/Dhaka. Only an effectively **active** membership can be extended; a lapsed, cancelled or expired one answers `409`.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam, body: membership.extendMembership, bodyExample: { days: 7 },
+    success: ok(200, 'Membership extended.', obj({}), undefined, { raw: exMembership({ endDate: '2026-11-06T17:59:59.999Z', daysLeft: 38 }), rawSchema: ref('Membership') }),
+    errors: { 400: invalid('Days must be at least 1.', 'body.days'), 401: true, 403: true, 404: true, 409: { codes: ['INVALID_STATE'], message: 'Only active memberships can be extended.' } }
+  },
+  {
+    method: 'delete', path: '/api/memberships/{id}', tag: 'Memberships', id: 'deleteMembership',
+    summary: 'Delete a membership',
+    description: 'A **soft delete**: the membership leaves every list and count, and no longer blocks the customer from buying again, but the record and its payment are kept, so the **revenue stays in the reports**. A deleted membership answers `404` afterwards.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.idParam,
+    success: ok(200, 'Membership deleted.', obj({}), undefined, { raw: { success: true, id: '6ac0a5f0eebc510147c67251' }, rawSchema: deleted() }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true }
+  },
+  {
+    method: 'get', path: '/api/customers/{customerId}/memberships', tag: 'Memberships', order: 10, id: 'listCustomerMemberships',
+    summary: 'Memberships of one customer',
+    description: 'The full history of one customer, newest first, with the effective status and `daysLeft`. Used by the customer profile page. This answer has `items` only, with no `total`. An unknown customer answers `404`.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.customerParam, paramExamples: { customerId: '6ac0a5f0eebc510147c6722a' },
+    success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [exMembership()] }, rawSchema: obj({ items: arrayOf(ref('Membership')) }, ['items']) }), errors: { 400: invalid('Invalid id.', 'params.customerId'), 401: true, 403: true, 404: true }
+  },
+
+  // =============================================================== MEMBERSHIP REPORTS
+  {
+    method: 'get', path: '/api/membership-stats', tag: 'Membership reports', id: 'getMembershipStats',
+    summary: 'Membership numbers for the dashboard',
+    description:
+      'Everything the cards and charts need, in one object. Memberships are counted by their effective status; deleted ones are not counted, but their payments still count in revenue. Months and days follow Asia/Dhaka.\n\n' +
+      '- `expiredThisMonth` counts expired memberships (not cancelled ones) whose end date is in the current month.\n' +
+      '- `revenueByMonth` always has exactly 6 entries, the last 6 calendar months, oldest first, with `0` for a month without payments.\n' +
+      '- `planDistribution` has one entry per existing plan, including plans with 0 memberships.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true,
+    success: ok(200, 'Stats fetched.', obj({}), undefined, { raw: exStats, rawSchema: ref('MembershipStats') }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/membership-report/periods', tag: 'Membership reports', id: 'getMembershipPeriods',
+    summary: 'Sales by period',
+    description: 'The last 6 periods, oldest first. `mode=monthly` (the default) gives 6 calendar months, and the current one is labelled "(to date)". `mode=half` gives 6 fifteen-day periods (the 1st to the 15th, the 16th to the end of the month), ending with the one we are in. Each period runs from 00:00:00.000 of its first day to 23:59:59.999 of its last, in Asia/Dhaka.',
+    access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, query: membership.reportPeriods, queryExample: { mode: 'monthly' },
+    success: ok(200, 'Report fetched.', obj({}), undefined, { raw: { items: [exPeriod] }, rawSchema: obj({ items: arrayOf(ref('MembershipPeriod')) }, ['items']) }), errors: { 400: invalid('mode must be monthly or half.', 'query.mode'), 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/b2c/memberships', tag: 'Customer (B2C)', id: 'listMyMemberships',
+    summary: 'My memberships',
+    description: 'A customer reads **their own** memberships, newest first, with the effective status and `daysLeft`. The customer always comes from the token. The admin\'s internal `cancelReason` is left out. Use `status=active` for the profile page. Read-only: a customer cannot sell, cancel or extend one.',
+    access: 'B2C', needsAuth: true, query: membership.listOwnMemberships, queryBlank: ['status'], queryDocs: { status: 'pending, active, expired or cancelled (the effective status).' },
+    success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [(({ cancelReason, ...rest }) => rest)(exMembership())], total: 1 }, rawSchema: listOf('Membership') }), errors: { 400: invalid('Invalid status.', 'query.status'), 401: true, 403: true }
+  },
+
   // =============================================================== SYSTEM
   {
     method: 'get', path: '/', tag: 'System', id: 'getVersion',
@@ -583,4 +729,4 @@ const endpoints = [
   }
 ];
 
-module.exports = { endpoints, TAGS };
+module.exports = { endpoints, TAGS, FLOW_TAGS };
