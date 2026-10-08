@@ -20,6 +20,7 @@ const createUser = z.object({
   name,
   email,
   phone: phone.optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').optional(),
   role: z.enum(INTERNAL_ROLES, `Role must be ${INTERNAL_ROLES_TEXT}.`),
   permissions: permissions.optional()
 });
@@ -28,6 +29,7 @@ const createStaff = z.object({
   name,
   email,
   phone: phone.optional(),
+  password: z.string().min(6, 'Password must be at least 6 characters.').optional(),
   permissions: permissions.optional()
 });
 

@@ -13,7 +13,10 @@ const email = z
 const phone = z
   .string('Phone must be text.')
   .trim()
-  .regex(/^\+?[0-9]{8,15}$/, 'Enter a valid phone number (digits only, optional leading +).');
+  .transform((val) => val.replace(/[\s-]/g, ''))
+  .refine((val) => val === '' || /^\+?[0-9]{8,15}$/.test(val), {
+    message: 'Enter a valid phone number (digits only, optional leading +).'
+  });
 
 const name = z
   .string('Name is required.')
