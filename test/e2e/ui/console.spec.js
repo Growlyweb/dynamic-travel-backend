@@ -1,6 +1,6 @@
 const fs = require('fs');
 const { test, expect } = require('../helpers/test');
-const { cfg, emailFor, mailCount, waitForMail, agencyForm, signUpCustomer } = require('../helpers/api');
+const { cfg, emailFor, unique, mailCount, waitForMail, agencyForm, signUpCustomer } = require('../helpers/api');
 const { ENTRIES, openConsole, form, act, submitForm, press, login } = require('../helpers/console');
 
 test.describe('test console, as a person uses it', () => {
@@ -167,5 +167,85 @@ test.describe('test console, as a person uses it', () => {
     expect(result.status).toBeNaN(); // the badge reads ERR
     await expect(result.entry.locator('.badge')).toHaveText('ERR');
     await expect(result.entry.locator('.meta')).toContainText('Network or CORS error');
+  });
+});
+
+test.describe('tour packages in the test console', () => {
+  test('an admin builds a category and a tour, the public view hides the B2B price, a customer sends a request and the admin answers it', async ({ page, client }) => {
+    const { pageErrors } = await openConsole(page);
+    const tag = unique('ui').replace(/-/g, '');
+    const categoryName = `Beach ${tag}`;
+    const tourName = `Cox ${tag}`;
+    const customer = await signUpCustomer(await client());
+
+    // --- admin: category (a repeat in other letters returns the same one), then a published tour
+    expect((await login(page, cfg.ADMIN.email, cfg.ADMIN.password)).status).toBe(200);
+    const category = await submitForm(page, 'POST /api/tour-categories', { name: categoryName });
+    expect(category.status).toBe(201);
+    const repeat = await submitForm(page, 'POST /api/tour-categories', { name: categoryName.toUpperCase() });
+    expect(repeat.status).toBe(200);
+    expect(repeat.body.data._id).toBe(category.body.data._id);
+
+    const created = await submitForm(page, 'POST /api/tours', { name: tourName, category: category.body.data._id, status: 'published' });
+    expect(created.status).toBe(201);
+    expect(created.body.data).toMatchObject({ name: tourName, price: 12500, durationDays: 3, status: 'published', b2bPrice: 10000 }); // numbers went as numbers
+    expect(created.body.data.itinerary.map((d) => d.day)).toEqual([1, 2]);
+    const tourId = created.body.data._id;
+
+    // a bad itinerary is shown as the API's own 422
+    const broken = await submitForm(page, 'POST /api/tours', { name: `${tourName} bad`, itinerary: '[{"day":1}' });
+    expect(broken.status).toBe(422);
+
+    // --- signed out: the tour is there, the B2B price is not
+    await page.locator('#clearSession').click();
+    const publicView = await submitForm(page, 'GET /api/tours', { search: tourName });
+    expect(publicView.status).toBe(200);
+    expect(publicView.body.data.map((t) => t.name)).toEqual([tourName]);
+    expect(publicView.text).not.toContain('b2bPrice');
+    expect(publicView.body.data[0].price).toBe(12500);
+    expect((await submitForm(page, 'POST /api/tour-categories', { name: 'Sneaky' })).status).toBe(401);
+
+    // --- a customer: cannot change tours, can send a request, cannot name another owner
+    expect((await login(page, customer.email)).status).toBe(200);
+    expect((await submitForm(page, 'POST /api/tours', { name: `${tourName} 2` })).status).toBe(403);
+    const sent = await submitForm(page, 'POST /api/tours/custom-requests', { destination: `Sajek ${tag}` });
+    expect(sent.status).toBe(201);
+    expect(sent.body.data).toMatchObject({ status: 'NEW', travelers: 4, activities: ['Trekking', 'Bonfire'], userId: customer.user._id });
+    const requestId = sent.body.data._id;
+    const backwards = await submitForm(page, 'POST /api/tours/custom-requests', { startDate: '2026-12-05', endDate: '2026-12-01' });
+    expect(backwards.status).toBe(422);
+    expect(backwards.text).toContain('End date cannot be before the start date.');
+    expect((await submitForm(page, 'PATCH /api/tours/custom-requests/{id}/status', { id: requestId, status: 'CONFIRMED' })).status).toBe(403);
+
+    // --- admin: edits, answers the request with a quote, archives the tour
+    expect((await login(page, cfg.ADMIN.email, cfg.ADMIN.password)).status).toBe(200);
+    const edited = await submitForm(page, 'PATCH /api/tours/{id}', { id: tourId, price: '13000' });
+    expect(edited.status).toBe(200);
+    expect(edited.body.data).toMatchObject({ price: 13000, name: tourName });
+
+    const skipped = await submitForm(page, 'PATCH /api/tours/custom-requests/{id}/status', { id: requestId, status: 'QUOTED' });
+    expect(skipped.status).toBe(409); // NEW cannot jump to QUOTED
+    expect(skipped.body.code).toBe('INVALID_TRANSITION');
+    expect((await submitForm(page, 'PATCH /api/tours/custom-requests/{id}/status', { id: requestId, status: 'IN_REVIEW' })).status).toBe(200);
+    const quoted = await submitForm(page, 'PATCH /api/tours/custom-requests/{id}/status', { id: requestId, status: 'QUOTED', note: 'Total BDT 85,000' });
+    expect(quoted.body.data).toMatchObject({ status: 'QUOTED', reviewNote: 'Total BDT 85,000' });
+    const requests = await press(page, 'GET /api/tours/custom-requests');
+    expect(requests.body.data.some((r) => r._id === requestId)).toBe(true);
+
+    const archived = await submitForm(page, 'DELETE /api/tours/{id}', { id: tourId });
+    expect(archived.body.data.status).toBe('archived');
+    await page.locator('#clearSession').click();
+    expect((await submitForm(page, 'GET /api/tours', { search: tourName })).body.data).toEqual([]);
+
+    expect(pageErrors).toEqual([]);
+  });
+
+  test('the quick buttons list categories and tours without signing in, and a blank filter is not an error', async ({ page }) => {
+    await openConsole(page);
+
+    expect((await press(page, 'GET /api/tour-categories')).status).toBe(200);
+    expect((await press(page, 'GET /api/tours')).status).toBe(200);
+    expect((await submitForm(page, 'GET /api/tours', {})).status).toBe(200); // the whole form left blank
+    expect((await press(page, 'GET /api/tours/custom-requests')).status).toBe(401);
   });
 });

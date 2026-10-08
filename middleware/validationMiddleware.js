@@ -8,7 +8,11 @@ const ApiError = require('../utils/ApiError');
 //   req.body / req.query / req.params, so controllers only ever see validated data.
 // - For multipart routes, put the multer middleware BEFORE validate so req.body is parsed.
 //   If validation fails, the error middleware deletes any files multer already saved.
+// - In the query string, an empty value (`?status=&search=`) means "not given", the same as leaving the key out.
+//   Tools such as Postman send blank filters, and a blank filter should not be an error.
 const PARTS = ['params', 'query', 'body'];
+
+const withoutBlanks = (query = {}) => Object.fromEntries(Object.entries(query).filter(([, value]) => value !== ''));
 
 const validate = (schemas) => (req, res, next) => {
   const errors = [];
@@ -16,7 +20,8 @@ const validate = (schemas) => (req, res, next) => {
   PARTS.forEach((part) => {
     if (!schemas[part]) return;
 
-    const result = schemas[part].safeParse(req[part] || {});
+    const input = part === 'query' ? withoutBlanks(req.query) : req[part] || {};
+    const result = schemas[part].safeParse(input);
     if (result.success) {
       req[part] = result.data;
       return;

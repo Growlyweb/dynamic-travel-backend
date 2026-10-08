@@ -37,4 +37,14 @@ const authenticate = asyncHandler(async (req, res, next) => {
   next();
 });
 
-module.exports = { authenticate };
+// For public routes whose answer depends on who is asking (the B2B price, drafts). No token means an
+// anonymous visitor. A token that is present but wrong is still refused with 401, never treated as anonymous.
+const optionalAuthenticate = (req, res, next) => {
+  res.vary('Authorization');
+  // No header, or a header with nothing after "Bearer " (what Postman sends for an empty variable), claims
+  // nobody, so the caller is anonymous. Any actual token is still verified, and a bad one is a 401.
+  if (!/^\s*(Bearer)?\s*$/i.test(req.headers.authorization || '')) return authenticate(req, res, next);
+  return next();
+};
+
+module.exports = { authenticate, optionalAuthenticate };

@@ -16,6 +16,8 @@ const { notFound } = require('./middleware/errorMiddleware');
 
 const authRoutes = require('./routes/authRoutes');
 const documentRoutes = require('./routes/documentRoutes');
+const tourRoutes = require('./routes/tourRoutes');
+const tourCategoryRoutes = require('./routes/tourCategoryRoutes');
 const adminRoutes = require('./routes/admin');
 const staffRoutes = require('./routes/staff');
 const b2bRoutes = require('./routes/b2b');
@@ -76,6 +78,10 @@ app.use('/api/auth', authRoutes);
 
 // Authenticated, ownership-checked file access
 app.use('/api/documents', documentRoutes);
+
+// Tour packages. Reading is public; changing needs TOUR_MANAGE; custom requests are for B2C customers.
+app.use('/api/tour-categories', tourCategoryRoutes);
+app.use('/api/tours', tourRoutes);
 
 // Role areas (authenticate + requireRole applied once, inside each router's index)
 app.use('/api/admin', adminRoutes);

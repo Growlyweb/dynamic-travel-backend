@@ -5,7 +5,8 @@ const auth = require('../../validations/auth.validation');
 const user = require('../../validations/user.validation');
 const partner = require('../../validations/partner.validation');
 const profile = require('../../validations/profile.validation');
-const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, exMeta, ID } = require('./shared');
+const tours = require('../../validations/tour.validation');
+const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, exMeta, exCategory, exTour, exCustomRequest, exItinerary, NOW, ID } = require('./shared');
 
 // ---- tags (order = order in Postman folders)
 const TAGS = [
@@ -17,6 +18,9 @@ const TAGS = [
   { name: 'Admin: agencies', description: 'ADMIN only. Review B2B applications and their documents.' },
   { name: 'Admin: audit', description: 'ADMIN only. Security event log.' },
   { name: 'Documents', description: 'Private business documents, served only after an ownership check.' },
+  { name: 'Tour categories', description: 'Reading is public. Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
+  { name: 'Tours', description: 'Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
+  { name: 'Custom tours', description: 'A B2C customer sends and follows their own request; tour managers answer it.' },
   { name: 'System', description: 'Health and version.' }
 ];
 
@@ -426,6 +430,143 @@ const endpoints = [
       'The file arrives as an attachment and is never cached. In Postman use **Send and Download**.',
     access: 'Owner, ADMIN, or STAFF with DOCUMENT_VIEW', needsAuth: true, params: partner.documentParam, paramExamples: { partnerId: '6ac0a5f0eebc510147c6722f', docId: '6ac0a5f0eebc510147c67230' },
     binary: true, errors: { 401: true, 404: true, 422: true }
+  },
+
+  // =============================================================== TOUR CATEGORIES
+  {
+    method: 'get', path: '/api/tour-categories', tag: 'Tour categories', id: 'listTourCategories',
+    summary: 'List tour categories',
+    description: 'Active categories, sorted by name. A tour manager can add `includeInactive=true` to see the removed ones too; for anyone else the parameter changes nothing.\n\nA token is optional. ' + RATE.api,
+    access: 'Public', optionalAuth: true, query: tours.listCategories, queryBlank: ['search', 'includeInactive'], queryDocs: { search: 'Part of the category name, ignoring letter case.', includeInactive: '`true` adds removed categories. Only tour managers get them.' }, queryExample: { page: '1', limit: '20' },
+    success: ok(200, 'Categories fetched.', arrayOf(ref('TourCategory')), [exCategory()], { paginated: true }), errors: { 401: true, 422: true }
+  },
+  {
+    method: 'get', path: '/api/tour-categories/{id}', tag: 'Tour categories', id: 'getTourCategory',
+    summary: 'Get one tour category',
+    description: 'The `id` is this API\'s id (24 hex characters) **or** the id the frontend used before, such as `cat_beach`. A removed category answers `404` unless the caller is a tour manager.',
+    access: 'Public', optionalAuth: true, params: tours.categoryParam,
+    success: ok(200, 'Category fetched.', ref('TourCategory'), exCategory()), errors: { 401: true, 404: true, 422: true }
+  },
+  {
+    method: 'post', path: '/api/tour-categories', tag: 'Tour categories', id: 'createTourCategory',
+    summary: 'Create a tour category',
+    description: 'Category names are unique in any letter case and with any spacing. Sending a name that already exists is **not an error**: the existing category is returned with `200` instead of `201`, and no second one is made. If that category had been removed it is switched on again.',
+    access: 'ADMIN, or STAFF with TOUR_MANAGE', needsAuth: true, body: tours.createCategory, bodyExample: { name: 'Beach & Resort' },
+    success: ok(201, 'Category created.', ref('TourCategory'), exCategory()), errors: { 401: true, 403: true, 422: true },
+    notes: 'The `200` answer for an existing name has the message "A category with this name already exists."'
+  },
+  {
+    method: 'delete', path: '/api/tour-categories/{id}', tag: 'Tour categories', id: 'removeTourCategory',
+    summary: 'Remove a tour category',
+    description: 'Switches the category off (`isActive: false`); nothing is deleted. It disappears from the public list. A category that active tours still use cannot be removed (`CATEGORY_IN_USE`): move or archive those tours first. Repeating the call is harmless.',
+    access: 'ADMIN, or STAFF with TOUR_MANAGE', needsAuth: true, params: tours.categoryParam,
+    success: ok(200, 'Category removed.', ref('TourCategory'), exCategory({ isActive: false })), errors: { 401: true, 403: true, 404: true, 409: ['CATEGORY_IN_USE'], 422: true }
+  },
+
+  // =============================================================== TOURS
+  {
+    method: 'get', path: '/api/tours', tag: 'Tours', id: 'listTours',
+    summary: 'List and search tours',
+    description:
+      'The public sees **published** tours only (a `status` they send is ignored). A tour manager also sees drafts and unpublished tours, and archived ones with `status=archived`.\n\n' +
+      '- `search` matches name, destination and country, ignoring letter case. Special characters are plain text.\n' +
+      '- `category` takes one id or several separated by commas, as this API\'s ids or old frontend ids (`cat_beach,cat_city`).\n' +
+      '- `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match.\n' +
+      '- `sort` is `createdAt`, `price`, `durationDays` or `rating`; a leading `-` means descending. Default `-createdAt` (newest first).\n\n' +
+      '**`b2bPrice` is only in the answer for** an admin, staff with TOUR_MANAGE, and a B2B user whose partner is APPROVED. Everyone else never receives the field.\n\n' +
+      'A token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. In Postman, set the request\'s Authorization to Bearer Token `{{bearerToken}}` to see the signed-in view. ' + RATE.api,
+    access: 'Public', optionalAuth: true, query: tours.listTours,
+    queryDocs: {
+      search: 'Matches name, destination and country, ignoring letter case. Special characters are plain text.',
+      category: 'One category id, or several separated by commas. This API\'s id or an old frontend id such as `cat_beach`.',
+      country: 'Exact country name, ignoring letter case.',
+      destination: 'Part of the destination text.',
+      status: 'Tour managers only: draft, published, unpublished or archived. Ignored for the public, who see published tours. Managers see everything except archived when it is empty.',
+      minPrice: 'Lowest public price (inclusive).',
+      maxPrice: 'Highest public price (inclusive).',
+      durationDays: 'Exact number of days.',
+      sort: 'createdAt, price, durationDays or rating. A leading `-` sorts descending. Empty means `-createdAt` (newest first).'
+    },
+    queryBlank: ['search', 'category', 'country', 'destination', 'status', 'minPrice', 'maxPrice', 'durationDays', 'sort'],
+    queryExample: { page: '1', limit: '10' },
+    success: ok(200, 'Tours fetched.', arrayOf(ref('Tour')), [exTour()], { paginated: true }), errors: { 401: true, 422: true }
+  },
+  {
+    method: 'get', path: '/api/tours/{id}', tag: 'Tours', id: 'getTour',
+    summary: 'Get one tour',
+    description: 'The `id` is this API\'s id **or** the id the frontend used before, such as `tour_205`. The itinerary is in ascending day order. A tour that is not published answers `404` for the public, exactly like one that does not exist; tour managers can read it. `b2bPrice` follows the same rule as the list.\n\nA token is optional.',
+    access: 'Public', optionalAuth: true, params: tours.tourParam,
+    success: ok(200, 'Tour fetched.', ref('Tour'), exTour()), errors: { 401: true, 404: true, 422: true }
+  },
+  {
+    method: 'post', path: '/api/tours', tag: 'Tours', id: 'createTour',
+    summary: 'Create a tour',
+    description:
+      'Prices and counts cannot be negative. `priceCurrency` is `BDT`, `USD` or `EUR`. `status` defaults to `draft`. `category` is optional and may be this API\'s id or an old frontend id; it must exist and be active. ' +
+      'Itinerary days are unique, from 1, and no day may be after `durationDays`. A **published** tour needs at least one itinerary day; a draft may be incomplete. ' +
+      '`coverImage` and `gallery` are http or https links. Unknown fields are ignored.',
+    access: 'ADMIN, or STAFF with TOUR_MANAGE', needsAuth: true, body: tours.createTour,
+    bodyExample: {
+      name: "Cox's Bazar Beach Escape", country: 'Bangladesh', destination: "Cox's Bazar, Bangladesh", category: 'cat_beach', durationDays: 3, priceCurrency: 'BDT',
+      price: 12500, b2bPrice: 10000, seats: 25, status: 'published', rating: 4.9, coverImage: 'https://picsum.photos/seed/coxs-bazar/900/560',
+      description: 'Experience the world longest natural sea beach with luxury resort stay and fresh seafood.',
+      included: ['2 nights hotel stay', 'Breakfast included'], excluded: ['Personal expenses'], hotels: ['Ocean Paradise Hotel & Resort'],
+      itinerary: exItinerary, terms: 'Standard cancellation rules apply.'
+    },
+    success: ok(201, 'Tour created.', ref('Tour'), exTour({ b2bPrice: 10000 })), errors: { 401: true, 403: true, 422: true }
+  },
+  {
+    method: 'patch', path: '/api/tours/{id}', tag: 'Tours', id: 'updateTour',
+    summary: 'Edit a tour',
+    description: 'Send only the fields to change (at least one). The rules are checked against the whole tour as it would be saved, so publishing a tour with no itinerary, or shortening `durationDays` below an existing itinerary day, is refused. Setting `status` to `published` publishes it; setting it back from `archived` restores it. The audit log records which fields changed, never their values.',
+    access: 'ADMIN, or STAFF with TOUR_MANAGE', needsAuth: true, params: tours.tourParam,
+    body: tours.updateTour, bodyExample: { price: 13000, seats: 30 },
+    success: ok(200, 'Tour updated.', ref('Tour'), exTour({ price: 13000, seats: 30, b2bPrice: 10000 })), errors: { 401: true, 403: true, 404: true, 422: true }
+  },
+  {
+    method: 'delete', path: '/api/tours/{id}', tag: 'Tours', id: 'archiveTour',
+    summary: 'Archive a tour',
+    description: 'Sets `status` to `archived`. The tour leaves every public list and nothing is deleted, so records that point at it keep working. Repeating the call is harmless. A manager can publish it again with **Edit a tour**.',
+    access: 'ADMIN, or STAFF with TOUR_MANAGE', needsAuth: true, params: tours.tourParam,
+    success: ok(200, 'Tour archived.', ref('Tour'), exTour({ status: 'archived', b2bPrice: 10000 })), errors: { 401: true, 403: true, 404: true, 422: true }
+  },
+
+  // =============================================================== CUSTOM TOURS
+  {
+    method: 'post', path: '/api/tours/custom-requests', tag: 'Custom tours', id: 'createCustomTourRequest',
+    summary: 'Send a custom tour request',
+    description:
+      'Only a signed-in **B2C customer** can send one. Agencies, staff and admins get `403`.\n\n' +
+      'The owner is always the signed-in customer. `userId`, `status` and review fields in the body are ignored. The request starts as `NEW`. `endDate` must not be before `startDate`; `travelers` is at least 1; `transportation` defaults to `Private car`. ' +
+      'Dates are `YYYY-MM-DD` or a full ISO date-time.',
+    access: 'B2C', needsAuth: true, body: tours.createCustomRequest,
+    bodyExample: { customer: 'Rahim Uddin', phone: '+8801712345678', destination: 'Sajek Valley', travelers: 4, startDate: '2026-12-01', endDate: '2026-12-05', hotel: '3-star', transportation: 'Private car', activities: ['Trekking', 'Bonfire'], requirements: 'Vegetarian meals', itinerary: [{ day: 1, title: 'Arrival', description: 'Check in' }] },
+    success: ok(201, 'Your custom tour request was received.', ref('CustomTourRequest'), exCustomRequest()), errors: { 401: true, 403: true, 422: true }
+  },
+  {
+    method: 'get', path: '/api/tours/custom-requests', tag: 'Custom tours', id: 'listCustomTourRequests',
+    summary: 'List custom tour requests',
+    description: 'A B2C customer receives **their own** requests. A tour manager receives everyone\'s, with `userId` expanded to the customer\'s name, email and phone. Filter by `status`, search the customer name or destination. Newest first.',
+    access: 'B2C (own requests), or ADMIN / STAFF with TOUR_MANAGE (all)', needsAuth: true, query: tours.listCustomRequests, queryBlank: ['status', 'search'], queryDocs: { status: 'NEW, IN_REVIEW, QUOTED, CONFIRMED or CANCELLED.', search: 'Part of the customer name or destination.' }, queryExample: { page: '1', limit: '10' },
+    success: ok(200, 'Custom tour requests fetched.', arrayOf(ref('CustomTourRequest')), [exCustomRequest()], { paginated: true }), errors: { 401: true, 403: true, 422: true }
+  },
+  {
+    method: 'get', path: '/api/tours/custom-requests/{id}', tag: 'Custom tours', id: 'getCustomTourRequest',
+    summary: 'Get one custom tour request',
+    description: 'A customer can read only their own request. Someone else\'s answers `404`, exactly like one that does not exist. The consultant\'s `reviewNote` (for example the quote) appears here.',
+    access: 'B2C (own request), or ADMIN / STAFF with TOUR_MANAGE', needsAuth: true, params: tours.customRequestParam,
+    success: ok(200, 'Custom tour request fetched.', ref('CustomTourRequest'), exCustomRequest()), errors: { 401: true, 403: true, 404: true, 422: true }
+  },
+  {
+    method: 'patch', path: '/api/tours/custom-requests/{id}/status', tag: 'Custom tours', id: 'setCustomTourRequestStatus',
+    summary: 'Change the status of a custom tour request',
+    description:
+      'Allowed moves: `NEW` to `IN_REVIEW` or `CANCELLED`; `IN_REVIEW` to `QUOTED` or `CANCELLED`; `QUOTED` to `IN_REVIEW`, `CONFIRMED` or `CANCELLED`; `CONFIRMED` to `CANCELLED`. `CANCELLED` is final. Any other move answers `409 INVALID_TRANSITION`.\n\n' +
+      'A **tour manager** can make any allowed move and may add a `note` (for example the quote), shown to the customer. A **customer** can only cancel their own request, and only while it is `NEW`; any other change is `403`.',
+    access: 'ADMIN / STAFF with TOUR_MANAGE (any allowed move), or B2C (cancel own NEW request)', needsAuth: true, params: tours.customRequestParam,
+    body: tours.setCustomRequestStatus, bodyExample: { status: 'QUOTED', note: 'Total BDT 85,000 for four travelers.' },
+    success: ok(200, 'Request status is now QUOTED.', ref('CustomTourRequest'), exCustomRequest({ status: 'QUOTED', reviewNote: 'Total BDT 85,000 for four travelers.', reviewedBy: '6ac0a5f0eebc510147c6722b', reviewedAt: NOW })),
+    errors: { 401: true, 403: true, 404: true, 409: ['INVALID_TRANSITION'], 422: true }
   },
 
   // =============================================================== SYSTEM

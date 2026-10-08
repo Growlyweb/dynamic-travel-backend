@@ -8,13 +8,24 @@
 // Your .env is never read (SKIP_DOTENV), and the dev servers on 5000 / 5173 are never touched.
 const fs = require('fs');
 const path = require('path');
-const { spawn, spawnSync } = require('child_process');
+const { spawn } = require('child_process');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 const cfg = require('./config');
 
 const ROOT = path.join(__dirname, '..', '..');
 const children = [];
 let mongod;
+
+// Runs scripts/seedAdmin.js without blocking this process.
+const seedAdmin = (env) =>
+  new Promise((resolve, reject) => {
+    const child = spawn('node', ['scripts/seedAdmin.js'], { cwd: ROOT, env });
+    let output = '';
+    child.stdout.on('data', (d) => (output += d));
+    child.stderr.on('data', (d) => (output += d));
+    child.on('error', reject);
+    child.on('exit', (code) => (code === 0 ? resolve() : reject(new Error(`Seeding the admin failed (exit ${code}):\n${output}`))));
+  });
 
 const log = (msg) => console.log(`[e2e-stack] ${msg}`);
 
@@ -90,8 +101,9 @@ process.on('SIGTERM', () => shutdown(0));
     ADMIN_SEED_PASSWORD: cfg.ADMIN.password
   };
 
-  const seed = spawnSync('node', ['scripts/seedAdmin.js'], { cwd: ROOT, env, encoding: 'utf8' });
-  if (seed.status !== 0) throw new Error(`Seeding the admin failed:\n${seed.stdout}\n${seed.stderr}`);
+  // Async on purpose: this process also reads the in-memory MongoDB's output, and a blocking spawnSync here
+  // lets that pipe fill up, which freezes mongod and with it the seed.
+  await seedAdmin(env);
   log('admin seeded');
 
   const start = (label, file, extraEnv) => {
