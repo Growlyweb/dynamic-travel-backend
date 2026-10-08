@@ -1,7 +1,7 @@
 // Assembles the OpenAPI 3.0.3 document from scripts/openapi/endpoints.js and the zod schemas.
 // Run `npm run openapi` to rewrite documentation/openapi.json. A test fails if that file is stale.
 const { version } = require('../../package.json');
-const { endpoints, TAGS } = require('./endpoints');
+const { endpoints, TAGS, FLOW_TAGS } = require('./endpoints');
 const {
   toSchema, parametersFrom, SUCCESS, envelope, errorBody, errorExample, ref, schemas, responses,
   STATUS_TO_COMPONENT, STATUS_TEXT, exMeta, rateHeaders
@@ -117,7 +117,24 @@ const headerParam = {
   example: ''
 };
 
-const errorResponse = (status, codes) => {
+// The first field a request takes, so a 422 example can name a field of THIS request instead of a password.
+const firstField = (e) => {
+  const sources = [['body', e.body], ['body', e.multipart && e.multipart.zod], ['query', e.query], ['params', e.params]];
+  for (const [part, zod] of sources) {
+    const name = zod && Object.keys(toSchema(zod).properties || {})[0];
+    if (name) return { part, name };
+  }
+  return null;
+};
+
+const errorResponse = (status, codes, e) => {
+  if (codes === true && String(status) === '422') {
+    const field = e && firstField(e);
+    if (field) {
+      const message = `The value of ${field.name} is not valid.`;
+      return errorBody('The input failed validation. `errors` lists each bad field.', errorExample(message, 'VALIDATION_ERROR', [{ field: `${field.part}.${field.name}`, message }]));
+    }
+  }
   if (codes === true) return { $ref: `#/components/responses/${STATUS_TO_COMPONENT[status]}` };
   // { codes, message, fields }: an error with its own example message (used by the membership routes)
   if (!Array.isArray(codes)) {
@@ -211,16 +228,35 @@ const buildOperation = (e) => {
         content: { 'application/json': { schema: s.rawSchema, example: { success: false, uptime: 1234.56, db: 'down' } } }
       };
     } else {
-      res[status] = errorResponse(status, codes);
+      res[status] = errorResponse(status, codes, e);
     }
   });
   op.responses = res;
   return op;
 };
 
+// The order the documentation shows. Tags come in the order of TAGS. Inside a tag, the sign-in flows keep the order they
+// are written in (sign up, verify, log in...). Every other tag is sorted by path, then by method (GET, POST, PUT, PATCH,
+// DELETE), so a collection comes before one item, and an item before what hangs off it. An endpoint can set `order`
+// to move after the others. Swagger UI and Postman both follow this order.
+const METHOD_ORDER = ['get', 'post', 'put', 'patch', 'delete'];
+const sortedEndpoints = () => {
+  const tagIndex = new Map(TAGS.map((tag, i) => [tag.name, i]));
+  return endpoints
+    .map((e, written) => ({ e, written }))
+    .sort((a, b) => {
+      if (a.e.tag !== b.e.tag) return tagIndex.get(a.e.tag) - tagIndex.get(b.e.tag);
+      if (FLOW_TAGS.has(a.e.tag)) return a.written - b.written;
+      if ((a.e.order || 0) !== (b.e.order || 0)) return (a.e.order || 0) - (b.e.order || 0);
+      if (a.e.path !== b.e.path) return a.e.path < b.e.path ? -1 : 1;
+      return METHOD_ORDER.indexOf(a.e.method) - METHOD_ORDER.indexOf(b.e.method);
+    })
+    .map(({ e }) => e);
+};
+
 const buildSpec = () => {
   const paths = {};
-  endpoints.forEach((e) => {
+  sortedEndpoints().forEach((e) => {
     paths[e.path] = paths[e.path] || {};
     paths[e.path][e.method] = buildOperation(e);
   });

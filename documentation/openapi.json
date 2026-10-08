@@ -13,12 +13,24 @@
   ],
   "tags": [
     {
-      "name": "Auth",
-      "description": "Registration, OTP, login, tokens, passwords. Public unless noted."
+      "name": "System",
+      "description": "Is the server up? Health and version. Public."
+    },
+    {
+      "name": "Auth: sign up and verify",
+      "description": "Register a customer or an agency, confirm the email code, resend it, and set the first password of an invited account. Public."
+    },
+    {
+      "name": "Auth: sign in and session",
+      "description": "Log in (email or Google), refresh the tokens, log out, and read who is signed in. Start here, then use the Authorize button."
+    },
+    {
+      "name": "Auth: passwords",
+      "description": "Forgot, check and reset a password with an emailed code, and change a password while signed in."
     },
     {
       "name": "Customer (B2C)",
-      "description": "Endpoints for signed-in customers."
+      "description": "Endpoints for signed-in customers: profile and their own memberships."
     },
     {
       "name": "Agency (B2B)",
@@ -53,6 +65,10 @@
       "description": "Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE."
     },
     {
+      "name": "Custom tours",
+      "description": "A B2C customer sends and follows their own request; tour managers answer it."
+    },
+    {
       "name": "Membership plans",
       "description": "ADMIN, or STAFF with MEMBERSHIP_MANAGE. The plans an admin sells. Answers are { items, total } or the object itself, not the usual envelope."
     },
@@ -63,21 +79,134 @@
     {
       "name": "Membership reports",
       "description": "ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period."
-    },
-    {
-      "name": "Custom tours",
-      "description": "A B2C customer sends and follows their own request; tour managers answer it."
-    },
-    {
-      "name": "System",
-      "description": "Health and version."
     }
   ],
   "paths": {
+    "/": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "API version",
+        "operationId": "getVersion",
+        "description": "A simple \"is it up\" check that also returns the version.\n\n**Access:** Public.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "API is running.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "API is running."
+                    },
+                    "version": {
+                      "type": "string",
+                      "example": "1.0.0"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "message": "API is running.",
+                  "version": "1.0.0"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "System"
+        ],
+        "summary": "Health check",
+        "operationId": "getHealth",
+        "description": "Answers `200` when the database is connected and `503` when it is not. Not rate limited. Use it for uptime monitors.\n\n**Access:** Public.",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Healthy.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "uptime": {
+                      "type": "number",
+                      "example": 1234.56
+                    },
+                    "db": {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down"
+                      ],
+                      "example": "up"
+                    }
+                  }
+                },
+                "example": {
+                  "success": true,
+                  "uptime": 1234.56,
+                  "db": "up"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "The database is not reachable.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "uptime": {
+                      "type": "number",
+                      "example": 1234.56
+                    },
+                    "db": {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down"
+                      ],
+                      "example": "up"
+                    }
+                  }
+                },
+                "example": {
+                  "success": false,
+                  "uptime": 1234.56,
+                  "db": "down"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/register": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign up and verify"
         ],
         "summary": "Register a customer (B2C)",
         "operationId": "registerCustomer",
@@ -218,7 +347,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -229,7 +376,7 @@
     "/api/auth/b2b/register": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign up and verify"
         ],
         "summary": "Register an agency (B2B)",
         "operationId": "registerAgency",
@@ -484,7 +631,7 @@
     "/api/auth/verify-otp": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign up and verify"
         ],
         "summary": "Verify email code",
         "operationId": "verifyEmailCode",
@@ -622,7 +769,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of email is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.email",
+                      "message": "The value of email is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -633,7 +798,7 @@
     "/api/auth/resend-otp": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign up and verify"
         ],
         "summary": "Resend verification code",
         "operationId": "resendEmailCode",
@@ -693,7 +858,138 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of email is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.email",
+                      "message": "The value of email is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/api/auth/setup-account": {
+      "post": {
+        "tags": [
+          "Auth: sign up and verify"
+        ],
+        "summary": "Invited staff or admin: set the first password",
+        "operationId": "setupInvitedAccount",
+        "description": "An admin creates staff and admin accounts without a password. The invitation email carries a link with a token; this call spends it, sets the password and activates the account. The token works once and expires after 48 hours.\n\nRate limit: 5 requests per 15 minutes per IP + email (one quota shared by verify-otp, resend-otp, verify-reset-token, reset-password and setup-account).\n\n**Access:** Public (invite token).",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "minLength": 20,
+                    "maxLength": 200
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64,
+                    "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,64}$",
+                    "description": "At least 8 and at most 64 characters, with an upper case letter, a lower case letter, a number and a symbol.",
+                    "example": "Str0ng!Pass"
+                  }
+                },
+                "required": [
+                  "token",
+                  "password"
+                ]
+              },
+              "example": {
+                "token": "a3f1c9d27b8e4f60a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718",
+                "password": "Sara@Pass12"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Account activated. You can now log in.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Account activated. You can now log in."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Account activated. You can now log in."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `INVALID_INVITE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "This invitation link is invalid or has expired.",
+                  "code": "INVALID_INVITE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of token is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.token",
+                      "message": "The value of token is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -704,11 +1000,11 @@
     "/api/auth/login": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign in and session"
         ],
         "summary": "Log in (email and password)",
         "operationId": "login",
-        "description": "Works for every role. The answer is the same `Invalid credentials` whether the email is unknown, has no password, or the password is wrong.\n\n**After this call, put `data.accessToken` into the collection variable `bearerToken`.**\n\nTokens: the response carries a short-lived `accessToken`. The refresh token arrives as an **httpOnly cookie** (path `/api/auth`) for web clients. Send the header `X-Client-Type: mobile` to get it in the JSON body as `refreshToken` instead.\n\nRate limit: 10 requests per 15 minutes per IP + email.\n\n**Access:** Public.",
+        "description": "Works for every role. The answer is the same `Invalid credentials` whether the email is unknown, has no password, or the password is wrong.\n\n**The `accessToken` in the answer is what every protected route needs.** In Swagger UI it goes into the Authorize box by itself. In Postman, put it into the collection variable `bearerToken`.\n\nTokens: the response carries a short-lived `accessToken`. The refresh token arrives as an **httpOnly cookie** (path `/api/auth`) for web clients. Send the header `X-Client-Type: mobile` to get it in the JSON body as `refreshToken` instead.\n\nRate limit: 10 requests per 15 minutes per IP + email.\n\n**Access:** Public.",
         "security": [],
         "parameters": [
           {
@@ -843,7 +1139,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of email is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.email",
+                      "message": "The value of email is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -854,7 +1168,7 @@
     "/api/auth/firebase": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign in and session"
         ],
         "summary": "Continue with Google (Firebase ID token)",
         "operationId": "loginWithGoogle",
@@ -1000,7 +1314,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of idToken is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.idToken",
+                      "message": "The value of idToken is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -1026,11 +1358,11 @@
     "/api/auth/refresh": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign in and session"
         ],
         "summary": "Refresh tokens",
         "operationId": "refreshTokens",
-        "description": "Swaps the refresh token for a new access token **and a new refresh token** (rotation). The old refresh token stops working.\n\n- **Web:** send nothing. The browser sends the `refreshToken` cookie, and Postman does too once a login has set it.\n- **Mobile:** send the header `X-Client-Type: mobile` and put the token in the body.\n\nReplaying an already-used refresh token is treated as theft and signs the user out on every device.\n\nRate limit: 30 requests per 15 minutes per IP.\n\n**Access:** Refresh token (cookie or body).",
+        "description": "Swaps the refresh token for a new access token **and a new refresh token** (rotation). The old refresh token stops working.\n\n- **Web:** send nothing. The browser sends the `refreshToken` cookie by itself (Swagger UI on this server too), and Postman does once a login has set it.\n- **Mobile:** send the header `X-Client-Type: mobile` and put the token in the body.\n\nReplaying an already-used refresh token is treated as theft and signs the user out on every device.\n\nRate limit: 30 requests per 15 minutes per IP.\n\n**Access:** Refresh token (cookie or body).",
         "security": [],
         "parameters": [
           {
@@ -1161,7 +1493,7 @@
     "/api/auth/logout": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: sign in and session"
         ],
         "summary": "Log out",
         "operationId": "logout",
@@ -1228,10 +1560,104 @@
         }
       }
     },
+    "/api/auth/me": {
+      "get": {
+        "tags": [
+          "Auth: sign in and session"
+        ],
+        "summary": "Who am I",
+        "operationId": "getMe",
+        "description": "Returns the signed-in account with its role and permissions, plus the partner record for agencies. Use it to guard screens and menus. Never includes a password hash.\n\n**Access:** Signed in (any role).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current user profile.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Current user profile."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        "partner": {
+                          "$ref": "#/components/schemas/Partner"
+                        }
+                      },
+                      "required": [
+                        "user"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Current user profile.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Rahim Uddin",
+                      "email": "rahim@example.com",
+                      "phone": "+8801712345678",
+                      "role": "B2C",
+                      "permissions": [],
+                      "status": "ACTIVE",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Forbidden. Possible error codes: `ACCOUNT_NOT_ACTIVE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Account not active.",
+                  "code": "ACCOUNT_NOT_ACTIVE"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/auth/forgot-password": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: passwords"
         ],
         "summary": "Forgot password: request a code",
         "operationId": "forgotPassword",
@@ -1291,7 +1717,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of email is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.email",
+                      "message": "The value of email is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -1302,7 +1746,7 @@
     "/api/auth/verify-reset-token": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: passwords"
         ],
         "summary": "Forgot password: check the code",
         "operationId": "checkResetCode",
@@ -1383,7 +1827,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of email is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.email",
+                      "message": "The value of email is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -1394,7 +1856,7 @@
     "/api/auth/reset-password": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: passwords"
         ],
         "summary": "Forgot password: set the new password",
         "operationId": "resetPassword",
@@ -1485,87 +1947,7 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
-          },
-          "429": {
-            "$ref": "#/components/responses/TooManyRequests"
-          }
-        }
-      }
-    },
-    "/api/auth/setup-account": {
-      "post": {
-        "tags": [
-          "Auth"
-        ],
-        "summary": "Invited staff or admin: set the first password",
-        "operationId": "setupInvitedAccount",
-        "description": "An admin creates staff and admin accounts without a password. The invitation email carries a link with a token; this call spends it, sets the password and activates the account. The token works once and expires after 48 hours.\n\nRate limit: 5 requests per 15 minutes per IP + email (one quota shared by verify-otp, resend-otp, verify-reset-token, reset-password and setup-account).\n\n**Access:** Public (invite token).",
-        "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "token": {
-                    "type": "string",
-                    "minLength": 20,
-                    "maxLength": 200
-                  },
-                  "password": {
-                    "type": "string",
-                    "minLength": 8,
-                    "maxLength": 64,
-                    "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,64}$",
-                    "description": "At least 8 and at most 64 characters, with an upper case letter, a lower case letter, a number and a symbol.",
-                    "example": "Str0ng!Pass"
-                  }
-                },
-                "required": [
-                  "token",
-                  "password"
-                ]
-              },
-              "example": {
-                "token": "a3f1c9d27b8e4f60a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718",
-                "password": "Sara@Pass12"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Account activated. You can now log in.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Account activated. You can now log in."
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Account activated. You can now log in."
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request. Possible error codes: `INVALID_INVITE`.",
+            "description": "The input failed validation. `errors` lists each bad field.",
             "content": {
               "application/json": {
                 "schema": {
@@ -1573,14 +1955,17 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "This invitation link is invalid or has expired.",
-                  "code": "INVALID_INVITE"
+                  "message": "The value of email is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.email",
+                      "message": "The value of email is not valid."
+                    }
+                  ]
                 }
               }
             }
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -1591,7 +1976,7 @@
     "/api/auth/change-password": {
       "post": {
         "tags": [
-          "Auth"
+          "Auth: passwords"
         ],
         "summary": "Change password (signed in)",
         "operationId": "changePassword",
@@ -1737,7 +2122,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of currentPassword is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.currentPassword",
+                      "message": "The value of currentPassword is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           },
           "429": {
             "$ref": "#/components/responses/TooManyRequests"
@@ -1745,75 +2148,119 @@
         }
       }
     },
-    "/api/auth/me": {
+    "/api/b2c/memberships": {
       "get": {
         "tags": [
-          "Auth"
+          "Customer (B2C)"
         ],
-        "summary": "Who am I",
-        "operationId": "getMe",
-        "description": "Returns the signed-in account with its role and permissions, plus the partner record for agencies. Use it to guard screens and menus. Never includes a password hash.\n\n**Access:** Signed in (any role).",
+        "summary": "My memberships",
+        "operationId": "listMyMemberships",
+        "description": "A customer reads **their own** memberships, newest first, with the effective status and `daysLeft`. The customer always comes from the token. The admin's internal `cancelReason` is left out. Use `status=active` for the profile page. Read-only: a customer cannot sell, cancel or extend one.\n\n**Access:** B2C.",
         "security": [
           {
             "bearerAuth": []
           }
         ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "pending, active, expired or cancelled (the effective status).",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "active",
+                "expired",
+                "cancelled",
+                ""
+              ]
+            },
+            "example": ""
+          }
+        ],
         "responses": {
           "200": {
-            "description": "Current user profile.",
+            "description": "Memberships fetched.",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Membership"
+                      }
                     },
-                    "message": {
-                      "type": "string",
-                      "example": "Current user profile."
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/User"
-                        },
-                        "partner": {
-                          "$ref": "#/components/schemas/Partner"
-                        }
-                      },
-                      "required": [
-                        "user"
-                      ]
+                    "total": {
+                      "type": "integer",
+                      "example": 1
                     }
                   },
                   "required": [
-                    "success",
-                    "message"
+                    "items",
+                    "total"
                   ]
                 },
                 "example": {
-                  "success": true,
-                  "message": "Current user profile.",
-                  "data": {
-                    "user": {
-                      "_id": "6ac0a5f0eebc510147c6722a",
-                      "name": "Rahim Uddin",
-                      "email": "rahim@example.com",
-                      "phone": "+8801712345678",
-                      "role": "B2C",
-                      "permissions": [],
-                      "status": "ACTIVE",
-                      "emailVerified": true,
-                      "phoneVerified": false,
-                      "authProvider": "local",
-                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                  "items": [
+                    {
+                      "id": "6ac0a5f0eebc510147c67251",
+                      "customerId": "6ac0a5f0eebc510147c6722a",
+                      "customerName": "Emma Wilson",
+                      "customerEmail": "emma@example.com",
+                      "customerPhone": "+44 20 7946 0958",
+                      "planId": "6ac0a5f0eebc510147c67250",
+                      "planSnapshot": {
+                        "name": "Silver",
+                        "durationValue": 6,
+                        "durationUnit": "month",
+                        "price": 2500,
+                        "tourDiscountPercent": 10,
+                        "visaDiscountPercent": 10,
+                        "maxDiscountAmount": 1500
+                      },
+                      "startDate": "2026-10-06T18:00:00.000Z",
+                      "endDate": "2027-04-05T17:59:59.999Z",
+                      "status": "active",
+                      "daysLeft": 181,
+                      "payment": {
+                        "method": "bkash",
+                        "amount": 2500,
+                        "trxId": "BKX88231A",
+                        "status": "paid",
+                        "paidAt": "2026-10-03T06:51:28.261Z"
+                      },
+                      "source": "admin",
+                      "cancelledAt": null,
                       "createdAt": "2026-10-03T06:51:28.261Z",
                       "updatedAt": "2026-10-03T06:51:28.261Z"
                     }
-                  }
+                  ],
+                  "total": 1
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid status.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.status",
+                      "message": "Invalid status."
+                    }
+                  ]
                 }
               }
             }
@@ -1822,19 +2269,7 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "403": {
-            "description": "Forbidden. Possible error codes: `ACCOUNT_NOT_ACTIVE`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "success": false,
-                  "message": "Account not active.",
-                  "code": "ACCOUNT_NOT_ACTIVE"
-                }
-              }
-            }
+            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -2015,251 +2450,25 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/b2b/profile": {
-      "get": {
-        "tags": [
-          "Agency (B2B)"
-        ],
-        "summary": "My profile and partner record",
-        "operationId": "getAgencyProfile",
-        "description": "Available while the application is being reviewed.\n\n**Access:** B2B.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Profile fetched.",
+            "description": "The input failed validation. `errors` lists each bad field.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Profile fetched."
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/User"
-                        },
-                        "partner": {
-                          "$ref": "#/components/schemas/Partner"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "success": true,
-                  "message": "Profile fetched.",
-                  "data": {
-                    "user": {
-                      "_id": "6ac0a5f0eebc510147c6722a",
-                      "name": "Rahim Uddin",
-                      "email": "rahim@example.com",
-                      "phone": "+8801712345678",
-                      "role": "B2B",
-                      "permissions": [],
-                      "status": "ACTIVE",
-                      "emailVerified": true,
-                      "phoneVerified": false,
-                      "authProvider": "local",
-                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z",
-                      "partnerId": "6ac0a5f0eebc510147c6722f"
-                    },
-                    "partner": {
-                      "_id": "6ac0a5f0eebc510147c6722f",
-                      "userId": "6ac0a5f0eebc510147c6722e",
-                      "companyName": "Sky Travels Ltd",
-                      "licenseNo": "TL-2024-0042",
-                      "businessType": "Travel agency",
-                      "address": "45 Motijheel, Dhaka",
-                      "documents": [
-                        {
-                          "_id": "6ac0a5f0eebc510147c67230",
-                          "type": "TRADE_LICENSE",
-                          "originalName": "trade-license.pdf",
-                          "mimeType": "application/pdf",
-                          "size": 184320,
-                          "status": "PENDING",
-                          "reviewNote": "",
-                          "uploadedAt": "2026-10-03T06:51:28.261Z"
-                        }
-                      ],
-                      "approvalStatus": "PENDING",
-                      "reviewNote": "",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
                     }
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      },
-      "patch": {
-        "tags": [
-          "Agency (B2B)"
-        ],
-        "summary": "Update my profile",
-        "operationId": "updateAgencyProfile",
-        "description": "Change `name`, `phone`, `address` or `businessType`. `companyName` and `licenseNo` are locked, because changing them needs a new review.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}` and `PATCH /api/admin/b2b/{id}`).\n\n**Access:** B2B.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "name": {
-                    "type": "string",
-                    "minLength": 2,
-                    "maxLength": 100
-                  },
-                  "phone": {
-                    "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
-                  },
-                  "address": {
-                    "type": "string",
-                    "maxLength": 300
-                  },
-                  "businessType": {
-                    "type": "string",
-                    "maxLength": 80
-                  }
-                }
-              },
-              "example": {
-                "address": "12 Gulshan Avenue, Dhaka",
-                "businessType": "Travel agency"
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Profile updated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Profile updated."
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/User"
-                        },
-                        "partner": {
-                          "$ref": "#/components/schemas/Partner"
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
                   ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Profile updated.",
-                  "data": {
-                    "user": {
-                      "_id": "6ac0a5f0eebc510147c6722a",
-                      "name": "Rahim Uddin",
-                      "email": "rahim@example.com",
-                      "phone": "+8801712345678",
-                      "role": "B2B",
-                      "permissions": [],
-                      "status": "ACTIVE",
-                      "emailVerified": true,
-                      "phoneVerified": false,
-                      "authProvider": "local",
-                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
-                    },
-                    "partner": {
-                      "_id": "6ac0a5f0eebc510147c6722f",
-                      "userId": "6ac0a5f0eebc510147c6722e",
-                      "companyName": "Sky Travels Ltd",
-                      "licenseNo": "TL-2024-0042",
-                      "businessType": "Travel agency",
-                      "address": "12 Gulshan Avenue, Dhaka",
-                      "documents": [
-                        {
-                          "_id": "6ac0a5f0eebc510147c67230",
-                          "type": "TRADE_LICENSE",
-                          "originalName": "trade-license.pdf",
-                          "mimeType": "application/pdf",
-                          "size": 184320,
-                          "status": "PENDING",
-                          "reviewNote": "",
-                          "uploadedAt": "2026-10-03T06:51:28.261Z"
-                        }
-                      ],
-                      "approvalStatus": "PENDING",
-                      "reviewNote": "",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
-                    }
-                  }
                 }
               }
             }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -2574,6 +2783,589 @@
         }
       }
     },
+    "/api/b2b/profile": {
+      "get": {
+        "tags": [
+          "Agency (B2B)"
+        ],
+        "summary": "My profile and partner record",
+        "operationId": "getAgencyProfile",
+        "description": "Available while the application is being reviewed.\n\n**Access:** B2B.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Profile fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        "partner": {
+                          "$ref": "#/components/schemas/Partner"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Profile fetched.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Rahim Uddin",
+                      "email": "rahim@example.com",
+                      "phone": "+8801712345678",
+                      "role": "B2B",
+                      "permissions": [],
+                      "status": "ACTIVE",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z",
+                      "partnerId": "6ac0a5f0eebc510147c6722f"
+                    },
+                    "partner": {
+                      "_id": "6ac0a5f0eebc510147c6722f",
+                      "userId": "6ac0a5f0eebc510147c6722e",
+                      "companyName": "Sky Travels Ltd",
+                      "licenseNo": "TL-2024-0042",
+                      "businessType": "Travel agency",
+                      "address": "45 Motijheel, Dhaka",
+                      "documents": [
+                        {
+                          "_id": "6ac0a5f0eebc510147c67230",
+                          "type": "TRADE_LICENSE",
+                          "originalName": "trade-license.pdf",
+                          "mimeType": "application/pdf",
+                          "size": 184320,
+                          "status": "PENDING",
+                          "reviewNote": "",
+                          "uploadedAt": "2026-10-03T06:51:28.261Z"
+                        }
+                      ],
+                      "approvalStatus": "PENDING",
+                      "reviewNote": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Agency (B2B)"
+        ],
+        "summary": "Update my profile",
+        "operationId": "updateAgencyProfile",
+        "description": "Change `name`, `phone`, `address` or `businessType`. `companyName` and `licenseNo` are locked, because changing them needs a new review.\n\nA profile can be changed only by its owner (this route, which always acts on the signed-in person) and by an admin (`PATCH /api/admin/users/{id}` and `PATCH /api/admin/b2b/{id}`).\n\n**Access:** B2B.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 100
+                  },
+                  "phone": {
+                    "type": "string",
+                    "pattern": "^\\+?[0-9]{8,15}$"
+                  },
+                  "address": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "businessType": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                }
+              },
+              "example": {
+                "address": "12 Gulshan Avenue, Dhaka",
+                "businessType": "Travel agency"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile updated."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        "partner": {
+                          "$ref": "#/components/schemas/Partner"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Profile updated.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Rahim Uddin",
+                      "email": "rahim@example.com",
+                      "phone": "+8801712345678",
+                      "role": "B2B",
+                      "permissions": [],
+                      "status": "ACTIVE",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    },
+                    "partner": {
+                      "_id": "6ac0a5f0eebc510147c6722f",
+                      "userId": "6ac0a5f0eebc510147c6722e",
+                      "companyName": "Sky Travels Ltd",
+                      "licenseNo": "TL-2024-0042",
+                      "businessType": "Travel agency",
+                      "address": "12 Gulshan Avenue, Dhaka",
+                      "documents": [
+                        {
+                          "_id": "6ac0a5f0eebc510147c67230",
+                          "type": "TRADE_LICENSE",
+                          "originalName": "trade-license.pdf",
+                          "mimeType": "application/pdf",
+                          "size": 184320,
+                          "status": "PENDING",
+                          "reviewNote": "",
+                          "uploadedAt": "2026-10-03T06:51:28.261Z"
+                        }
+                      ],
+                      "approvalStatus": "PENDING",
+                      "reviewNote": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/partners": {
+      "get": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "List agencies (read only)",
+        "operationId": "staffListPartners",
+        "description": "Needs the permission `B2B_VIEW`. Staff cannot approve or reject: that is an admin decision.\n\n**Access:** STAFF with B2B_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "10"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "approvalStatus",
+            "in": "query",
+            "required": false,
+            "description": "Only partners in this approval state.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "PENDING",
+                "UNDER_REVIEW",
+                "APPROVED",
+                "REJECTED",
+                "SUSPENDED"
+              ]
+            },
+            "example": "PENDING"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Partners fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Partners fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Partner"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Partners fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c6722f",
+                      "userId": "6ac0a5f0eebc510147c6722e",
+                      "companyName": "Sky Travels Ltd",
+                      "licenseNo": "TL-2024-0042",
+                      "businessType": "Travel agency",
+                      "address": "45 Motijheel, Dhaka",
+                      "documents": [
+                        {
+                          "_id": "6ac0a5f0eebc510147c67230",
+                          "type": "TRADE_LICENSE",
+                          "originalName": "trade-license.pdf",
+                          "mimeType": "application/pdf",
+                          "size": 184320,
+                          "status": "PENDING",
+                          "reviewNote": "",
+                          "uploadedAt": "2026-10-03T06:51:28.261Z"
+                        }
+                      ],
+                      "approvalStatus": "PENDING",
+                      "reviewNote": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/staff/partners/{id}/documents/{docId}": {
+      "patch": {
+        "tags": [
+          "Staff"
+        ],
+        "summary": "Verify or reject an agency document",
+        "operationId": "staffReviewDocument",
+        "description": "Needs the permission `DOCUMENT_VERIFY`. Reviewing a document does **not** approve the agency. The reviewer's `note` is shown to the agency owner.\n\n**Access:** STAFF with DOCUMENT_VERIFY.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6722f"
+          },
+          {
+            "name": "docId",
+            "in": "path",
+            "required": true,
+            "description": "Document id (MongoDB ObjectId), from the partner's `documents` list.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67230"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "VERIFIED",
+                      "REJECTED"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              "example": {
+                "status": "VERIFIED",
+                "note": "License checked against the registry."
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Document reviewed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Document reviewed."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PartnerDocument"
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Document reviewed.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67230",
+                      "type": "TRADE_LICENSE",
+                      "originalName": "trade-license.pdf",
+                      "mimeType": "application/pdf",
+                      "size": 184320,
+                      "status": "VERIFIED",
+                      "reviewNote": "License checked against the registry.",
+                      "uploadedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of status is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.status",
+                      "message": "The value of status is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/staff/profile": {
       "get": {
         "tags": [
@@ -2752,365 +3544,25 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/staff/partners": {
-      "get": {
-        "tags": [
-          "Staff"
-        ],
-        "summary": "List agencies (read only)",
-        "operationId": "staffListPartners",
-        "description": "Needs the permission `B2B_VIEW`. Staff cannot approve or reject: that is an admin decision.\n\n**Access:** STAFF with B2B_VIEW.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "description": "Page number, starting at 1. Default 1.",
-            "schema": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "example": "1"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
-            "schema": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "example": "10"
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "required": false,
-            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            }
-          },
-          {
-            "name": "approvalStatus",
-            "in": "query",
-            "required": false,
-            "description": "Only partners in this approval state.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "PENDING",
-                "UNDER_REVIEW",
-                "APPROVED",
-                "REJECTED",
-                "SUSPENDED"
-              ]
-            },
-            "example": "PENDING"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Partners fetched.",
+            "description": "The input failed validation. `errors` lists each bad field.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Partners fetched."
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Partner"
-                      }
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/PaginationMeta"
-                    },
-                    "pagination": {
-                      "description": "The same object as `meta`, under the name the tour handoff uses.",
-                      "$ref": "#/components/schemas/PaginationMeta"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "success": true,
-                  "message": "Partners fetched.",
-                  "data": [
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
                     {
-                      "_id": "6ac0a5f0eebc510147c6722f",
-                      "userId": "6ac0a5f0eebc510147c6722e",
-                      "companyName": "Sky Travels Ltd",
-                      "licenseNo": "TL-2024-0042",
-                      "businessType": "Travel agency",
-                      "address": "45 Motijheel, Dhaka",
-                      "documents": [
-                        {
-                          "_id": "6ac0a5f0eebc510147c67230",
-                          "type": "TRADE_LICENSE",
-                          "originalName": "trade-license.pdf",
-                          "mimeType": "application/pdf",
-                          "size": 184320,
-                          "status": "PENDING",
-                          "reviewNote": "",
-                          "uploadedAt": "2026-10-03T06:51:28.261Z"
-                        }
-                      ],
-                      "approvalStatus": "PENDING",
-                      "reviewNote": "",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
-                    }
-                  ],
-                  "meta": {
-                    "total": 42,
-                    "page": 1,
-                    "limit": 10,
-                    "totalPages": 5
-                  },
-                  "pagination": {
-                    "total": 42,
-                    "page": 1,
-                    "limit": 10,
-                    "totalPages": 5
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/staff/partners/{id}/documents/{docId}": {
-      "patch": {
-        "tags": [
-          "Staff"
-        ],
-        "summary": "Verify or reject an agency document",
-        "operationId": "staffReviewDocument",
-        "description": "Needs the permission `DOCUMENT_VERIFY`. Reviewing a document does **not** approve the agency. The reviewer's `note` is shown to the agency owner.\n\n**Access:** STAFF with DOCUMENT_VERIFY.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "6ac0a5f0eebc510147c6722f"
-          },
-          {
-            "name": "docId",
-            "in": "path",
-            "required": true,
-            "description": "Document id (MongoDB ObjectId), from the partner's `documents` list.",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "6ac0a5f0eebc510147c67230"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "VERIFIED",
-                      "REJECTED"
-                    ]
-                  },
-                  "note": {
-                    "type": "string",
-                    "maxLength": 500
-                  }
-                },
-                "required": [
-                  "status"
-                ]
-              },
-              "example": {
-                "status": "VERIFIED",
-                "note": "License checked against the registry."
-              }
-            }
-          }
-        },
-        "responses": {
-          "200": {
-            "description": "Document reviewed.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Document reviewed."
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/PartnerDocument"
-                      }
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Document reviewed.",
-                  "data": [
-                    {
-                      "_id": "6ac0a5f0eebc510147c67230",
-                      "type": "TRADE_LICENSE",
-                      "originalName": "trade-license.pdf",
-                      "mimeType": "application/pdf",
-                      "size": 184320,
-                      "status": "VERIFIED",
-                      "reviewNote": "License checked against the registry.",
-                      "uploadedAt": "2026-10-03T06:51:28.261Z"
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
                     }
                   ]
                 }
               }
             }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/admin/rbac": {
-      "get": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Roles and permissions catalog",
-        "operationId": "getRolesAndPermissions",
-        "description": "The roles and permissions defined in `config/rbac.json`, with each role's flags. Use it to fill role and permission pickers so screens never drift from the rules.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Roles and permissions fetched.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Roles and permissions fetched."
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/RbacCatalog"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Roles and permissions fetched.",
-                  "data": {
-                    "roles": [
-                      {
-                        "code": "STAFF",
-                        "label": "Staff",
-                        "description": "Internal team member.",
-                        "selfRegister": false,
-                        "invitable": true,
-                        "bypassPermissions": false,
-                        "assignablePermissions": true
-                      }
-                    ],
-                    "permissions": [
-                      {
-                        "code": "VISA_VIEW",
-                        "description": "See visa applications"
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
           }
         }
       }
@@ -3291,35 +3743,113 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/admin/users/{id}": {
-      "patch": {
+    "/api/admin/rbac": {
+      "get": {
         "tags": [
           "Admin: users"
         ],
-        "summary": "Edit someone else's profile (name, phone)",
-        "operationId": "adminUpdateUserProfile",
-        "description": "The only way to change another person's profile. Every other role is refused (`403`), including staff holding every permission. Only `name` and `phone` can be changed; the email, role, status and permissions are ignored here and have their own admin actions. A changed phone becomes unverified again. The audit log records which fields changed, never their values. Send at least one field.\n\n**Access:** ADMIN.",
+        "summary": "Roles and permissions catalog",
+        "operationId": "getRolesAndPermissions",
+        "description": "The roles and permissions defined in `config/rbac.json`, with each role's flags. Use it to fill role and permission pickers so screens never drift from the rules.\n\n**Access:** ADMIN.",
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "parameters": [
+        "responses": {
+          "200": {
+            "description": "Roles and permissions fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Roles and permissions fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/RbacCatalog"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Roles and permissions fetched.",
+                  "data": {
+                    "roles": [
+                      {
+                        "code": "STAFF",
+                        "label": "Staff",
+                        "description": "Internal team member.",
+                        "selfRegister": false,
+                        "invitable": true,
+                        "bypassPermissions": false,
+                        "assignablePermissions": true
+                      }
+                    ],
+                    "permissions": [
+                      {
+                        "code": "VISA_VIEW",
+                        "description": "See visa applications"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/admin/staff": {
+      "post": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Create a staff account (sends an invite)",
+        "operationId": "createStaff",
+        "description": "Same as creating a user, but always `STAFF`. Staff start with **no** permissions: they get exactly the list you send.\n\n**Access:** ADMIN.",
+        "security": [
           {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+            "bearerAuth": []
           }
         ],
         "requestBody": {
@@ -3334,22 +3864,61 @@
                     "minLength": 2,
                     "maxLength": 100
                   },
+                  "email": {
+                    "type": "string",
+                    "maxLength": 254,
+                    "format": "email",
+                    "example": "rahim@example.com"
+                  },
                   "phone": {
                     "type": "string",
                     "pattern": "^\\+?[0-9]{8,15}$"
+                  },
+                  "permissions": {
+                    "maxItems": 15,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "USER_VIEW",
+                        "USER_MANAGE",
+                        "STAFF_CREATE",
+                        "VISA_VIEW",
+                        "VISA_UPDATE",
+                        "PASSPORT_VIEW",
+                        "PASSPORT_UPDATE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "TOUR_MANAGE",
+                        "MEMBERSHIP_MANAGE",
+                        "FLIGHT_INQUIRY_MANAGE",
+                        "REPORT_VIEW"
+                      ]
+                    }
                   }
-                }
+                },
+                "required": [
+                  "name",
+                  "email"
+                ]
               },
               "example": {
-                "name": "Edited By Admin",
-                "phone": "+8801788888888"
+                "name": "Sara Staff",
+                "email": "sara@example.com",
+                "permissions": [
+                  "B2B_VIEW",
+                  "DOCUMENT_VIEW",
+                  "DOCUMENT_VERIFY"
+                ]
               }
             }
           }
         },
         "responses": {
-          "200": {
-            "description": "Profile updated.",
+          "201": {
+            "description": "Staff account created and invitation sent.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3361,10 +3930,19 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "Profile updated."
+                      "example": "Staff account created and invitation sent."
                     },
                     "data": {
-                      "$ref": "#/components/schemas/User"
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        "inviteSent": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
                     }
                   },
                   "required": [
@@ -3374,21 +3952,27 @@
                 },
                 "example": {
                   "success": true,
-                  "message": "Profile updated.",
+                  "message": "Staff account created and invitation sent.",
                   "data": {
-                    "_id": "6ac0a5f0eebc510147c6722a",
-                    "name": "Edited By Admin",
-                    "email": "rahim@example.com",
-                    "phone": "+8801788888888",
-                    "role": "B2C",
-                    "permissions": [],
-                    "status": "ACTIVE",
-                    "emailVerified": true,
-                    "phoneVerified": false,
-                    "authProvider": "local",
-                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
-                    "createdAt": "2026-10-03T06:51:28.261Z",
-                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                    "user": {
+                      "_id": "64b7f0f0f0f0f0f0f0f0f0f0",
+                      "name": "Sara Staff",
+                      "email": "sara@example.com",
+                      "phone": "+8801712345678",
+                      "role": "STAFF",
+                      "permissions": [
+                        "B2B_VIEW",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY"
+                      ],
+                      "status": "PENDING",
+                      "emailVerified": false,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    },
+                    "inviteSent": true
                   }
                 }
               }
@@ -3399,169 +3983,12 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
           },
           "409": {
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Get one user",
-        "operationId": "getUser",
-        "description": "One account by id.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "User fetched.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "User fetched."
-                    },
-                    "data": {
-                      "$ref": "#/components/schemas/User"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "User fetched.",
-                  "data": {
-                    "_id": "6ac0a5f0eebc510147c6722a",
-                    "name": "Rahim Uddin",
-                    "email": "rahim@example.com",
-                    "phone": "+8801712345678",
-                    "role": "B2C",
-                    "permissions": [],
-                    "status": "ACTIVE",
-                    "emailVerified": true,
-                    "phoneVerified": false,
-                    "authProvider": "local",
-                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
-                    "createdAt": "2026-10-03T06:51:28.261Z",
-                    "updatedAt": "2026-10-03T06:51:28.261Z"
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      },
-      "delete": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Deactivate a user (soft delete)",
-        "operationId": "deactivateUser",
-        "description": "Sets the account to `INACTIVE`, cancels its sessions, and keeps the record for the audit trail. You cannot deactivate yourself, and the last active admin cannot be removed.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Account deactivated.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Account deactivated."
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Account deactivated."
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `LAST_ADMIN`.",
+            "description": "The input failed validation. `errors` lists each bad field.",
             "content": {
               "application/json": {
                 "schema": {
@@ -3569,14 +3996,17 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "You cannot change your own status.",
-                  "code": "SELF_CHANGE"
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
                 }
               }
             }
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -3740,7 +4170,25 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -3892,22 +4340,157 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/admin/staff": {
-      "post": {
+    "/api/admin/users/{id}": {
+      "get": {
         "tags": [
           "Admin: users"
         ],
-        "summary": "Create a staff account (sends an invite)",
-        "operationId": "createStaff",
-        "description": "Same as creating a user, but always `STAFF`. Staff start with **no** permissions: they get exactly the list you send.\n\n**Access:** ADMIN.",
+        "summary": "Get one user",
+        "operationId": "getUser",
+        "description": "One account by id.\n\n**Access:** ADMIN.",
         "security": [
           {
             "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "User fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "User fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "User fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6722a",
+                    "name": "Rahim Uddin",
+                    "email": "rahim@example.com",
+                    "phone": "+8801712345678",
+                    "role": "B2C",
+                    "permissions": [],
+                    "status": "ACTIVE",
+                    "emailVerified": true,
+                    "phoneVerified": false,
+                    "authProvider": "local",
+                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Edit someone else's profile (name, phone)",
+        "operationId": "adminUpdateUserProfile",
+        "description": "The only way to change another person's profile. Every other role is refused (`403`), including staff holding every permission. Only `name` and `phone` can be changed; the email, role, status and permissions are ignored here and have their own admin actions. A changed phone becomes unverified again. The audit log records which fields changed, never their values. Send at least one field.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
           }
         ],
         "requestBody": {
@@ -3922,16 +4505,236 @@
                     "minLength": 2,
                     "maxLength": 100
                   },
-                  "email": {
-                    "type": "string",
-                    "maxLength": 254,
-                    "format": "email",
-                    "example": "rahim@example.com"
-                  },
                   "phone": {
                     "type": "string",
                     "pattern": "^\\+?[0-9]{8,15}$"
+                  }
+                }
+              },
+              "example": {
+                "name": "Edited By Admin",
+                "phone": "+8801788888888"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Profile updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Profile updated."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
                   },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Profile updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6722a",
+                    "name": "Edited By Admin",
+                    "email": "rahim@example.com",
+                    "phone": "+8801788888888",
+                    "role": "B2C",
+                    "permissions": [],
+                    "status": "ACTIVE",
+                    "emailVerified": true,
+                    "phoneVerified": false,
+                    "authProvider": "local",
+                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Deactivate a user (soft delete)",
+        "operationId": "deactivateUser",
+        "description": "Sets the account to `INACTIVE`, cancels its sessions, and keeps the record for the audit trail. You cannot deactivate yourself, and the last active admin cannot be removed.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Account deactivated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Account deactivated."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Account deactivated."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `LAST_ADMIN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "You cannot change your own status.",
+                  "code": "SELF_CHANGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/permissions": {
+      "patch": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Set staff permissions",
+        "operationId": "updateUserPermissions",
+        "description": "Replaces the permission list of a STAFF account (duplicates are removed). Takes effect on the next request. Roles without a permission list answer `PERMISSIONS_NOT_ASSIGNABLE`.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
                   "permissions": {
                     "maxItems": 15,
                     "type": "array",
@@ -3958,160 +4761,21 @@
                   }
                 },
                 "required": [
-                  "name",
-                  "email"
+                  "permissions"
                 ]
               },
               "example": {
-                "name": "Sara Staff",
-                "email": "sara@example.com",
                 "permissions": [
                   "B2B_VIEW",
-                  "DOCUMENT_VIEW",
-                  "DOCUMENT_VERIFY"
+                  "DOCUMENT_VIEW"
                 ]
-              }
-            }
-          }
-        },
-        "responses": {
-          "201": {
-            "description": "Staff account created and invitation sent.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Staff account created and invitation sent."
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/User"
-                        },
-                        "inviteSent": {
-                          "type": "boolean",
-                          "example": true
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Staff account created and invitation sent.",
-                  "data": {
-                    "user": {
-                      "_id": "64b7f0f0f0f0f0f0f0f0f0f0",
-                      "name": "Sara Staff",
-                      "email": "sara@example.com",
-                      "phone": "+8801712345678",
-                      "role": "STAFF",
-                      "permissions": [
-                        "B2B_VIEW",
-                        "DOCUMENT_VIEW",
-                        "DOCUMENT_VERIFY"
-                      ],
-                      "status": "PENDING",
-                      "emailVerified": false,
-                      "phoneVerified": false,
-                      "authProvider": "local",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
-                    },
-                    "inviteSent": true
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/admin/users/{id}/status": {
-      "patch": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Change account status",
-        "operationId": "updateUserStatus",
-        "description": "ACTIVE, SUSPENDED, BLOCKED or INACTIVE. Anything other than ACTIVE cancels the person's tokens at once. You cannot change your own status, the last active admin is protected, and a never-verified account cannot be activated by hand. The change and the optional `reason` are written to the audit log.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "status": {
-                    "type": "string",
-                    "enum": [
-                      "ACTIVE",
-                      "SUSPENDED",
-                      "BLOCKED",
-                      "INACTIVE"
-                    ]
-                  },
-                  "reason": {
-                    "type": "string",
-                    "maxLength": 300
-                  }
-                },
-                "required": [
-                  "status"
-                ]
-              },
-              "example": {
-                "status": "SUSPENDED",
-                "reason": "Chargeback dispute"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Account status updated.",
+            "description": "Permissions updated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4123,7 +4787,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "Account status updated."
+                      "example": "Permissions updated."
                     },
                     "data": {
                       "$ref": "#/components/schemas/User"
@@ -4136,15 +4800,18 @@
                 },
                 "example": {
                   "success": true,
-                  "message": "Account status updated.",
+                  "message": "Permissions updated.",
                   "data": {
                     "_id": "6ac0a5f0eebc510147c6722a",
                     "name": "Rahim Uddin",
                     "email": "rahim@example.com",
                     "phone": "+8801712345678",
-                    "role": "B2C",
-                    "permissions": [],
-                    "status": "SUSPENDED",
+                    "role": "STAFF",
+                    "permissions": [
+                      "B2B_VIEW",
+                      "DOCUMENT_VIEW"
+                    ],
+                    "status": "ACTIVE",
                     "emailVerified": true,
                     "phoneVerified": false,
                     "authProvider": "local",
@@ -4166,7 +4833,7 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `LAST_ADMIN`, `NOT_VERIFIED`.",
+            "description": "Conflict. Possible error codes: `PERMISSIONS_NOT_ASSIGNABLE`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4174,14 +4841,153 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "You cannot change your own status.",
-                  "code": "SELF_CHANGE"
+                  "message": "This role does not use a permission list.",
+                  "code": "PERMISSIONS_NOT_ASSIGNABLE"
                 }
               }
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of permissions is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.permissions",
+                      "message": "The value of permissions is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/resend-invite": {
+      "post": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Resend an invitation",
+        "operationId": "resendInvite",
+        "description": "For an admin or staff account that has not set a password yet. The previous link stops working.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Invitation sent again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Invitation sent again."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        "inviteSent": {
+                          "type": "boolean",
+                          "example": true
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Invitation sent again.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Rahim Uddin",
+                      "email": "rahim@example.com",
+                      "phone": "+8801712345678",
+                      "role": "STAFF",
+                      "permissions": [],
+                      "status": "PENDING",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    },
+                    "inviteSent": true
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4338,19 +5144,37 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of role is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.role",
+                      "message": "The value of role is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
     },
-    "/api/admin/users/{id}/permissions": {
+    "/api/admin/users/{id}/status": {
       "patch": {
         "tags": [
           "Admin: users"
         ],
-        "summary": "Set staff permissions",
-        "operationId": "updateUserPermissions",
-        "description": "Replaces the permission list of a STAFF account (duplicates are removed). Takes effect on the next request. Roles without a permission list answer `PERMISSIONS_NOT_ASSIGNABLE`.\n\n**Access:** ADMIN.",
+        "summary": "Change account status",
+        "operationId": "updateUserStatus",
+        "description": "ACTIVE, SUSPENDED, BLOCKED or INACTIVE. Anything other than ACTIVE cancels the person's tokens at once. You cannot change your own status, the last active admin is protected, and a never-verified account cannot be activated by hand. The change and the optional `reason` are written to the audit log.\n\n**Access:** ADMIN.",
         "security": [
           {
             "bearerAuth": []
@@ -4376,47 +5200,34 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "permissions": {
-                    "maxItems": 15,
-                    "type": "array",
-                    "items": {
-                      "type": "string",
-                      "enum": [
-                        "USER_VIEW",
-                        "USER_MANAGE",
-                        "STAFF_CREATE",
-                        "VISA_VIEW",
-                        "VISA_UPDATE",
-                        "PASSPORT_VIEW",
-                        "PASSPORT_UPDATE",
-                        "DOCUMENT_VIEW",
-                        "DOCUMENT_VERIFY",
-                        "B2B_VIEW",
-                        "B2B_MANAGE",
-                        "TOUR_MANAGE",
-                        "MEMBERSHIP_MANAGE",
-                        "FLIGHT_INQUIRY_MANAGE",
-                        "REPORT_VIEW"
-                      ]
-                    }
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "ACTIVE",
+                      "SUSPENDED",
+                      "BLOCKED",
+                      "INACTIVE"
+                    ]
+                  },
+                  "reason": {
+                    "type": "string",
+                    "maxLength": 300
                   }
                 },
                 "required": [
-                  "permissions"
+                  "status"
                 ]
               },
               "example": {
-                "permissions": [
-                  "B2B_VIEW",
-                  "DOCUMENT_VIEW"
-                ]
+                "status": "SUSPENDED",
+                "reason": "Chargeback dispute"
               }
             }
           }
         },
         "responses": {
           "200": {
-            "description": "Permissions updated.",
+            "description": "Account status updated.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4428,7 +5239,7 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "Permissions updated."
+                      "example": "Account status updated."
                     },
                     "data": {
                       "$ref": "#/components/schemas/User"
@@ -4441,18 +5252,15 @@
                 },
                 "example": {
                   "success": true,
-                  "message": "Permissions updated.",
+                  "message": "Account status updated.",
                   "data": {
                     "_id": "6ac0a5f0eebc510147c6722a",
                     "name": "Rahim Uddin",
                     "email": "rahim@example.com",
                     "phone": "+8801712345678",
-                    "role": "STAFF",
-                    "permissions": [
-                      "B2B_VIEW",
-                      "DOCUMENT_VIEW"
-                    ],
-                    "status": "ACTIVE",
+                    "role": "B2C",
+                    "permissions": [],
+                    "status": "SUSPENDED",
                     "emailVerified": true,
                     "phoneVerified": false,
                     "authProvider": "local",
@@ -4474,7 +5282,7 @@
             "$ref": "#/components/responses/NotFound"
           },
           "409": {
-            "description": "Conflict. Possible error codes: `PERMISSIONS_NOT_ASSIGNABLE`.",
+            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `LAST_ADMIN`, `NOT_VERIFIED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -4482,117 +5290,32 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "This role does not use a permission list.",
-                  "code": "PERMISSIONS_NOT_ASSIGNABLE"
+                  "message": "You cannot change your own status.",
+                  "code": "SELF_CHANGE"
                 }
               }
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      }
-    },
-    "/api/admin/users/{id}/resend-invite": {
-      "post": {
-        "tags": [
-          "Admin: users"
-        ],
-        "summary": "Resend an invitation",
-        "operationId": "resendInvite",
-        "description": "For an admin or staff account that has not set a password yet. The previous link stops working.\n\n**Access:** ADMIN.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Invitation sent again.",
+            "description": "The input failed validation. `errors` lists each bad field.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Invitation sent again."
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "user": {
-                          "$ref": "#/components/schemas/User"
-                        },
-                        "inviteSent": {
-                          "type": "boolean",
-                          "example": true
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "success": true,
-                  "message": "Invitation sent again.",
-                  "data": {
-                    "user": {
-                      "_id": "6ac0a5f0eebc510147c6722a",
-                      "name": "Rahim Uddin",
-                      "email": "rahim@example.com",
-                      "phone": "+8801712345678",
-                      "role": "STAFF",
-                      "permissions": [],
-                      "status": "PENDING",
-                      "emailVerified": true,
-                      "phoneVerified": false,
-                      "authProvider": "local",
-                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
-                    },
-                    "inviteSent": true
-                  }
+                  "success": false,
+                  "message": "The value of status is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.status",
+                      "message": "The value of status is not valid."
+                    }
+                  ]
                 }
               }
             }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          },
-          "409": {
-            "$ref": "#/components/responses/Conflict"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -4755,7 +5478,25 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -4852,7 +5593,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -4985,7 +5744,25 @@
             "$ref": "#/components/responses/Conflict"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of companyName is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.companyName",
+                      "message": "The value of companyName is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5131,7 +5908,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of decision is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.decision",
+                      "message": "The value of decision is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5260,7 +6055,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of status is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.status",
+                      "message": "The value of status is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5411,7 +6224,25 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5423,7 +6254,7 @@
         ],
         "summary": "Download a private document",
         "operationId": "downloadPartnerDocument",
-        "description": "Streams the file **only after an ownership check**:\n\n- an ADMIN, or STAFF with `DOCUMENT_VIEW`: any partner's documents\n- a B2B user: only their own partner's documents\n- anyone else: `404`, exactly as if the document did not exist\n\nThe file arrives as an attachment and is never cached. In Postman use **Send and Download**.\n\n**Access:** Owner, ADMIN, or STAFF with DOCUMENT_VIEW.",
+        "description": "Streams the file **only after an ownership check**:\n\n- an ADMIN, or STAFF with `DOCUMENT_VIEW`: any partner's documents\n- a B2B user: only their own partner's documents\n- anyone else: `404`, exactly as if the document did not exist\n\nThe file arrives as an attachment and is never cached. In Swagger UI use the **Download file** link in the response. In Postman use **Send and Download**.\n\n**Access:** Owner, ADMIN, or STAFF with DOCUMENT_VIEW.",
         "security": [
           {
             "bearerAuth": []
@@ -5506,7 +6337,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of partnerId is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.partnerId",
+                      "message": "The value of partnerId is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5644,7 +6493,25 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -5731,7 +6598,25 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5811,7 +6696,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -5906,7 +6809,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -5918,7 +6839,7 @@
         ],
         "summary": "List and search tours",
         "operationId": "listTours",
-        "description": "The public sees **published** tours only (a `status` they send is ignored). A tour manager also sees drafts and unpublished tours, and archived ones with `status=archived`.\n\n- `search` matches name, destination and country, ignoring letter case. Special characters are plain text.\n- `category` takes one id or several separated by commas, as this API's ids or old frontend ids (`cat_beach,cat_city`).\n- `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match.\n- `sort` is `createdAt`, `price`, `durationDays` or `rating`; a leading `-` means descending. Default `-createdAt` (newest first).\n\n**`b2bPrice` is only in the answer for** an admin, staff with TOUR_MANAGE, and a B2B user whose partner is APPROVED. Everyone else never receives the field.\n\nA token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. In Postman, set the request's Authorization to Bearer Token `{{bearerToken}}` to see the signed-in view. Every `/api` route is also limited to 300 requests per 15 minutes per IP.\n\n**Access:** Public.",
+        "description": "The public sees **published** tours only (a `status` they send is ignored). A tour manager also sees drafts and unpublished tours, and archived ones with `status=archived`.\n\n- `search` matches name, destination and country, ignoring letter case. Special characters are plain text.\n- `category` takes one id or several separated by commas, as this API's ids or old frontend ids (`cat_beach,cat_city`).\n- `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match.\n- `sort` is `createdAt`, `price`, `durationDays` or `rating`; a leading `-` means descending. Default `-createdAt` (newest first).\n\n**`b2bPrice` is only in the answer for** an admin, staff with TOUR_MANAGE, and a B2B user whose partner is APPROVED. Everyone else never receives the field.\n\nA token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. To see the signed-in view, authorize first (the Authorize button in Swagger UI, or the header `Authorization: Bearer <token>`; in Postman set the request's Authorization to Bearer Token `{{bearerToken}}`). Every `/api` route is also limited to 300 requests per 15 minutes per IP.\n\n**Access:** Public.",
         "security": [
           {},
           {
@@ -6179,7 +7100,25 @@
             "$ref": "#/components/responses/Unauthorized"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -6498,7 +7437,25 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -6624,7 +7581,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -6905,7 +7880,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       },
@@ -7032,12 +8025,208 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
     },
     "/api/tours/custom-requests": {
+      "get": {
+        "tags": [
+          "Custom tours"
+        ],
+        "summary": "List custom tour requests",
+        "operationId": "listCustomTourRequests",
+        "description": "A B2C customer receives **their own** requests. A tour manager receives everyone's, with `userId` expanded to the customer's name, email and phone. Filter by `status`, search the customer name or destination. Newest first.\n\n**Access:** B2C (own requests), or ADMIN / STAFF with TOUR_MANAGE (all).",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "10"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Part of the customer name or destination.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": ""
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "NEW, IN_REVIEW, QUOTED, CONFIRMED or CANCELLED.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "IN_REVIEW",
+                "QUOTED",
+                "CONFIRMED",
+                "CANCELLED",
+                ""
+              ]
+            },
+            "example": ""
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Custom tour requests fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Custom tour requests fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CustomTourRequest"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Custom tour requests fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67242",
+                      "userId": "6ac0a5f0eebc510147c6722a",
+                      "customer": "Rahim Uddin",
+                      "phone": "+8801712345678",
+                      "destination": "Sajek Valley",
+                      "travelers": 4,
+                      "startDate": "2026-12-01T00:00:00.000Z",
+                      "endDate": "2026-12-05T00:00:00.000Z",
+                      "hotel": "3-star",
+                      "transportation": "Private car",
+                      "activities": [
+                        "Trekking",
+                        "Bonfire"
+                      ],
+                      "requirements": "Vegetarian meals",
+                      "itinerary": [
+                        {
+                          "day": 1,
+                          "title": "Arrival",
+                          "description": "Check in"
+                        }
+                      ],
+                      "status": "NEW",
+                      "reviewNote": "",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of page is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.page",
+                      "message": "The value of page is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
       "post": {
         "tags": [
           "Custom tours"
@@ -7240,167 +8429,25 @@
             "$ref": "#/components/responses/Forbidden"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
-          }
-        }
-      },
-      "get": {
-        "tags": [
-          "Custom tours"
-        ],
-        "summary": "List custom tour requests",
-        "operationId": "listCustomTourRequests",
-        "description": "A B2C customer receives **their own** requests. A tour manager receives everyone's, with `userId` expanded to the customer's name, email and phone. Filter by `status`, search the customer name or destination. Newest first.\n\n**Access:** B2C (own requests), or ADMIN / STAFF with TOUR_MANAGE (all).",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "page",
-            "in": "query",
-            "required": false,
-            "description": "Page number, starting at 1. Default 1.",
-            "schema": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "example": "1"
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
-            "schema": {
-              "type": "string",
-              "pattern": "^\\d+$"
-            },
-            "example": "10"
-          },
-          {
-            "name": "search",
-            "in": "query",
-            "required": false,
-            "description": "Part of the customer name or destination.",
-            "schema": {
-              "type": "string",
-              "maxLength": 100
-            },
-            "example": ""
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "description": "NEW, IN_REVIEW, QUOTED, CONFIRMED or CANCELLED.",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "NEW",
-                "IN_REVIEW",
-                "QUOTED",
-                "CONFIRMED",
-                "CANCELLED",
-                ""
-              ]
-            },
-            "example": ""
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Custom tour requests fetched.",
+            "description": "The input failed validation. `errors` lists each bad field.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Custom tour requests fetched."
-                    },
-                    "data": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/CustomTourRequest"
-                      }
-                    },
-                    "meta": {
-                      "$ref": "#/components/schemas/PaginationMeta"
-                    },
-                    "pagination": {
-                      "description": "The same object as `meta`, under the name the tour handoff uses.",
-                      "$ref": "#/components/schemas/PaginationMeta"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
+                  "$ref": "#/components/schemas/ErrorResponse"
                 },
                 "example": {
-                  "success": true,
-                  "message": "Custom tour requests fetched.",
-                  "data": [
+                  "success": false,
+                  "message": "The value of customer is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
                     {
-                      "_id": "6ac0a5f0eebc510147c67242",
-                      "userId": "6ac0a5f0eebc510147c6722a",
-                      "customer": "Rahim Uddin",
-                      "phone": "+8801712345678",
-                      "destination": "Sajek Valley",
-                      "travelers": 4,
-                      "startDate": "2026-12-01T00:00:00.000Z",
-                      "endDate": "2026-12-05T00:00:00.000Z",
-                      "hotel": "3-star",
-                      "transportation": "Private car",
-                      "activities": [
-                        "Trekking",
-                        "Bonfire"
-                      ],
-                      "requirements": "Vegetarian meals",
-                      "itinerary": [
-                        {
-                          "day": 1,
-                          "title": "Arrival",
-                          "description": "Check in"
-                        }
-                      ],
-                      "status": "NEW",
-                      "reviewNote": "",
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                      "field": "body.customer",
+                      "message": "The value of customer is not valid."
                     }
-                  ],
-                  "meta": {
-                    "total": 42,
-                    "page": 1,
-                    "limit": 10,
-                    "totalPages": 5
-                  },
-                  "pagination": {
-                    "total": 42,
-                    "page": 1,
-                    "limit": 10,
-                    "totalPages": 5
-                  }
+                  ]
                 }
               }
             }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "422": {
-            "$ref": "#/components/responses/ValidationError"
           }
         }
       }
@@ -7501,7 +8548,25 @@
             "$ref": "#/components/responses/NotFound"
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -7652,7 +8717,25 @@
             }
           },
           "422": {
-            "$ref": "#/components/responses/ValidationError"
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of status is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.status",
+                      "message": "The value of status is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -8607,6 +9690,94 @@
         }
       }
     },
+    "/api/memberships/{id}": {
+      "delete": {
+        "tags": [
+          "Memberships"
+        ],
+        "summary": "Delete a membership",
+        "operationId": "deleteMembership",
+        "description": "A **soft delete**: the membership leaves every list and count, and no longer blocks the customer from buying again, but the record and its payment are kept, so the **revenue stays in the reports**. A deleted membership answers `404` afterwards.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Membership deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "id": {
+                      "type": "string",
+                      "example": "6ac0a5f0eebc510147c67250"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "id"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "id": "6ac0a5f0eebc510147c67251"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Invalid id.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "Invalid id."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      }
+    },
     "/api/memberships/{id}/cancel": {
       "patch": {
         "tags": [
@@ -8885,94 +10056,6 @@
         }
       }
     },
-    "/api/memberships/{id}": {
-      "delete": {
-        "tags": [
-          "Memberships"
-        ],
-        "summary": "Delete a membership",
-        "operationId": "deleteMembership",
-        "description": "A **soft delete**: the membership leaves every list and count, and no longer blocks the customer from buying again, but the record and its payment are kept, so the **revenue stays in the reports**. A deleted membership answers `404` afterwards.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
-            "schema": {
-              "type": "string",
-              "pattern": "^[0-9a-fA-F]{24}$"
-            },
-            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Membership deleted.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "id": {
-                      "type": "string",
-                      "example": "6ac0a5f0eebc510147c67250"
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "id"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "id": "6ac0a5f0eebc510147c67251"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "success": false,
-                  "message": "Invalid id.",
-                  "code": "VALIDATION_ERROR",
-                  "errors": [
-                    {
-                      "field": "params.id",
-                      "message": "Invalid id."
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          },
-          "404": {
-            "$ref": "#/components/responses/NotFound"
-          }
-        }
-      }
-    },
     "/api/customers/{customerId}/memberships": {
       "get": {
         "tags": [
@@ -9091,90 +10174,6 @@
         }
       }
     },
-    "/api/membership-stats": {
-      "get": {
-        "tags": [
-          "Membership reports"
-        ],
-        "summary": "Membership numbers for the dashboard",
-        "operationId": "getMembershipStats",
-        "description": "Everything the cards and charts need, in one object. Memberships are counted by their effective status; deleted ones are not counted, but their payments still count in revenue. Months and days follow Asia/Dhaka.\n\n- `expiredThisMonth` counts expired memberships (not cancelled ones) whose end date is in the current month.\n- `revenueByMonth` always has exactly 6 entries, the last 6 calendar months, oldest first, with `0` for a month without payments.\n- `planDistribution` has one entry per existing plan, including plans with 0 memberships.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
-        "security": [
-          {
-            "bearerAuth": []
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Stats fetched.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/MembershipStats"
-                },
-                "example": {
-                  "total": 7,
-                  "active": 5,
-                  "expiringIn7": 1,
-                  "expiredThisMonth": 1,
-                  "revenueThisMonth": 1400,
-                  "revenueByMonth": [
-                    {
-                      "label": "May",
-                      "value": 0
-                    },
-                    {
-                      "label": "Jun",
-                      "value": 0
-                    },
-                    {
-                      "label": "Jul",
-                      "value": 0
-                    },
-                    {
-                      "label": "Aug",
-                      "value": 2500
-                    },
-                    {
-                      "label": "Sep",
-                      "value": 900
-                    },
-                    {
-                      "label": "Oct",
-                      "value": 1400
-                    }
-                  ],
-                  "planDistribution": [
-                    {
-                      "label": "Starter",
-                      "value": 1
-                    },
-                    {
-                      "label": "Basic",
-                      "value": 3
-                    },
-                    {
-                      "label": "Silver",
-                      "value": 2
-                    },
-                    {
-                      "label": "Gold",
-                      "value": 1
-                    }
-                  ]
-                }
-              }
-            }
-          },
-          "401": {
-            "$ref": "#/components/responses/Unauthorized"
-          },
-          "403": {
-            "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
     "/api/membership-report/periods": {
       "get": {
         "tags": [
@@ -9270,117 +10269,75 @@
         }
       }
     },
-    "/api/b2c/memberships": {
+    "/api/membership-stats": {
       "get": {
         "tags": [
-          "Customer (B2C)"
+          "Membership reports"
         ],
-        "summary": "My memberships",
-        "operationId": "listMyMemberships",
-        "description": "A customer reads **their own** memberships, newest first, with the effective status and `daysLeft`. The customer always comes from the token. The admin's internal `cancelReason` is left out. Use `status=active` for the profile page. Read-only: a customer cannot sell, cancel or extend one.\n\n**Access:** B2C.",
+        "summary": "Membership numbers for the dashboard",
+        "operationId": "getMembershipStats",
+        "description": "Everything the cards and charts need, in one object. Memberships are counted by their effective status; deleted ones are not counted, but their payments still count in revenue. Months and days follow Asia/Dhaka.\n\n- `expiredThisMonth` counts expired memberships (not cancelled ones) whose end date is in the current month.\n- `revenueByMonth` always has exactly 6 entries, the last 6 calendar months, oldest first, with `0` for a month without payments.\n- `planDistribution` has one entry per existing plan, including plans with 0 memberships.\n\n**Access:** ADMIN, or STAFF with MEMBERSHIP_MANAGE.",
         "security": [
           {
             "bearerAuth": []
           }
         ],
-        "parameters": [
-          {
-            "name": "status",
-            "in": "query",
-            "required": false,
-            "description": "pending, active, expired or cancelled (the effective status).",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "pending",
-                "active",
-                "expired",
-                "cancelled",
-                ""
-              ]
-            },
-            "example": ""
-          }
-        ],
         "responses": {
           "200": {
-            "description": "Memberships fetched.",
+            "description": "Stats fetched.",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "object",
-                  "properties": {
-                    "items": {
-                      "type": "array",
-                      "items": {
-                        "$ref": "#/components/schemas/Membership"
-                      }
-                    },
-                    "total": {
-                      "type": "integer",
-                      "example": 1
-                    }
-                  },
-                  "required": [
-                    "items",
-                    "total"
-                  ]
+                  "$ref": "#/components/schemas/MembershipStats"
                 },
                 "example": {
-                  "items": [
+                  "total": 7,
+                  "active": 5,
+                  "expiringIn7": 1,
+                  "expiredThisMonth": 1,
+                  "revenueThisMonth": 1400,
+                  "revenueByMonth": [
                     {
-                      "id": "6ac0a5f0eebc510147c67251",
-                      "customerId": "6ac0a5f0eebc510147c6722a",
-                      "customerName": "Emma Wilson",
-                      "customerEmail": "emma@example.com",
-                      "customerPhone": "+44 20 7946 0958",
-                      "planId": "6ac0a5f0eebc510147c67250",
-                      "planSnapshot": {
-                        "name": "Silver",
-                        "durationValue": 6,
-                        "durationUnit": "month",
-                        "price": 2500,
-                        "tourDiscountPercent": 10,
-                        "visaDiscountPercent": 10,
-                        "maxDiscountAmount": 1500
-                      },
-                      "startDate": "2026-10-06T18:00:00.000Z",
-                      "endDate": "2027-04-05T17:59:59.999Z",
-                      "status": "active",
-                      "daysLeft": 181,
-                      "payment": {
-                        "method": "bkash",
-                        "amount": 2500,
-                        "trxId": "BKX88231A",
-                        "status": "paid",
-                        "paidAt": "2026-10-03T06:51:28.261Z"
-                      },
-                      "source": "admin",
-                      "cancelledAt": null,
-                      "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                      "label": "May",
+                      "value": 0
+                    },
+                    {
+                      "label": "Jun",
+                      "value": 0
+                    },
+                    {
+                      "label": "Jul",
+                      "value": 0
+                    },
+                    {
+                      "label": "Aug",
+                      "value": 2500
+                    },
+                    {
+                      "label": "Sep",
+                      "value": 900
+                    },
+                    {
+                      "label": "Oct",
+                      "value": 1400
                     }
                   ],
-                  "total": 1
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad request. Possible error codes: `VALIDATION_ERROR`.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "success": false,
-                  "message": "Invalid status.",
-                  "code": "VALIDATION_ERROR",
-                  "errors": [
+                  "planDistribution": [
                     {
-                      "field": "query.status",
-                      "message": "Invalid status."
+                      "label": "Starter",
+                      "value": 1
+                    },
+                    {
+                      "label": "Basic",
+                      "value": 3
+                    },
+                    {
+                      "label": "Silver",
+                      "value": 2
+                    },
+                    {
+                      "label": "Gold",
+                      "value": 1
                     }
                   ]
                 }
@@ -9392,127 +10349,6 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
-          }
-        }
-      }
-    },
-    "/": {
-      "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "API version",
-        "operationId": "getVersion",
-        "description": "A simple \"is it up\" check that also returns the version.\n\n**Access:** Public.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "API is running.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "API is running."
-                    },
-                    "version": {
-                      "type": "string",
-                      "example": "1.0.0"
-                    }
-                  }
-                },
-                "example": {
-                  "success": true,
-                  "message": "API is running.",
-                  "version": "1.0.0"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/health": {
-      "get": {
-        "tags": [
-          "System"
-        ],
-        "summary": "Health check",
-        "operationId": "getHealth",
-        "description": "Answers `200` when the database is connected and `503` when it is not. Not rate limited. Use it for uptime monitors.\n\n**Access:** Public.",
-        "security": [],
-        "responses": {
-          "200": {
-            "description": "Healthy.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "uptime": {
-                      "type": "number",
-                      "example": 1234.56
-                    },
-                    "db": {
-                      "type": "string",
-                      "enum": [
-                        "up",
-                        "down"
-                      ],
-                      "example": "up"
-                    }
-                  }
-                },
-                "example": {
-                  "success": true,
-                  "uptime": 1234.56,
-                  "db": "up"
-                }
-              }
-            }
-          },
-          "503": {
-            "description": "The database is not reachable.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "uptime": {
-                      "type": "number",
-                      "example": 1234.56
-                    },
-                    "db": {
-                      "type": "string",
-                      "enum": [
-                        "up",
-                        "down"
-                      ],
-                      "example": "up"
-                    }
-                  }
-                },
-                "example": {
-                  "success": false,
-                  "uptime": 1234.56,
-                  "db": "down"
-                }
-              }
-            }
           }
         }
       }

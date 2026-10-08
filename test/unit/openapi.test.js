@@ -189,6 +189,44 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
     expect(op('get', '/api/membership-report/periods').parameters.map((x) => x.name)).toEqual(['mode']);
   });
 
+  it('lists the groups in the intended order, and sorts the operations inside each group', () => {
+    const { TAGS, FLOW_TAGS } = require('../../scripts/openapi/endpoints');
+    const METHODS = ['get', 'post', 'put', 'patch', 'delete'];
+    const byTag = {};
+    Object.entries(spec.paths).forEach(([p, item]) =>
+      Object.entries(item).forEach(([method, op]) => (byTag[op.tags[0]] = byTag[op.tags[0]] || []).push({ method, path: p, order: 0 }))
+    );
+
+    expect(spec.tags.map((x) => x.name)).toEqual(TAGS.map((x) => x.name));
+    expect(spec.tags.map((x) => x.name).slice(0, 5)).toEqual(['System', 'Auth: sign up and verify', 'Auth: sign in and session', 'Auth: passwords', 'Customer (B2C)']);
+    expect(Object.keys(byTag).every((name) => spec.tags.some((x) => x.name === name))).toBe(true); // no operation in an unlisted group
+    expect(spec.tags.every((x) => (byTag[x.name] || []).length > 0)).toBe(true); // no empty group
+
+    // the order the file lists them in is the order Swagger UI and Postman show
+    const seenTags = [];
+    Object.values(spec.paths).forEach((item) => Object.values(item).forEach((op) => !seenTags.includes(op.tags[0]) && seenTags.push(op.tags[0])));
+    expect(seenTags).toEqual(spec.tags.map((x) => x.name));
+
+    // inside a group: by path, then GET, POST, PUT, PATCH, DELETE (the sign-in flows keep their written order;
+    // a customer's membership history is moved to the end of its group on purpose)
+    Object.entries(byTag).forEach(([name, list]) => {
+      if (FLOW_TAGS.has(name)) return;
+      const rows = list.filter((r) => r.path !== '/api/customers/{customerId}/memberships');
+      const sorted = [...rows].sort((a, b) => (a.path === b.path ? METHODS.indexOf(a.method) - METHODS.indexOf(b.method) : a.path < b.path ? -1 : 1));
+      expect({ name, order: rows.map((r) => `${r.method} ${r.path}`) }).toEqual({ name, order: sorted.map((r) => `${r.method} ${r.path}`) });
+    });
+    expect(byTag.Memberships.at(-1).path).toBe('/api/customers/{customerId}/memberships');
+    expect(byTag['Auth: sign in and session'].map((r) => r.path)).toEqual(['/api/auth/login', '/api/auth/firebase', '/api/auth/refresh', '/api/auth/logout', '/api/auth/me']);
+  });
+
+  it('gives a 422 example that names a field of its own request, not a password', () => {
+    const example = (p, m) => spec.paths[p][m].responses['422'].content['application/json'].example.errors[0].field;
+
+    expect(example('/api/tours', 'get')).toBe('query.page');
+    expect(example('/api/tours/{id}', 'get')).toBe('params.id');
+    expect(example('/api/auth/login', 'post')).toBe('body.email');
+  });
+
   it('lets web clients stay in web mode: the mobile header is documented but empty by default', () => {
     const header = spec.paths['/api/auth/login'].post.parameters.find((x) => x.in === 'header');
     expect(header.name).toBe('X-Client-Type');

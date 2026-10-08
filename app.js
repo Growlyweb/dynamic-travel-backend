@@ -49,6 +49,19 @@ app.use(
   })
 );
 
+// Interactive API documentation (Swagger UI). Never in production: nothing here runs, and the documentation code is
+// not even loaded, so /docs answers 404 like any unknown URL.
+if (env.apiDocsOverrideIgnored) logger.warn('API_DOCS_ENABLED=true is ignored: the API documentation is never served in production.');
+if (env.apiDocsEnabled) {
+  try {
+    require('./utils/apiDocs').mount(app);
+  } catch (err) {
+    // swagger-ui-express is a dev dependency. A server installed without dev dependencies simply has no /docs.
+    if (err.code !== 'MODULE_NOT_FOUND' || !/swagger-ui-express/.test(err.message)) throw err;
+    logger.warn('swagger-ui-express is not installed, so /docs is not served.');
+  }
+}
+
 // Throttle BEFORE parsing bodies so abusive clients do not cost parsing work.
 app.use('/api', apiLimiter);
 

@@ -11,8 +11,11 @@ const { obj, str, bool, ref, arrayOf, exUser, exDocument, exPartner, exSession, 
 
 // ---- tags (order = order in Postman folders)
 const TAGS = [
-  { name: 'Auth', description: 'Registration, OTP, login, tokens, passwords. Public unless noted.' },
-  { name: 'Customer (B2C)', description: 'Endpoints for signed-in customers.' },
+  { name: 'System', description: 'Is the server up? Health and version. Public.' },
+  { name: 'Auth: sign up and verify', description: 'Register a customer or an agency, confirm the email code, resend it, and set the first password of an invited account. Public.' },
+  { name: 'Auth: sign in and session', description: 'Log in (email or Google), refresh the tokens, log out, and read who is signed in. Start here, then use the Authorize button.' },
+  { name: 'Auth: passwords', description: 'Forgot, check and reset a password with an emailed code, and change a password while signed in.' },
+  { name: 'Customer (B2C)', description: 'Endpoints for signed-in customers: profile and their own memberships.' },
   { name: 'Agency (B2B)', description: 'Endpoints for signed-in agencies. Operational routes need an APPROVED partner.' },
   { name: 'Staff', description: 'Endpoints for staff. Each feature needs a permission an admin granted.' },
   { name: 'Admin: users', description: 'ADMIN only. Accounts, invites, status, roles, permissions, roles catalog.' },
@@ -21,12 +24,15 @@ const TAGS = [
   { name: 'Documents', description: 'Private business documents, served only after an ownership check.' },
   { name: 'Tour categories', description: 'Reading is public. Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
   { name: 'Tours', description: 'Reading is public (published tours; the B2B price only for admin, TOUR_MANAGE staff and approved agencies). Changing needs ADMIN, or STAFF with TOUR_MANAGE.' },
+  { name: 'Custom tours', description: 'A B2C customer sends and follows their own request; tour managers answer it.' },
   { name: 'Membership plans', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. The plans an admin sells. Answers are { items, total } or the object itself, not the usual envelope.' },
   { name: 'Memberships', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Assign a plan to a B2C customer, record the payment, cancel, extend, delete.' },
-  { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' },
-  { name: 'Custom tours', description: 'A B2C customer sends and follows their own request; tour managers answer it.' },
-  { name: 'System', description: 'Health and version.' }
+  { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' }
 ];
+
+// Tags whose operations keep the order they are written in (a flow: sign up, then verify, then log in). Every other
+// tag is sorted by path, then by method (GET, POST, PUT, PATCH, DELETE), in scripts/openapi/spec.js.
+const FLOW_TAGS = new Set(['Auth: sign up and verify', 'Auth: sign in and session', 'Auth: passwords']);
 
 // ---- rate limit sentences
 const RATE = {
@@ -59,7 +65,7 @@ const SESSION = ref('Session');
 const endpoints = [
   // =============================================================== AUTH
   {
-    method: 'post', path: '/api/auth/register', tag: 'Auth', id: 'registerCustomer',
+    method: 'post', path: '/api/auth/register', tag: 'Auth: sign up and verify', id: 'registerCustomer',
     summary: 'Register a customer (B2C)',
     description:
       'Creates a customer account and emails a 6-digit verification code. The account is `PENDING` until the code is confirmed with **Verify email code**.\n\n' +
@@ -71,7 +77,7 @@ const endpoints = [
     notes: '`otpSent: false` means the account exists but the email could not be delivered. Use **Resend verification code**.'
   },
   {
-    method: 'post', path: '/api/auth/b2b/register', tag: 'Auth', id: 'registerAgency',
+    method: 'post', path: '/api/auth/b2b/register', tag: 'Auth: sign up and verify', id: 'registerAgency',
     summary: 'Register an agency (B2B)',
     description:
       'Creates an agency user (`PENDING`) and a partner record (`PENDING`), stores the uploaded documents privately, and emails a verification code.\n\n' +
@@ -93,7 +99,7 @@ const endpoints = [
     notes: 'A missing trade license answers 422 with `errors[0].field = "tradeLicense"`. If any check fails, no file is kept.'
   },
   {
-    method: 'post', path: '/api/auth/verify-otp', tag: 'Auth', id: 'verifyEmailCode',
+    method: 'post', path: '/api/auth/verify-otp', tag: 'Auth: sign up and verify', id: 'verifyEmailCode',
     summary: 'Verify email code',
     description:
       'Confirms the 6-digit code from the registration email. Activates the account and **signs the user in**. The code is valid 10 minutes, works once, and dies after 5 wrong tries.\n\n' +
@@ -103,7 +109,7 @@ const endpoints = [
     errors: { 400: ['INVALID_CODE'], 403: ['ACCOUNT_NOT_ACTIVE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/resend-otp', tag: 'Auth', id: 'resendEmailCode',
+    method: 'post', path: '/api/auth/resend-otp', tag: 'Auth: sign up and verify', id: 'resendEmailCode',
     summary: 'Resend verification code',
     description: 'Sends a new code and cancels the previous one. At least 60 seconds must pass between sends. The answer is identical whether or not the email exists, so it cannot be used to find registered addresses.\n\n' + RATE.otp,
     access: 'Public', body: auth.resendOtp, bodyExample: { email: 'rahim@example.com' },
@@ -111,17 +117,17 @@ const endpoints = [
     errors: { 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/login', tag: 'Auth', id: 'login',
+    method: 'post', path: '/api/auth/login', tag: 'Auth: sign in and session', id: 'login',
     summary: 'Log in (email and password)',
     description:
       'Works for every role. The answer is the same `Invalid credentials` whether the email is unknown, has no password, or the password is wrong.\n\n' +
-      '**After this call, put `data.accessToken` into the collection variable `bearerToken`.**\n\n' + SESSION_NOTE + '\n\n' + RATE.login,
+      '**The `accessToken` in the answer is what every protected route needs.** In Swagger UI it goes into the Authorize box by itself. In Postman, put it into the collection variable `bearerToken`.\n\n' + SESSION_NOTE + '\n\n' + RATE.login,
     access: 'Public', mobileHeader: true, body: auth.login, bodyExample: { email: 'rahim@example.com', password: 'Str0ng!Pass' },
     success: ok(200, 'Login successful.', SESSION, exSession(), { setsCookie: true }),
     errors: { 401: ['INVALID_CREDENTIALS'], 403: ['EMAIL_NOT_VERIFIED', 'ACCOUNT_NOT_ACTIVE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/firebase', tag: 'Auth', id: 'loginWithGoogle',
+    method: 'post', path: '/api/auth/firebase', tag: 'Auth: sign in and session', id: 'loginWithGoogle',
     summary: 'Continue with Google (Firebase ID token)',
     description:
       'The client signs in with Google through the Firebase SDK, then sends the Firebase **ID token** here. The API verifies it and answers with its own tokens.\n\n' +
@@ -134,11 +140,11 @@ const endpoints = [
     errors: { 401: ['FIREBASE_TOKEN_INVALID'], 403: ['FIREBASE_PROVIDER_NOT_ALLOWED', 'FIREBASE_UNVERIFIED', 'ACCOUNT_NOT_ACTIVE', 'REGISTRATION_CLOSED'], 409: ['ACCOUNT_TYPE_MISMATCH'], 422: true, 429: true, 503: ['FIREBASE_DISABLED'] }
   },
   {
-    method: 'post', path: '/api/auth/refresh', tag: 'Auth', id: 'refreshTokens',
+    method: 'post', path: '/api/auth/refresh', tag: 'Auth: sign in and session', id: 'refreshTokens',
     summary: 'Refresh tokens',
     description:
       'Swaps the refresh token for a new access token **and a new refresh token** (rotation). The old refresh token stops working.\n\n' +
-      '- **Web:** send nothing. The browser sends the `refreshToken` cookie, and Postman does too once a login has set it.\n' +
+      '- **Web:** send nothing. The browser sends the `refreshToken` cookie by itself (Swagger UI on this server too), and Postman does once a login has set it.\n' +
       '- **Mobile:** send the header `X-Client-Type: mobile` and put the token in the body.\n\n' +
       'Replaying an already-used refresh token is treated as theft and signs the user out on every device.\n\n' + RATE.refresh,
     access: 'Refresh token (cookie or body)', mobileHeader: true, body: auth.refresh, bodyExample: { refreshToken: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiI2YWMwYTVmMCJ9.signature' }, bodyRequired: false,
@@ -146,7 +152,7 @@ const endpoints = [
     errors: { 401: ['SESSION_EXPIRED', 'TOKEN_INVALID'], 403: ['ACCOUNT_NOT_ACTIVE'], 429: true }
   },
   {
-    method: 'post', path: '/api/auth/logout', tag: 'Auth', id: 'logout',
+    method: 'post', path: '/api/auth/logout', tag: 'Auth: sign in and session', id: 'logout',
     summary: 'Log out',
     description: 'Ends this device\'s session. Set `allDevices` to `true` to end every session and cancel all live access tokens. The refresh token is read from the cookie (web) or the body (mobile).',
     access: 'Signed in (any role)', needsAuth: true, body: auth.logout, bodyExample: { allDevices: false }, bodyRequired: false,
@@ -154,7 +160,7 @@ const endpoints = [
     errors: { 401: true }
   },
   {
-    method: 'post', path: '/api/auth/forgot-password', tag: 'Auth', id: 'forgotPassword',
+    method: 'post', path: '/api/auth/forgot-password', tag: 'Auth: passwords', id: 'forgotPassword',
     summary: 'Forgot password: request a code',
     description: 'Emails a 6-digit reset code to an active account. The answer is identical whether or not the email exists.\n\n' + RATE.forgot,
     access: 'Public', body: auth.forgotPassword, bodyExample: { email: 'rahim@example.com' },
@@ -162,7 +168,7 @@ const endpoints = [
     errors: { 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/verify-reset-token', tag: 'Auth', id: 'checkResetCode',
+    method: 'post', path: '/api/auth/verify-reset-token', tag: 'Auth: passwords', id: 'checkResetCode',
     summary: 'Forgot password: check the code',
     description: 'Checks a reset code **without using it up**, so a screen can validate it before asking for the new password. It still counts as one of the 5 attempts.\n\n' + RATE.otp,
     access: 'Public', body: auth.verifyResetToken, bodyExample: { email: 'rahim@example.com', otp: '482913' },
@@ -170,7 +176,7 @@ const endpoints = [
     errors: { 400: ['INVALID_CODE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/reset-password', tag: 'Auth', id: 'resetPassword',
+    method: 'post', path: '/api/auth/reset-password', tag: 'Auth: passwords', id: 'resetPassword',
     summary: 'Forgot password: set the new password',
     description: 'Uses the code (once) and sets the new password. Every session and token issued before is cancelled, and the user gets a "password changed" email. A customer who joined with Google can use this to add a password.\n\n' + RATE.otp,
     access: 'Public', body: auth.resetPassword, bodyExample: { email: 'rahim@example.com', otp: '482913', newPassword: 'N3w!Passw0rd' },
@@ -178,7 +184,7 @@ const endpoints = [
     errors: { 400: ['INVALID_CODE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/setup-account', tag: 'Auth', id: 'setupInvitedAccount',
+    method: 'post', path: '/api/auth/setup-account', tag: 'Auth: sign up and verify', id: 'setupInvitedAccount',
     summary: 'Invited staff or admin: set the first password',
     description: 'An admin creates staff and admin accounts without a password. The invitation email carries a link with a token; this call spends it, sets the password and activates the account. The token works once and expires after 48 hours.\n\n' + RATE.otp,
     access: 'Public (invite token)', body: auth.setupAccount, bodyExample: { token: 'a3f1c9d27b8e4f60a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718', password: 'Sara@Pass12' },
@@ -186,7 +192,7 @@ const endpoints = [
     errors: { 400: ['INVALID_INVITE'], 422: true, 429: true }
   },
   {
-    method: 'post', path: '/api/auth/change-password', tag: 'Auth', id: 'changePassword',
+    method: 'post', path: '/api/auth/change-password', tag: 'Auth: passwords', id: 'changePassword',
     summary: 'Change password (signed in)',
     description: 'Requires the current password. Other devices are signed out; this device continues with the **fresh tokens in the response**, so store them.\n\n' + SESSION_NOTE + '\n\n' + RATE.change,
     access: 'Signed in (any role)', needsAuth: true, mobileHeader: true, body: auth.changePassword, bodyExample: { currentPassword: 'Str0ng!Pass', newPassword: 'N3w!Passw0rd' },
@@ -194,7 +200,7 @@ const endpoints = [
     errors: { 400: ['NO_PASSWORD_SET'], 401: ['WRONG_PASSWORD'], 422: true, 429: true }
   },
   {
-    method: 'get', path: '/api/auth/me', tag: 'Auth', id: 'getMe',
+    method: 'get', path: '/api/auth/me', tag: 'Auth: sign in and session', id: 'getMe',
     summary: 'Who am I',
     description: 'Returns the signed-in account with its role and permissions, plus the partner record for agencies. Use it to guard screens and menus. Never includes a password hash.',
     access: 'Signed in (any role)', needsAuth: true,
@@ -438,7 +444,7 @@ const endpoints = [
       '- an ADMIN, or STAFF with `DOCUMENT_VIEW`: any partner\'s documents\n' +
       '- a B2B user: only their own partner\'s documents\n' +
       '- anyone else: `404`, exactly as if the document did not exist\n\n' +
-      'The file arrives as an attachment and is never cached. In Postman use **Send and Download**.',
+      'The file arrives as an attachment and is never cached. In Swagger UI use the **Download file** link in the response. In Postman use **Send and Download**.',
     access: 'Owner, ADMIN, or STAFF with DOCUMENT_VIEW', needsAuth: true, params: partner.documentParam, paramExamples: { partnerId: '6ac0a5f0eebc510147c6722f', docId: '6ac0a5f0eebc510147c67230' },
     binary: true, errors: { 401: true, 404: true, 422: true }
   },
@@ -485,7 +491,7 @@ const endpoints = [
       '- `minPrice` and `maxPrice` filter the public price. `durationDays` is an exact match.\n' +
       '- `sort` is `createdAt`, `price`, `durationDays` or `rating`; a leading `-` means descending. Default `-createdAt` (newest first).\n\n' +
       '**`b2bPrice` is only in the answer for** an admin, staff with TOUR_MANAGE, and a B2B user whose partner is APPROVED. Everyone else never receives the field.\n\n' +
-      'A token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. In Postman, set the request\'s Authorization to Bearer Token `{{bearerToken}}` to see the signed-in view. ' + RATE.api,
+      'A token is optional. With a token the answer is shaped for that person; a wrong token is `401`, not anonymous. An empty query value counts as not given. To see the signed-in view, authorize first (the Authorize button in Swagger UI, or the header `Authorization: Bearer <token>`; in Postman set the request\'s Authorization to Bearer Token `{{bearerToken}}`). ' + RATE.api,
     access: 'Public', optionalAuth: true, query: tours.listTours,
     queryDocs: {
       search: 'Matches name, destination and country, ignoring letter case. Special characters are plain text.',
@@ -675,7 +681,7 @@ const endpoints = [
     success: ok(200, 'Membership deleted.', obj({}), undefined, { raw: { success: true, id: '6ac0a5f0eebc510147c67251' }, rawSchema: deleted() }), errors: { 400: invalid('Invalid id.', 'params.id'), 401: true, 403: true, 404: true }
   },
   {
-    method: 'get', path: '/api/customers/{customerId}/memberships', tag: 'Memberships', id: 'listCustomerMemberships',
+    method: 'get', path: '/api/customers/{customerId}/memberships', tag: 'Memberships', order: 10, id: 'listCustomerMemberships',
     summary: 'Memberships of one customer',
     description: 'The full history of one customer, newest first, with the effective status and `daysLeft`. Used by the customer profile page. This answer has `items` only, with no `total`. An unknown customer answers `404`.',
     access: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE', needsAuth: true, params: membership.customerParam, paramExamples: { customerId: '6ac0a5f0eebc510147c6722a' },
@@ -723,4 +729,4 @@ const endpoints = [
   }
 ];
 
-module.exports = { endpoints, TAGS };
+module.exports = { endpoints, TAGS, FLOW_TAGS };
