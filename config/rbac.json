@@ -34,11 +34,29 @@
     }
   },
   "permissions": {
+    "VISA_VIEW": "View Visa Operations",
+    "VISA_EDIT": "Edit & Process Visas",
+    "VISA_UPDATE": "Change status of visa applications",
+    "TOURS_VIEW": "View Tour Packages",
+    "TOURS_EDIT": "Create & Edit Tour Packages",
+    "TOUR_MANAGE": "Manage tour packages and custom tours",
+    "B2B_VIEW": "View B2B Partners",
+    "B2B_MANAGE": "Approve and manage B2B partners",
+    "B2C_VIEW": "View Customers",
+    "MEMBERSHIPS_VIEW": "View Memberships",
+    "MEMBERSHIPS_EDIT": "Manage Plans & Members",
+    "MEMBERSHIP_MANAGE": "Manage membership plans, sell and change memberships, and read membership reports",
+    "DOCUMENTS_VIEW": "View Documents",
+    "DOCUMENTS_MANAGE": "Upload & Delete Documents",
+    "DOCUMENT_VIEW": "See uploaded documents",
+    "DOCUMENT_VERIFY": "Verify or reject uploaded documents",
+    "REPORTS_VIEW": "View Reports",
+    "REPORT_VIEW": "View operational reports",
+    "USERS_VIEW": "View User Directory",
+    "USERS_EDIT": "Manage Users & Roles",
     "USER_VIEW": "See user accounts",
     "USER_MANAGE": "Create, suspend and change user accounts",
     "STAFF_CREATE": "Create staff accounts",
-    "VISA_VIEW": "See visa applications",
-    "VISA_UPDATE": "Change the status of visa applications",
     "PASSPORT_VIEW": "See passport records",
     "PASSPORT_UPDATE": "Update passport records",
     "DOCUMENT_VIEW": "See uploaded documents",
@@ -46,8 +64,7 @@
     "B2B_VIEW": "See B2B partners",
     "B2B_MANAGE": "Approve and manage B2B partners",
     "TOUR_MANAGE": "Manage tour packages and custom tours",
-    "MEMBERSHIP_MANAGE": "Manage membership plans, sell and change memberships, and read membership reports",
     "FLIGHT_INQUIRY_MANAGE": "Handle flight inquiries",
-    "REPORT_VIEW": "View reports"
+    "SETTINGS_VIEW": "View platform settings"
   }
 }

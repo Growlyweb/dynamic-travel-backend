@@ -12,6 +12,7 @@
     "seed": "node scripts/seedAdmin.js",
     "seed:tours": "node scripts/seedTours.js",
     "seed:membership": "node scripts/seedMembership.js",
+    "seed:data": "node scripts/seedData.js",
     "test": "NODE_ENV=test jest --runInBand",
     "test:watch": "NODE_ENV=test jest --runInBand --watch",
     "e2e": "playwright test -c test/playwright.config.js",
@@ -34,9 +35,25 @@
     "testTimeout": 30000
   },
   "nodemonConfig": {
-    "watch": ["server.js", "app.js", "config", "controllers", "middleware", "models", "routes", "services", "utils", "validations"],
+    "watch": [
+      "server.js",
+      "app.js",
+      "config",
+      "controllers",
+      "middleware",
+      "models",
+      "routes",
+      "services",
+      "utils",
+      "validations"
+    ],
     "ext": "js,json",
-    "ignore": ["test", "documentation", "scripts", "storage"]
+    "ignore": [
+      "test",
+      "documentation",
+      "scripts",
+      "storage"
+    ]
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
