@@ -1,6 +1,6 @@
 const fs = require('fs');
 const { test, expect } = require('../helpers/test');
-const { cfg, emailFor, unique, mailCount, waitForMail, agencyForm, signUpCustomer } = require('../helpers/api');
+const { cfg, emailFor, unique, mailCount, waitForMail, agencyForm, signUpCustomer, signUpAgency } = require('../helpers/api');
 const { ENTRIES, openConsole, form, act, submitForm, press, login } = require('../helpers/console');
 
 test.describe('test console, as a person uses it', () => {
@@ -247,5 +247,78 @@ test.describe('tour packages in the test console', () => {
     expect((await press(page, 'GET /api/tours')).status).toBe(200);
     expect((await submitForm(page, 'GET /api/tours', {})).status).toBe(200); // the whole form left blank
     expect((await press(page, 'GET /api/tours/custom-requests')).status).toBe(401);
+  });
+});
+
+test.describe('membership in the test console', () => {
+  test('an admin builds a plan, assigns it to a customer, extends and cancels it, and the customer reads their own', async ({ page, client }) => {
+    const { pageErrors } = await openConsole(page);
+    const tag = unique('ui').replace(/-/g, '');
+    const customer = await signUpCustomer(await client());
+    const agency = await signUpAgency(await client());
+    const planName = `Gold ${tag}`;
+
+    expect((await login(page, cfg.ADMIN.email, cfg.ADMIN.password)).status).toBe(200);
+
+    // --- a plan: the numbers go as numbers, a repeat in other letters is a clash
+    const plan = await submitForm(page, 'POST /api/membership-plans', { name: planName, durationValue: '15', durationUnit: 'day', price: '500', maxDiscountAmount: '0' });
+    expect(plan.status).toBe(201);
+    expect(plan.body).toMatchObject({ name: planName, durationValue: 15, durationUnit: 'day', price: 500, maxDiscountAmount: null, isActive: true });
+    expect(plan.body.features).toEqual(['10% off tour packages', '10% off visa processing']);
+    const planId = plan.body.id;
+    const clash = await submitForm(page, 'POST /api/membership-plans', { name: planName.toUpperCase() });
+    expect([clash.status, clash.body.message]).toEqual([409, 'Another plan already uses this name.']);
+    expect((await submitForm(page, 'POST /api/membership-plans', { name: '   ' })).status).toBe(400);
+
+    // --- assign it: the amount is the plan's, an agency is refused, a second sale is a clash
+    const sold = await submitForm(page, 'POST /api/memberships', { customerId: customer.user._id, planId, paymentMethod: 'nagad', trxId: 'NG-1', startDate: '2026-10-01' });
+    expect(sold.status).toBe(201);
+    expect(sold.body).toMatchObject({ status: 'active', endDate: '2026-10-15T17:59:59.999Z', payment: { method: 'nagad', amount: 500, trxId: 'NG-1', status: 'paid' } });
+    const membershipId = sold.body.id;
+    const agencySale = await submitForm(page, 'POST /api/memberships', { customerId: agency.user._id, planId, paymentMethod: 'cash' });
+    expect([agencySale.status, agencySale.body.message]).toEqual([400, 'Membership is only for B2C customers']);
+    const second = await submitForm(page, 'POST /api/memberships', { customerId: customer.user._id, planId, paymentMethod: 'cash' });
+    expect([second.status, second.body.message]).toEqual([409, 'Customer already has an active membership - cancel or wait for expiry first.']);
+
+    // --- extend, search, history
+    const extended = await submitForm(page, 'PATCH /api/memberships/{id}/extend', { id: membershipId, days: '7' });
+    expect(extended.body.endDate).toBe('2026-10-22T17:59:59.999Z');
+    const found = await submitForm(page, 'GET /api/memberships', { planId });
+    expect(found.body).toMatchObject({ total: 1 });
+    expect(found.body.items[0].id).toBe(membershipId);
+    const history = await submitForm(page, 'GET /api/customers/{customerId}/memberships', { customerId: customer.user._id });
+    expect(Object.keys(history.body)).toEqual(['items']);
+
+    // --- the numbers
+    const numbers = await press(page, 'GET /api/membership-stats');
+    expect(numbers.status).toBe(200);
+    expect(numbers.body.revenueByMonth).toHaveLength(6);
+    expect(numbers.body.planDistribution.find((p) => p.label === planName)).toEqual({ label: planName, value: 1 });
+    const periods = await press(page, 'GET /api/membership-report/periods?mode=half');
+    expect(periods.body.items).toHaveLength(6);
+
+    // --- a used plan cannot be deleted; switch it off instead
+    const blocked = await submitForm(page, 'DELETE /api/membership-plans/{id}', { id: planId });
+    expect([blocked.status, blocked.body.message]).toEqual([409, 'This plan has memberships. Deactivate it instead of deleting it.']);
+    expect((await submitForm(page, 'PATCH /api/membership-plans/{id}/toggle', { id: planId })).body.isActive).toBe(false);
+    const edited = await submitForm(page, 'PUT /api/membership-plans/{id}', { id: planId, name: planName, durationValue: '15', durationUnit: 'day', price: '600' });
+    expect(edited.body).toMatchObject({ price: 600, isActive: false }); // the switch is not undone by a save
+
+    // --- the customer: reads their own, cannot manage anything
+    expect((await login(page, customer.email)).status).toBe(200);
+    const mine = await press(page, 'GET /api/b2c/memberships');
+    expect(mine.status).toBe(200);
+    expect(mine.body.items.map((m) => m.id)).toEqual([membershipId]);
+    expect(mine.body.items[0].planSnapshot.price).toBe(500); // the plan's later price change did not touch it
+    expect((await press(page, 'GET /api/membership-stats')).status).toBe(403);
+    expect((await submitForm(page, 'POST /api/membership-plans', { name: `Sneaky ${tag}` })).status).toBe(403);
+
+    // --- admin again: cancel, then delete
+    expect((await login(page, cfg.ADMIN.email, cfg.ADMIN.password)).status).toBe(200);
+    const cancelled = await submitForm(page, 'PATCH /api/memberships/{id}/cancel', { id: membershipId, reason: 'Customer request' });
+    expect(cancelled.body).toMatchObject({ status: 'cancelled', cancelReason: 'Customer request', payment: { status: 'paid' } });
+    expect((await submitForm(page, 'DELETE /api/memberships/{id}', { id: membershipId })).body).toEqual({ success: true, id: membershipId });
+
+    expect(pageErrors).toEqual([]);
   });
 });

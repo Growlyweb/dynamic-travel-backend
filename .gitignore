@@ -15,3 +15,4 @@ firebaseAuth.json
 *-firebase-adminsdk-*.json
 *serviceAccount*.json
 *service-account*.json
+convo-history.md

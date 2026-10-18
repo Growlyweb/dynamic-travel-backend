@@ -14,7 +14,9 @@ const PARTS = ['params', 'query', 'body'];
 
 const withoutBlanks = (query = {}) => Object.fromEntries(Object.entries(query).filter(([, value]) => value !== ''));
 
-const validate = (schemas) => (req, res, next) => {
+// validate(schemas, { statusCode: 400 }) changes the status of a failed validation. The default is 422; the
+// membership routes use 400 because their spec asks for it.
+const validate = (schemas, { statusCode = 422 } = {}) => (req, res, next) => {
   const errors = [];
 
   PARTS.forEach((part) => {
@@ -35,7 +37,7 @@ const validate = (schemas) => (req, res, next) => {
 
   if (errors.length) {
     const message = errors.map((e) => e.message).join(' ');
-    return next(new ApiError(422, message, { errors, code: 'VALIDATION_ERROR' }));
+    return next(new ApiError(statusCode, message, { errors, code: 'VALIDATION_ERROR' }));
   }
 
   next();

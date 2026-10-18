@@ -58,6 +58,7 @@
     "STAFF_CREATE": "Create staff accounts",
     "PASSPORT_VIEW": "See passport records",
     "PASSPORT_UPDATE": "Update passport records",
+    "MEMBERSHIP_MANAGE": "Manage membership plans, sell and change memberships, and read membership reports",
     "FLIGHT_INQUIRY_MANAGE": "Handle flight inquiries",
     "SETTINGS_VIEW": "View platform settings"
   }
