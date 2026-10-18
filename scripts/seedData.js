@@ -12,6 +12,12 @@ const CustomTourRequest = require('../models/CustomTourRequest');
 const authService = require('../services/authService');
 
 (async () => {
+  // Everything below uses passwords that anyone can read in this file, so it must never reach a real database.
+  // The first real admin is created with `npm run seed` (scripts/seedAdmin.js), from ADMIN_SEED_* in .env.
+  if (env.isProduction) {
+    throw new Error('scripts/seedData.js creates demo accounts with known passwords and will not run in production. Use `npm run seed` for the first admin.');
+  }
+
   console.log('⚡ Connecting to database for seeding...');
   await connectDB();
   await User.syncIndexes();
