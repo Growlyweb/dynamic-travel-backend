@@ -12,6 +12,12 @@ const CustomTourRequest = require('../models/CustomTourRequest');
 const authService = require('../services/authService');
 
 (async () => {
+  // Everything below uses passwords that anyone can read in this file, so it must never reach a real database.
+  // The first real admin is created with `npm run seed` (scripts/seedAdmin.js), from ADMIN_SEED_* in .env.
+  if (env.isProduction) {
+    throw new Error('scripts/seedData.js creates demo accounts with known passwords and will not run in production. Use `npm run seed` for the first admin.');
+  }
+
   console.log('⚡ Connecting to database for seeding...');
   await connectDB();
   await User.syncIndexes();
@@ -50,7 +56,7 @@ const authService = require('../services/authService');
       email: staffEmail,
       passwordHash: await authService.hashPassword(staffPassword),
       role: ROLES.STAFF,
-      permissions: ['VISA_VIEW', 'VISA_UPDATE', 'B2B_VIEW', 'B2B_APPROVE', 'DOCUMENT_VIEW', 'DOCUMENT_VERIFY', 'USER_VIEW', 'REPORT_VIEW', 'TOUR_MANAGE'],
+      permissions: ['VISA_VIEW', 'VISA_UPDATE', 'B2B_VIEW', 'B2B_MANAGE', 'DOCUMENT_VIEW', 'DOCUMENT_VERIFY', 'USER_VIEW', 'REPORT_VIEW', 'TOUR_MANAGE'],
       status: USER_STATUS.ACTIVE,
       emailVerified: true,
       phoneVerified: true,
@@ -446,7 +452,7 @@ const authService = require('../services/authService');
     const auditLogsToCreate = [
       {
         actorUserId: admin._id,
-        action: AUDIT_ACTIONS.USER_LOGIN,
+        action: AUDIT_ACTIONS.LOGIN,
         result: 'SUCCESS',
         ip: '127.0.0.1',
         resource: 'Admin Console',
@@ -454,7 +460,7 @@ const authService = require('../services/authService');
       },
       {
         actorUserId: admin._id,
-        action: AUDIT_ACTIONS.PARTNER_APPROVE,
+        action: AUDIT_ACTIONS.B2B_APPROVED,
         targetUserId: admin._id,
         result: 'SUCCESS',
         ip: '127.0.0.1',
@@ -463,7 +469,7 @@ const authService = require('../services/authService');
       },
       {
         actorUserId: staff._id,
-        action: AUDIT_ACTIONS.USER_UPDATE,
+        action: AUDIT_ACTIONS.PROFILE_UPDATED,
         result: 'SUCCESS',
         ip: '127.0.0.1',
         resource: 'Rohan Gupta Profile',
@@ -471,7 +477,7 @@ const authService = require('../services/authService');
       },
       {
         actorUserId: admin._id,
-        action: AUDIT_ACTIONS.DOCUMENT_VERIFY,
+        action: AUDIT_ACTIONS.DOCUMENT_REVIEWED,
         result: 'SUCCESS',
         ip: '127.0.0.1',
         resource: 'Trade License LIC-2026-8801',
@@ -479,7 +485,7 @@ const authService = require('../services/authService');
       },
       {
         actorUserId: staff._id,
-        action: AUDIT_ACTIONS.USER_LOGIN,
+        action: AUDIT_ACTIONS.LOGIN,
         result: 'SUCCESS',
         ip: '127.0.0.1',
         resource: 'Staff Workstation',

@@ -113,7 +113,9 @@ describe('GET /api/admin/rbac', () => {
     expect(res.body.data.roles.map((r) => r.code)).toEqual(['ADMIN', 'STAFF', 'B2B', 'B2C']);
     expect(res.body.data.roles.find((r) => r.code === 'STAFF')).toMatchObject({ label: 'Staff', assignablePermissions: true });
     expect(res.body.data.permissions).toHaveLength(Object.keys(raw.permissions).length);
-    expect(res.body.data.permissions[0]).toEqual({ code: 'USER_VIEW', description: raw.permissions.USER_VIEW });
+    // Same order as the file, so the admin UI lists them the way the team wrote them
+    const [firstCode, firstDescription] = Object.entries(raw.permissions)[0];
+    expect(res.body.data.permissions[0]).toEqual({ code: firstCode, description: firstDescription });
   });
 
   it('is closed to everyone but ADMIN', async () => {

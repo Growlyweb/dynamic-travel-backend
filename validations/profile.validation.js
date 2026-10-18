@@ -1,11 +1,11 @@
 const { z } = require('zod');
-const { name, phone } = require('./common');
+const { name, optionalPhone } = require('./common');
 
 // Profile updates may only touch these fields. role, status, permissions, partnerId, email
 // are not listed, so zod strips them. Changing an email needs re-verification (see documentation/ToDo.md).
 const updateProfile = z.object({
   name: name.optional(),
-  phone: phone.optional()
+  phone: optionalPhone
 });
 
 // B2B owners may also edit the contact details of their business.

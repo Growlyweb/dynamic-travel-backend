@@ -114,7 +114,7 @@
   <div>
     <nav class="toc">
       <a href="#b2c">B2C</a><a href="#firebase">Firebase</a><a href="#b2b">B2B</a><a href="#session">Session</a>
-      <a href="#reset">Password reset</a><a href="#setup">Staff setup</a><a href="#admin">Admin</a><a href="#staffb2b">Staff / B2B / B2C</a><a href="#tours">Tours</a>
+      <a href="#reset">Password reset</a><a href="#setup">Staff setup</a><a href="#admin">Admin</a><a href="#staffb2b">Staff / B2B / B2C</a><a href="#tours">Tours</a><a href="#membership">Membership</a>
     </nav>
 
     <section class="card" id="b2c">
@@ -484,6 +484,106 @@
         </div>
         <button>Change status</button>
         <p class="note">Staff with <code>TOUR_MANAGE</code> and admins follow NEW, IN_REVIEW, QUOTED, CONFIRMED. A customer can only cancel their own request while it is NEW.</p>
+      </form>
+    </section>
+
+    <section class="card" id="membership">
+      <h2>10. Membership</h2>
+      <p class="hint">Plans, sold memberships and reports need an admin, or staff with <code>MEMBERSHIP_MANAGE</code>. Only B2C customers can be sold a membership, and a customer reads their own with the last button. Answers are <code>{ items, total }</code> or the object itself, with <code>id</code>, not the usual envelope. Click an id chip on the right, with a field focused, to paste it in.</p>
+      <div class="row" style="margin-bottom:8px">
+        <button type="button" class="ghost" data-call="GET /api/membership-plans">List plans</button>
+        <button type="button" class="ghost" data-call="GET /api/memberships">List memberships</button>
+        <button type="button" class="ghost" data-call="GET /api/membership-stats">Stats</button>
+        <button type="button" class="ghost" data-call="GET /api/membership-report/periods?mode=monthly">Sales by month</button>
+        <button type="button" class="ghost" data-call="GET /api/membership-report/periods?mode=half">Sales by 15 days</button>
+        <button type="button" class="ghost" data-call="GET /api/b2c/memberships">My memberships (customer)</button>
+      </div>
+      <form data-route="POST /api/membership-plans">
+        <h3>Create a plan <span class="route">POST /api/membership-plans</span></h3>
+        <div class="grid">
+          <label class="field"><span>name <b>*</b></span><input name="name" value="Gold"></label>
+          <label class="field"><span>durationValue <b>*</b></span><input name="durationValue" value="1" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>durationUnit <b>*</b></span><select name="durationUnit"><option>year</option><option>month</option><option>day</option></select></label>
+          <label class="field"><span>price (BDT) <b>*</b></span><input name="price" value="4500" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>tourDiscountPercent</span><input name="tourDiscountPercent" value="10" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>visaDiscountPercent</span><input name="visaDiscountPercent" value="10" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>maxDiscountAmount (0 = no cap)</span><input name="maxDiscountAmount" value="3000" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>features (comma separated)</span><input name="features" value="10% off tour packages,10% off visa processing" data-list="true"></label>
+        </div>
+        <button>Create plan</button>
+        <p class="note">A name that exists in any letter case answers 409. The placeholder prices come from the spec: change them here.</p>
+      </form>
+      <form data-route="PUT /api/membership-plans/{id}">
+        <h3>Edit a plan <span class="route">PUT /api/membership-plans/:id</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="plan id"></label>
+          <label class="field"><span>name <b>*</b></span><input name="name" value="Gold"></label>
+          <label class="field"><span>durationValue <b>*</b></span><input name="durationValue" value="1" inputmode="numeric" data-number="true"></label>
+          <label class="field"><span>durationUnit <b>*</b></span><select name="durationUnit"><option>year</option><option>month</option><option>day</option></select></label>
+          <label class="field"><span>price <b>*</b></span><input name="price" value="4500" inputmode="numeric" data-number="true"></label>
+        </div>
+        <button class="ghost">Save</button>
+        <p class="note">Memberships already sold keep the plan as it was (their <code>planSnapshot</code>).</p>
+      </form>
+      <form data-route="PATCH /api/membership-plans/{id}/toggle">
+        <h3>Activate or deactivate a plan <span class="route">PATCH /api/membership-plans/:id/toggle</span></h3>
+        <label class="field" style="max-width:320px"><span>id <b>*</b></span><input name="id" placeholder="plan id"></label>
+        <div style="margin-top:8px"><button class="ghost">Toggle</button></div>
+      </form>
+      <form data-route="DELETE /api/membership-plans/{id}">
+        <h3>Delete a plan <span class="route">DELETE /api/membership-plans/:id</span></h3>
+        <label class="field" style="max-width:320px"><span>id <b>*</b></span><input name="id" placeholder="plan id"></label>
+        <div style="margin-top:8px"><button class="danger">Delete plan</button></div>
+        <p class="note">A plan that any membership used cannot be deleted (409). Deactivate it instead.</p>
+      </form>
+      <form data-route="POST /api/memberships">
+        <h3>Assign a plan to a customer <span class="route">POST /api/memberships</span></h3>
+        <div class="grid">
+          <label class="field"><span>customerId (a B2C user) <b>*</b></span><input name="customerId" placeholder="customer id"></label>
+          <label class="field"><span>planId <b>*</b></span><input name="planId" placeholder="plan id"></label>
+          <label class="field"><span>paymentMethod <b>*</b></span><select name="paymentMethod"><option>bkash</option><option>nagad</option><option>bank</option><option>cash</option><option>online</option></select></label>
+          <label class="field"><span>trxId (for the record, optional)</span><input name="trxId" placeholder="BKX88231A"></label>
+          <label class="field"><span>startDate (blank = today in Dhaka)</span><input name="startDate" type="date"></label>
+        </div>
+        <button>Assign</button>
+        <p class="note">The amount comes from the plan. The end date is the start day plus the plan length minus one day, at the end of that day in Dhaka. One active membership per customer: a second answers 409.</p>
+      </form>
+      <form data-route="PATCH /api/memberships/{id}/cancel">
+        <h3>Cancel a membership <span class="route">PATCH /api/memberships/:id/cancel</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="membership id"></label>
+          <label class="field"><span>reason</span><input name="reason" value="Customer request"></label>
+        </div>
+        <button class="ghost">Cancel membership</button>
+      </form>
+      <form data-route="PATCH /api/memberships/{id}/extend">
+        <h3>Extend a membership <span class="route">PATCH /api/memberships/:id/extend</span></h3>
+        <div class="grid">
+          <label class="field"><span>id <b>*</b></span><input name="id" placeholder="membership id"></label>
+          <label class="field"><span>days <b>*</b></span><input name="days" value="7" inputmode="numeric" data-number="true"></label>
+        </div>
+        <button class="ghost">Extend</button>
+      </form>
+      <form data-route="DELETE /api/memberships/{id}">
+        <h3>Delete a membership <span class="route">DELETE /api/memberships/:id</span></h3>
+        <label class="field" style="max-width:320px"><span>id <b>*</b></span><input name="id" placeholder="membership id"></label>
+        <div style="margin-top:8px"><button class="danger">Delete</button></div>
+        <p class="note">A soft delete: it leaves lists and counts, but its payment stays in the revenue reports.</p>
+      </form>
+      <form data-route="GET /api/memberships">
+        <h3>Find memberships <span class="route">GET /api/memberships</span></h3>
+        <div class="grid">
+          <label class="field"><span>search (name, phone, email)</span><input name="search"></label>
+          <label class="field"><span>status</span><select name="status"><option value="">any</option><option>active</option><option>expired</option><option>cancelled</option><option>pending</option></select></label>
+          <label class="field"><span>planId</span><input name="planId" placeholder="plan id"></label>
+          <label class="field"><span>expiringIn (days)</span><input name="expiringIn" inputmode="numeric" data-number="true"></label>
+        </div>
+        <button class="ghost">Search</button>
+      </form>
+      <form data-route="GET /api/customers/{customerId}/memberships">
+        <h3>One customer's memberships <span class="route">GET /api/customers/:customerId/memberships</span></h3>
+        <label class="field" style="max-width:320px"><span>customerId <b>*</b></span><input name="customerId" placeholder="customer id"></label>
+        <div style="margin-top:8px"><button class="ghost">Show history</button></div>
       </form>
     </section>
   </div>

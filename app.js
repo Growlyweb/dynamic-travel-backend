@@ -18,13 +18,13 @@ const authRoutes = require('./routes/authRoutes');
 const documentRoutes = require('./routes/documentRoutes');
 const tourRoutes = require('./routes/tourRoutes');
 const tourCategoryRoutes = require('./routes/tourCategoryRoutes');
+const membershipRoutes = require('./routes/membershipRoutes');
 const adminRoutes = require('./routes/admin');
 const staffRoutes = require('./routes/staff');
 const b2bRoutes = require('./routes/b2b');
 const b2cRoutes = require('./routes/b2c');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const visaRoutes = require('./routes/visaRoutes');
-const membershipRoutes = require('./routes/membershipRoutes');
 
 const app = express();
 
@@ -50,6 +50,19 @@ app.use(
     optionsSuccessStatus: 200
   })
 );
+
+// Interactive API documentation (Swagger UI). Never in production: nothing here runs, and the documentation code is
+// not even loaded, so /docs answers 404 like any unknown URL.
+if (env.apiDocsOverrideIgnored) logger.warn('API_DOCS_ENABLED=true is ignored: the API documentation is never served in production.');
+if (env.apiDocsEnabled) {
+  try {
+    require('./utils/apiDocs').mount(app);
+  } catch (err) {
+    // swagger-ui-express is a dev dependency. A server installed without dev dependencies simply has no /docs.
+    if (err.code !== 'MODULE_NOT_FOUND' || !/swagger-ui-express/.test(err.message)) throw err;
+    logger.warn('swagger-ui-express is not installed, so /docs is not served.');
+  }
+}
 
 // Throttle BEFORE parsing bodies so abusive clients do not cost parsing work.
 app.use('/api', apiLimiter);
@@ -78,9 +91,10 @@ app.get('/health', (req, res) => {
 
 // Public
 app.use('/api/auth', authRoutes);
+
+// Admin dashboard numbers and the visa module. Internal users only: the guards are inside each router.
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/visa', visaRoutes);
-app.use('/api', membershipRoutes);
 
 // Authenticated, ownership-checked file access
 app.use('/api/documents', documentRoutes);
@@ -88,6 +102,9 @@ app.use('/api/documents', documentRoutes);
 // Tour packages. Reading is public; changing needs TOUR_MANAGE; custom requests are for B2C customers.
 app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/tours', tourRoutes);
+
+// Membership plans, memberships and reports. Mounted at /api with the guards on each route, see the file.
+app.use('/api', membershipRoutes);
 
 // Role areas (authenticate + requireRole applied once, inside each router's index)
 app.use('/api/admin', adminRoutes);

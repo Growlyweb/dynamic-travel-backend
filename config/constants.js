@@ -57,6 +57,12 @@ const TOUR_STATUS = Object.freeze({
 // Allowed values of Tour.priceCurrency. Adding one is an edit here and a restart.
 const TOUR_CURRENCIES = Object.freeze(['BDT', 'USD', 'EUR']);
 
+// Membership. Values are lower case because the dashboard uses them that way.
+const MEMBERSHIP_STATUS = Object.freeze({ PENDING: 'pending', ACTIVE: 'active', EXPIRED: 'expired', CANCELLED: 'cancelled' });
+const PAYMENT_METHODS = Object.freeze(['bkash', 'nagad', 'bank', 'cash', 'online']);
+const PAYMENT_STATUS = Object.freeze({ UNPAID: 'unpaid', PAID: 'paid', REFUNDED: 'refunded' });
+const DURATION_UNITS = Object.freeze(['day', 'month', 'year']);
+
 // A B2C customer's custom tour request. The allowed moves between them are in services/customTourService.js.
 const CUSTOM_REQUEST_STATUS = Object.freeze({
   NEW: 'NEW',
@@ -92,7 +98,15 @@ const AUDIT_ACTIONS = Object.freeze({
   TOUR_UPDATED: 'TOUR_UPDATED',
   TOUR_ARCHIVED: 'TOUR_ARCHIVED',
   CUSTOM_TOUR_REQUESTED: 'CUSTOM_TOUR_REQUESTED',
-  CUSTOM_TOUR_STATUS_CHANGED: 'CUSTOM_TOUR_STATUS_CHANGED'
+  CUSTOM_TOUR_STATUS_CHANGED: 'CUSTOM_TOUR_STATUS_CHANGED',
+  MEMBERSHIP_PLAN_CREATED: 'MEMBERSHIP_PLAN_CREATED',
+  MEMBERSHIP_PLAN_UPDATED: 'MEMBERSHIP_PLAN_UPDATED',
+  MEMBERSHIP_PLAN_TOGGLED: 'MEMBERSHIP_PLAN_TOGGLED',
+  MEMBERSHIP_PLAN_DELETED: 'MEMBERSHIP_PLAN_DELETED',
+  MEMBERSHIP_CREATED: 'MEMBERSHIP_CREATED',
+  MEMBERSHIP_CANCELLED: 'MEMBERSHIP_CANCELLED',
+  MEMBERSHIP_EXTENDED: 'MEMBERSHIP_EXTENDED',
+  MEMBERSHIP_DELETED: 'MEMBERSHIP_DELETED'
 });
 
 module.exports = {
@@ -105,5 +119,9 @@ module.exports = {
   TOUR_STATUS,
   TOUR_CURRENCIES,
   CUSTOM_REQUEST_STATUS,
+  MEMBERSHIP_STATUS,
+  PAYMENT_METHODS,
+  PAYMENT_STATUS,
+  DURATION_UNITS,
   AUDIT_ACTIONS
 };

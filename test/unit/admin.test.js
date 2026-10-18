@@ -41,6 +41,39 @@ describe('creating staff and admins (invite flow)', () => {
     expect(res.body.data.user.permissions).toEqual([]);
   });
 
+  describe('when the admin chooses the password', () => {
+    it('activates the account at once, with no invite email, and the person can log in', async () => {
+      const res = await request(app)
+        .post('/api/admin/staff')
+        .set(auth)
+        .send({ name: 'Omar Staff', email: 'omar@example.com', password: PASSWORD, permissions: [PERMISSIONS.VISA_VIEW] });
+
+      expect(res.status).toBe(201);
+      expect(res.body.data.user).toMatchObject({ role: ROLES.STAFF, status: USER_STATUS.ACTIVE, emailVerified: true });
+      expect(lastEmailTo('omar@example.com')).toBeUndefined();
+      expect((await loginRequest('omar@example.com', PASSWORD)).status).toBe(200);
+    });
+
+    it('holds the password to the same rules as everyone else', async () => {
+      const res = await request(app)
+        .post('/api/admin/staff')
+        .set(auth)
+        .send({ name: 'Omar Staff', email: 'omar@example.com', password: '123456' });
+
+      expect(res.status).toBe(422);
+      expect(await User.countDocuments({ email: 'omar@example.com' })).toBe(0);
+    });
+  });
+
+  it('treats a blank phone as "not given", so two accounts can both leave it empty', async () => {
+    const first = await request(app).post('/api/admin/staff').set(auth).send({ name: 'No Phone One', email: 'one@example.com', phone: '' });
+    const second = await request(app).post('/api/admin/staff').set(auth).send({ name: 'No Phone Two', email: 'two@example.com', phone: '' });
+
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect((await User.findOne({ email: 'one@example.com' })).phone).toBeUndefined();
+  });
+
   it('lets the invited person set a password once, then log in', async () => {
     await request(app).post('/api/admin/staff').set(auth).send({ name: 'Sara Staff', email: 'sara@example.com' });
     const token = inviteTokenFor('sara@example.com');
