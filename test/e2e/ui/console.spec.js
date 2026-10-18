@@ -2,6 +2,16 @@ const fs = require('fs');
 const { test, expect } = require('../helpers/test');
 const { cfg, emailFor, unique, mailCount, waitForMail, agencyForm, signUpCustomer, signUpAgency } = require('../helpers/api');
 const { ENTRIES, openConsole, form, act, submitForm, press, login } = require('../helpers/console');
+const dayjs = require('dayjs');
+
+dayjs.extend(require('dayjs/plugin/utc'));
+dayjs.extend(require('dayjs/plugin/timezone'));
+
+// A membership expires, so a typed-in start date turns the test red once its end date has passed.
+// Build the dates from today (in Dhaka, where the API counts days) instead.
+const TZ = 'Asia/Dhaka';
+const TODAY = dayjs().tz(TZ).format('YYYY-MM-DD');
+const endOfDay = (ymd, plusDays = 0) => dayjs.tz(ymd, TZ).add(plusDays, 'day').endOf('day').toISOString();
 
 test.describe('test console, as a person uses it', () => {
   test('a customer registers, verifies with the e-mailed code, reads the account and signs out', async ({ page }) => {
@@ -271,9 +281,9 @@ test.describe('membership in the test console', () => {
     expect((await submitForm(page, 'POST /api/membership-plans', { name: '   ' })).status).toBe(400);
 
     // --- assign it: the amount is the plan's, an agency is refused, a second sale is a clash
-    const sold = await submitForm(page, 'POST /api/memberships', { customerId: customer.user._id, planId, paymentMethod: 'nagad', trxId: 'NG-1', startDate: '2026-10-01' });
+    const sold = await submitForm(page, 'POST /api/memberships', { customerId: customer.user._id, planId, paymentMethod: 'nagad', trxId: 'NG-1', startDate: TODAY });
     expect(sold.status).toBe(201);
-    expect(sold.body).toMatchObject({ status: 'active', endDate: '2026-10-15T17:59:59.999Z', payment: { method: 'nagad', amount: 500, trxId: 'NG-1', status: 'paid' } });
+    expect(sold.body).toMatchObject({ status: 'active', endDate: endOfDay(TODAY, 14), payment: { method: 'nagad', amount: 500, trxId: 'NG-1', status: 'paid' } });
     const membershipId = sold.body.id;
     const agencySale = await submitForm(page, 'POST /api/memberships', { customerId: agency.user._id, planId, paymentMethod: 'cash' });
     expect([agencySale.status, agencySale.body.message]).toEqual([400, 'Membership is only for B2C customers']);
@@ -282,7 +292,7 @@ test.describe('membership in the test console', () => {
 
     // --- extend, search, history
     const extended = await submitForm(page, 'PATCH /api/memberships/{id}/extend', { id: membershipId, days: '7' });
-    expect(extended.body.endDate).toBe('2026-10-22T17:59:59.999Z');
+    expect(extended.body.endDate).toBe(endOfDay(TODAY, 21));
     const found = await submitForm(page, 'GET /api/memberships', { planId });
     expect(found.body).toMatchObject({ total: 1 });
     expect(found.body.items[0].id).toBe(membershipId);

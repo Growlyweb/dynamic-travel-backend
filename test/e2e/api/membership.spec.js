@@ -1,5 +1,16 @@
 const { test, expect } = require('../helpers/test');
 const { bearer, json, unique, phoneFor, signUpCustomer, signUpAgency, adminSession, createStaff } = require('../helpers/api');
+const dayjs = require('dayjs');
+
+dayjs.extend(require('dayjs/plugin/utc'));
+dayjs.extend(require('dayjs/plugin/timezone'));
+
+// A membership expires, so a typed-in start date turns these tests red once its end date has passed.
+// Build the dates from today (in Dhaka, where the API counts days) instead.
+const TZ = 'Asia/Dhaka';
+const TODAY = dayjs().tz(TZ).format('YYYY-MM-DD');
+const startOfDay = (ymd, plusDays = 0) => dayjs.tz(ymd, TZ).add(plusDays, 'day').startOf('day').toISOString();
+const endOfDay = (ymd, plusDays = 0) => dayjs.tz(ymd, TZ).add(plusDays, 'day').endOf('day').toISOString();
 
 const planBody = (name, overrides = {}) => ({
   name,
@@ -29,7 +40,7 @@ test.describe('membership plans and memberships over real HTTP', () => {
 
     const sold = await ctx.post('/api/memberships', {
       headers: bearer(admin.token),
-      data: { customerId: customer.user._id, planId, paymentMethod: 'bkash', trxId: '  BKX1  ', startDate: '2026-10-01', amount: 1 }
+      data: { customerId: customer.user._id, planId, paymentMethod: 'bkash', trxId: '  BKX1  ', startDate: TODAY, amount: 1 }
     });
     const membership = await json(sold);
     expect(sold.status()).toBe(201);
@@ -38,8 +49,8 @@ test.describe('membership plans and memberships over real HTTP', () => {
       customerName: 'Emma Wilson',
       status: 'active',
       source: 'admin',
-      startDate: '2026-09-30T18:00:00.000Z', // midnight of 1 Oct in Dhaka
-      endDate: '2026-10-15T17:59:59.999Z', // the end of 15 Oct in Dhaka: the start day counts as day 1
+      startDate: startOfDay(TODAY), // midnight of the start day in Dhaka
+      endDate: endOfDay(TODAY, 14), // the end of the 15th day in Dhaka: the start day counts as day 1
       planSnapshot: { name: planName, durationValue: 15, price: 500 },
       payment: { method: 'bkash', amount: 500, trxId: 'BKX1', status: 'paid' } // the amount comes from the plan, not the request
     });
@@ -92,9 +103,9 @@ test.describe('membership plans and memberships over real HTTP', () => {
     expect((await json(await sell(agency.user._id))).message).toBe('Membership is only for B2C customers');
     expect((await sell('64b7f0f0f0f0f0f0f0f0f0f0')).status()).toBe(404);
 
-    const created = await json(await sell(customer.user._id, { startDate: '2026-10-01' }));
+    const created = await json(await sell(customer.user._id, { startDate: TODAY }));
     const extended = await json(await ctx.patch(`/api/memberships/${created.id}/extend`, { headers: bearer(admin.token), data: { days: 7 } }));
-    expect(extended.endDate).toBe('2026-10-22T17:59:59.999Z');
+    expect(extended.endDate).toBe(endOfDay(TODAY, 21)); // 15 days from the start day, then 7 more
     expect((await ctx.patch(`/api/memberships/${created.id}/extend`, { headers: bearer(admin.token), data: { days: 0 } })).status()).toBe(400);
   });
 
