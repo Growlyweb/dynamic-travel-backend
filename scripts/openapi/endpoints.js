@@ -1,6 +1,7 @@
 // One entry per route. Bodies, query strings and path parameters reference the zod schemas in
 // validations/, so they stay in step with the real validation. Everything a person reads (summary,
 // description, who may call it, rate limit, examples, error codes) is written here.
+const { z } = require('zod');
 const auth = require('../../validations/auth.validation');
 const user = require('../../validations/user.validation');
 const partner = require('../../validations/partner.validation');
@@ -27,7 +28,9 @@ const TAGS = [
   { name: 'Custom tours', description: 'A B2C customer sends and follows their own request; tour managers answer it.' },
   { name: 'Membership plans', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. The plans an admin sells. Answers are { items, total } or the object itself, not the usual envelope.' },
   { name: 'Memberships', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Assign a plan to a B2C customer, record the payment, cancel, extend, delete.' },
-  { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' }
+  { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' },
+  { name: 'Dashboard', description: 'ADMIN, or STAFF. Numbers for the admin dashboard. Some figures are placeholders until the visa, tour booking and revenue modules exist.' },
+  { name: 'Visa (demo data)', description: 'ADMIN, or STAFF with VISA_VIEW to read and VISA_EDIT to change. Runs on in-memory demo data and does not validate its input yet: a restart resets it.' }
 ];
 
 // Tags whose operations keep the order they are written in (a flow: sign up, then verify, then log in). Every other
@@ -58,6 +61,63 @@ const listOf = (name) => obj({ items: arrayOf(ref(name)), total: { type: 'intege
 const deleted = () => obj({ success: bool(true), id: str('6ac0a5f0eebc510147c67250') }, ['success', 'id']);
 // A failed validation of a membership route is 400, with the first message and the field list.
 const invalid = (message, field) => ({ codes: ['VALIDATION_ERROR'], message, fields: [{ field, message }] });
+
+// ---- dashboard and visa module (internal users, in-memory demo data: nothing here is stored yet)
+const INT = (example) => ({ type: 'integer', example });
+const itemsOf = (item) => obj({ items: arrayOf(item), total: INT(1) }, ['items', 'total']);
+const TREND_POINT = obj({ label: str('Jan'), value: INT(60) }, ['label', 'value']);
+
+const VISA_COUNTRY = obj({
+  id: str('vcn'), name: str('China'), code: str('CN'), flag: str('🇨🇳'), description: str('Tourist, business and student visa processing.'),
+  status: str('active', { enum: ['active', 'paused'] }), displayOrder: INT(1)
+});
+const VISA_COUNTRY_EXAMPLE = { id: 'vcn', name: 'China', code: 'CN', flag: '🇨🇳', description: 'Tourist, business and student visa processing.', status: 'active', displayOrder: 1 };
+
+const VISA_TYPE = obj({
+  id: str('vt_cn_tourist'), countryId: str('vcn'), name: str('Tourist Visa'), processingTime: str('5-7 working days'), entries: str('single'),
+  currency: str('BDT'), b2cPrice: INT(12000), b2bNetPrice: INT(10000), status: str('active')
+});
+const VISA_TYPE_EXAMPLE = { id: 'vt_cn_tourist', countryId: 'vcn', name: 'Tourist Visa', processingTime: '5-7 working days', entries: 'single', currency: 'BDT', b2cPrice: 12000, b2bNetPrice: 10000, status: 'active' };
+
+const VISA_CHECKLIST_ITEM = obj({
+  id: str('vci_1'), label: str('Passport (valid at least 6 months)'), requirement: str('required', { enum: ['required', 'optional'] }), active: bool(true),
+  submissionMode: str('both'), fileFormats: str('PDF/JPG/PNG'), maxSizeMb: INT(10)
+});
+const VISA_CHECKLIST = obj({
+  id: { type: 'string', nullable: true, example: 'vcl_1' }, countryId: str('vcn'), visaTypeId: str('vt_cn_tourist'), applicantType: str('individual'),
+  items: arrayOf(VISA_CHECKLIST_ITEM), isDefault: bool(false)
+});
+const VISA_CHECKLIST_EXAMPLE = {
+  id: 'vcl_1', countryId: 'vcn', visaTypeId: 'vt_cn_tourist', applicantType: 'individual', isDefault: false,
+  items: [{ id: 'vci_1', label: 'Passport (valid at least 6 months)', requirement: 'required', active: true, submissionMode: 'both', fileFormats: 'PDF/JPG/PNG', maxSizeMb: 10 }]
+};
+const CHECKLIST_EXAMPLE = { countryId: 'vcn', visaTypeId: 'vt_cn_tourist', applicantType: 'individual' };
+
+const VISA_APPLICATION = obj({
+  id: str('va_101'), number: str('VISA-2026-000101'), countryId: str('vcn'), visaTypeId: str('vt_cn_tourist'), country: str('China'), visaType: str('Tourist Visa'),
+  channel: str('b2c', { enum: ['b2c', 'b2b'] }),
+  applicant: obj({ fullName: str('Rahim Ahmed'), dob: str('1992-04-18'), gender: str('male'), nationality: str('Bangladeshi'), mobile: str('+880 1712 556 340'), email: str('rahim.ahmed@gmail.com'), city: str('Dhaka'), applicantType: str('individual') }),
+  passport: obj({ number: str('BR0912345'), expiry: str('2030-06-15'), issueDate: str('2020-06-16'), issuingCountry: str('Bangladesh'), type: str('ordinary') }),
+  status: str('under_review'), assignedStaff: str('Priya Nair'), submittedAt: str('2026-09-28'), updatedAt: str('2026-10-04'),
+  price: obj({ currency: str('BDT'), b2c: INT(12000), b2b: INT(10000) }),
+  documents: arrayOf(obj({})), timeline: arrayOf(obj({}))
+});
+const VISA_APPLICATION_EXAMPLE = {
+  id: 'va_101', number: 'VISA-2026-000101', countryId: 'vcn', visaTypeId: 'vt_cn_tourist', country: 'China', visaType: 'Tourist Visa', channel: 'b2c',
+  applicant: { fullName: 'Rahim Ahmed', dob: '1992-04-18', gender: 'male', nationality: 'Bangladeshi', mobile: '+880 1712 556 340', email: 'rahim.ahmed@gmail.com', city: 'Dhaka', applicantType: 'individual' },
+  passport: { number: 'BR0912345', expiry: '2030-06-15', issueDate: '2020-06-16', issuingCountry: 'Bangladesh', type: 'ordinary' },
+  status: 'under_review', assignedStaff: 'Priya Nair', submittedAt: '2026-09-28', updatedAt: '2026-10-04', price: { currency: 'BDT', b2c: 12000, b2b: 10000 }, documents: [], timeline: []
+};
+
+// The visa routes do not validate their input yet. These schemas only describe what the dashboard sends, for the docs.
+const VISA_ID_PARAM = z.object({ id: z.string('Id is required.') });
+const VISA_CHECKLIST_PARAMS = z.object({ countryId: z.string(), visaTypeId: z.string(), applicantType: z.string() });
+const VISA_SEARCH_QUERY = z.object({ search: z.string().optional() });
+const VISA_TYPES_QUERY = z.object({ countryId: z.string().optional() });
+const VISA_APPLICATIONS_QUERY = z.object({ status: z.string().optional(), search: z.string().optional() });
+const VISA_COUNTRY_BODY = z.object({ name: z.string(), code: z.string().optional(), flag: z.string().optional(), description: z.string().optional(), status: z.string().optional() });
+const VISA_TYPE_BODY = z.object({ countryId: z.string(), name: z.string(), processingTime: z.string().optional(), entries: z.string().optional(), currency: z.string().optional(), b2cPrice: z.number().optional(), b2bNetPrice: z.number().optional() });
+const VISA_CHECKLIST_BODY = z.object({ items: z.array(z.object({ id: z.string().optional(), label: z.string(), requirement: z.string().optional(), active: z.boolean().optional() })) });
 
 // shared success shapes
 const SESSION = ref('Session');
@@ -713,6 +773,145 @@ const endpoints = [
     description: 'A customer reads **their own** memberships, newest first, with the effective status and `daysLeft`. The customer always comes from the token. The admin\'s internal `cancelReason` is left out. Use `status=active` for the profile page. Read-only: a customer cannot sell, cancel or extend one.',
     access: 'B2C', needsAuth: true, query: membership.listOwnMemberships, queryBlank: ['status'], queryDocs: { status: 'pending, active, expired or cancelled (the effective status).' },
     success: ok(200, 'Memberships fetched.', obj({}), undefined, { raw: { items: [(({ cancelReason, ...rest }) => rest)(exMembership())], total: 1 }, rawSchema: listOf('Membership') }), errors: { 400: invalid('Invalid status.', 'query.status'), 401: true, 403: true }
+  },
+
+  // =============================================================== DASHBOARD (internal)
+  {
+    method: 'get', path: '/api/dashboard/overview', tag: 'Dashboard', id: 'getDashboardOverview',
+    summary: 'Admin dashboard cards',
+    description: 'The numbers on the top row of the admin dashboard. `totalCustomers`, `totalPartners` and `totalUsers` are counted from the database (`totalCustomers` shows a placeholder while there are no customers yet). The visa, tour and revenue figures are placeholders until those modules exist.',
+    access: 'ADMIN, or STAFF', needsAuth: true,
+    success: ok(200, 'Dashboard overview fetched successfully.', obj({
+      totalVisaApplications: INT(1284), visaDelta: str('+8.2%'), activeTours: INT(48), tourDelta: str('+4.6%'),
+      totalCustomers: INT(2310), customerDelta: str('+12.1%'), revenueThisMonth: INT(84500), revenueDelta: str('+6.8%'),
+      totalPartners: INT(3), totalUsers: INT(12)
+    }), {
+      totalVisaApplications: 1284, visaDelta: '+8.2%', activeTours: 48, tourDelta: '+4.6%', totalCustomers: 2310, customerDelta: '+12.1%',
+      revenueThisMonth: 84500, revenueDelta: '+6.8%', totalPartners: 3, totalUsers: 12
+    }),
+    errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/dashboard/visa-trend', tag: 'Dashboard', id: 'getDashboardVisaTrend',
+    summary: 'Visa applications per month',
+    description: 'Twelve points, January to December, for the line chart. Placeholder values until the visa module stores real applications.',
+    access: 'ADMIN, or STAFF', needsAuth: true,
+    success: ok(200, 'Visa trend fetched successfully.', arrayOf(TREND_POINT), [{ label: 'Jan', value: 60 }, { label: 'Feb', value: 77 }]),
+    errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/dashboard/tour-trend', tag: 'Dashboard', id: 'getDashboardTourTrend',
+    summary: 'Tour bookings per month',
+    description: 'Nine points, January to September, for the bar chart. Placeholder values until there is a booking module.',
+    access: 'ADMIN, or STAFF', needsAuth: true,
+    success: ok(200, 'Tour trend fetched successfully.', arrayOf(TREND_POINT), [{ label: 'Jan', value: 18 }, { label: 'Feb', value: 25 }]),
+    errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/dashboard/recent-applications', tag: 'Dashboard', id: 'getDashboardRecentApplications',
+    summary: 'Latest visa applications',
+    description: 'The four most recent applications for the dashboard table. Placeholder rows until the visa module stores real applications.',
+    access: 'ADMIN, or STAFF', needsAuth: true,
+    success: ok(200, 'Recent applications fetched successfully.', arrayOf(obj({
+      id: str('visa_501'), reference: str('VS-2026-0501'), applicant: str('Rohan Gupta'), country: str('United Arab Emirates'), submittedAt: str(NOW), status: str('in_review')
+    })), [{ id: 'visa_501', reference: 'VS-2026-0501', applicant: 'Rohan Gupta', country: 'United Arab Emirates', submittedAt: NOW, status: 'in_review' }]),
+    errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/dashboard/recent-activities', tag: 'Dashboard', id: 'getDashboardRecentActivities',
+    summary: 'Latest activity',
+    description: 'The ten newest entries of the security and audit log, worded for people ("login failed on user:..."). When the log is empty, placeholder entries are returned so the dashboard is not blank.',
+    access: 'ADMIN, or STAFF', needsAuth: true,
+    success: ok(200, 'Recent activities fetched successfully.', arrayOf(obj({ id: str(ID), actor: str('Super Admin'), action: str('login'), at: str(NOW) })), [{ id: ID, actor: 'Super Admin', action: 'login', at: NOW }]),
+    errors: { 401: true, 403: true }
+  },
+
+  // =============================================================== VISA (internal, demo data)
+  {
+    method: 'get', path: '/api/visa/dashboard', tag: 'Visa (demo data)', id: 'getVisaDashboard',
+    summary: 'Visa module counters',
+    description: 'Application counts by status and channel, per-country figures and the recent applications. Computed from the in-memory demo data, so a server restart resets it.',
+    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true,
+    success: ok(200, 'Visa dashboard overview fetched.', obj({
+      total: INT(1), submitted: INT(0), underReview: INT(1), actionRequired: INT(0), processing: INT(0), submittedToEmbassy: INT(0), approved: INT(0), completed: INT(0),
+      rejected: INT(0), b2c: INT(1), b2b: INT(0), unassigned: INT(0), decisionRate: INT(85), countries: arrayOf(obj({})), recent: arrayOf(VISA_APPLICATION)
+    }), {
+      total: 1, submitted: 0, underReview: 1, actionRequired: 0, processing: 0, submittedToEmbassy: 0, approved: 0, completed: 0, rejected: 0,
+      b2c: 1, b2b: 0, unassigned: 0, decisionRate: 85, countries: [{ country: 'China', flag: '🇨🇳', applications: 1, approved: 1, approvalRate: 100 }], recent: [VISA_APPLICATION_EXAMPLE]
+    }),
+    errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/visa/countries', tag: 'Visa (demo data)', id: 'listVisaCountries',
+    summary: 'Visa countries',
+    description: 'Countries we process visas for. `search` matches the name or the code. Demo data held in memory.',
+    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, query: VISA_SEARCH_QUERY, queryExample: { search: 'china' },
+    success: ok(200, 'Visa countries fetched.', itemsOf(VISA_COUNTRY), { items: [VISA_COUNTRY_EXAMPLE], total: 1 }),
+    errors: { 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/visa/countries', tag: 'Visa (demo data)', id: 'createVisaCountry',
+    summary: 'Add a visa country',
+    description: 'Adds a country to the in-memory demo list. The server does not validate this body yet, so send at least a `name`. Lost on restart.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, body: VISA_COUNTRY_BODY, bodyExample: { name: 'Japan', code: 'JP', description: 'Tourist visa processing.' },
+    success: ok(201, 'Country created successfully.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'patch', path: '/api/visa/countries/{id}', tag: 'Visa (demo data)', id: 'updateVisaCountry',
+    summary: 'Change a visa country',
+    description: 'Merges the body into the country. Answers `404` when the id is unknown. The body is not validated yet.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: VISA_ID_PARAM, paramExamples: { id: 'vcn' }, body: VISA_COUNTRY_BODY.partial(), bodyExample: { status: 'paused' },
+    success: ok(200, 'Country updated successfully.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true, 404: true }
+  },
+  {
+    method: 'delete', path: '/api/visa/countries/{id}', tag: 'Visa (demo data)', id: 'deleteVisaCountry',
+    summary: 'Remove a visa country',
+    description: 'Removes the country from the demo list. Answers `200` even when the id did not exist.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: VISA_ID_PARAM, paramExamples: { id: 'vcn' },
+    success: ok(200, 'Country deleted successfully.'), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/visa/types', tag: 'Visa (demo data)', id: 'listVisaTypes',
+    summary: 'Visa types',
+    description: 'Visa types with their fees. Filter by `countryId`. Demo data held in memory.',
+    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, query: VISA_TYPES_QUERY, queryExample: { countryId: 'vcn' },
+    success: ok(200, 'Visa types fetched.', itemsOf(VISA_TYPE), { items: [VISA_TYPE_EXAMPLE], total: 1 }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/visa/types', tag: 'Visa (demo data)', id: 'createVisaType',
+    summary: 'Add a visa type',
+    description: 'Adds a visa type to the in-memory demo list. The body is not validated yet. Lost on restart.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, body: VISA_TYPE_BODY, bodyExample: { countryId: 'vcn', name: 'Business Visa', processingTime: '7 working days' },
+    success: ok(201, 'Visa type created successfully.', VISA_TYPE, VISA_TYPE_EXAMPLE), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', tag: 'Visa (demo data)', id: 'getVisaChecklist',
+    summary: 'Document checklist',
+    description: 'The documents an applicant must give for one country, visa type and applicant type (for example `individual`). When nothing was saved, a default checklist is returned with `isDefault: true`.',
+    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, params: VISA_CHECKLIST_PARAMS, paramExamples: CHECKLIST_EXAMPLE,
+    success: ok(200, 'Checklist fetched.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'put', path: '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', tag: 'Visa (demo data)', id: 'saveVisaChecklist',
+    summary: 'Save a document checklist',
+    description: 'Replaces the checklist for that country, visa type and applicant type with `items`. The body is not validated yet.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: VISA_CHECKLIST_PARAMS, paramExamples: CHECKLIST_EXAMPLE, body: VISA_CHECKLIST_BODY,
+    bodyExample: { items: [{ id: 'vci_1', label: 'Passport (valid at least 6 months)', requirement: 'required', active: true }] },
+    success: ok(200, 'Checklist saved.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/visa/applications', tag: 'Visa (demo data)', id: 'listVisaApplications',
+    summary: 'Visa applications',
+    description: 'Filter by `status` or search the number, the applicant name and the country. Demo data held in memory.',
+    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, query: VISA_APPLICATIONS_QUERY, queryExample: { status: 'under_review' },
+    success: ok(200, 'Visa applications fetched.', itemsOf(VISA_APPLICATION), { items: [VISA_APPLICATION_EXAMPLE], total: 1 }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/visa/applications/{id}', tag: 'Visa (demo data)', id: 'getVisaApplication',
+    summary: 'One visa application',
+    description: 'The application with that id. An unknown id returns the first demo application instead of `404`.',
+    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, params: VISA_ID_PARAM, paramExamples: { id: 'va_101' },
+    success: ok(200, 'Visa application fetched.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true }
   },
 
   // =============================================================== SYSTEM

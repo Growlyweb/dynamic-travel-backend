@@ -99,7 +99,7 @@ Error: \`{ "success": false, "message": "...", "code": "SOME_CODE", "errors": [{
 
 ## Ids
 
-All ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.
+All ids are MongoDB ObjectIds (24 hex characters), except in the visa demo module (\`/api/visa\`), which still uses short text ids such as \`vcn\` and \`va_101\`. Timestamps are ISO 8601 UTC.
 
 ## Rate limits
 

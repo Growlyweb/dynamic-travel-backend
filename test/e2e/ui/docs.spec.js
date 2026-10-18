@@ -21,7 +21,9 @@ const GROUPS = [
   'Custom tours',
   'Membership plans',
   'Memberships',
-  'Membership reports'
+  'Membership reports',
+  'Dashboard',
+  'Visa (demo data)'
 ];
 
 // Collects what the page complains about: a blocked script, a failed request, an uncaught error.
@@ -173,7 +175,7 @@ test.describe('Swagger UI at /docs', () => {
 
     expect(res.status()).toBe(200);
     expect(spec.servers).toEqual([{ url: '/', description: 'This server' }]);
-    expect(Object.values(spec.paths).reduce((n, item) => n + Object.keys(item).length, 0)).toBe(74);
+    expect(Object.values(spec.paths).reduce((n, item) => n + Object.keys(item).length, 0)).toBe(90);
     expect((await request.get(`${cfg.API_URL}/docs/nope`)).status()).toBe(404);
   });
 });

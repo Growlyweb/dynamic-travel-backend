@@ -3,7 +3,7 @@
   "info": {
     "title": "Travel Management Platform: Auth and RBAC API",
     "version": "1.0.0",
-    "description": "Authentication and role-based access for the travel platform. Four roles share one login system: **ADMIN, STAFF, B2B, B2C**.\n\n## Quick start in Postman\n\n1. **Import** this file (File, Import). Postman builds a collection with one folder per area.\n2. Open the collection's **Variables**. `baseUrl` is already set to `http://localhost:5000`; change it for another server. Add a variable named `bearerToken` (leave it empty).\n3. Run **Auth, Log in**. Copy `data.accessToken` from the response into the `bearerToken` variable. Every request marked with a lock then works.\n4. The access token lasts 15 minutes. Run **Refresh tokens** to get a new one (Postman keeps the refresh cookie for you).\n\nTo try a role other than the one you registered, log in as that account and replace `bearerToken`.\nThe first admin is created with `npm run seed`; more admins and staff are created by an admin (**Admin: users, Create staff**).\n\n## Roles\n\n| Role | How the account is created | Can reach |\n| --- | --- | --- |\n| **B2C** | Registers, or continues with Google | Own profile and own records |\n| **B2B** | Registers (multipart), then an admin approves | Own profile and documents; operational routes once APPROVED |\n| **STAFF** | Invited by an admin | Only what the permissions granted allow |\n| **ADMIN** | First one by seed script, later ones invited | Everything under `/api/admin` |\n\nThe role is **never** accepted from a request body. The endpoint decides it.\n\n## Tokens\n\n- **Access token:** JWT, 15 minutes, sent as `Authorization: Bearer <token>`.\n- **Refresh token:** 7 days, rotates on every use. Web clients get it as an httpOnly cookie scoped to `/api/auth`. Send the header `X-Client-Type: mobile` to receive it in the JSON body instead.\n- A suspension, role change or password change takes effect on the next request.\n\n## Responses\n\nSuccess: `{ \"success\": true, \"message\": \"...\", \"data\": ..., \"meta\": { total, page, limit, totalPages }, \"pagination\": { same object } }` (`meta` and `pagination` on lists only; they are identical, read either).\n\n**Membership routes are the exception.** They answer in the shapes of the dashboard: a list is `{ \"items\": [...], \"total\": n }`, a single answer is the object itself, ids are called `id`, and a delete is `{ \"success\": true, \"id\": \"...\" }`. Errors keep the usual shape, and a failed validation there is `400`.\nError: `{ \"success\": false, \"message\": \"...\", \"code\": \"SOME_CODE\", \"errors\": [{ \"field\", \"message\" }] }`. Branch on `code`, not on `message`.\n\n| Status | Meaning |\n| --- | --- |\n| 400 | Bad request, or a rejected code, token or file |\n| 401 | Not signed in, or the token is invalid or expired |\n| 403 | Signed in, but role, permission or account status does not allow it |\n| 404 | Not found, **or a record that belongs to someone else** |\n| 409 | Conflict with the current state |\n| 413 | File or body too large |\n| 422 | Validation failed (`errors` lists each field) |\n| 429 | Rate limited (see `Retry-After`) |\n| 503 | A dependency is unavailable |\n\n## Ids\n\nAll ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.\n\n## Rate limits\n\nEach sensitive route has its own limit, stated on the route. All `/api` routes are also limited to 300 requests per 15 minutes per IP."
+    "description": "Authentication and role-based access for the travel platform. Four roles share one login system: **ADMIN, STAFF, B2B, B2C**.\n\n## Quick start in Postman\n\n1. **Import** this file (File, Import). Postman builds a collection with one folder per area.\n2. Open the collection's **Variables**. `baseUrl` is already set to `http://localhost:5000`; change it for another server. Add a variable named `bearerToken` (leave it empty).\n3. Run **Auth, Log in**. Copy `data.accessToken` from the response into the `bearerToken` variable. Every request marked with a lock then works.\n4. The access token lasts 15 minutes. Run **Refresh tokens** to get a new one (Postman keeps the refresh cookie for you).\n\nTo try a role other than the one you registered, log in as that account and replace `bearerToken`.\nThe first admin is created with `npm run seed`; more admins and staff are created by an admin (**Admin: users, Create staff**).\n\n## Roles\n\n| Role | How the account is created | Can reach |\n| --- | --- | --- |\n| **B2C** | Registers, or continues with Google | Own profile and own records |\n| **B2B** | Registers (multipart), then an admin approves | Own profile and documents; operational routes once APPROVED |\n| **STAFF** | Invited by an admin | Only what the permissions granted allow |\n| **ADMIN** | First one by seed script, later ones invited | Everything under `/api/admin` |\n\nThe role is **never** accepted from a request body. The endpoint decides it.\n\n## Tokens\n\n- **Access token:** JWT, 15 minutes, sent as `Authorization: Bearer <token>`.\n- **Refresh token:** 7 days, rotates on every use. Web clients get it as an httpOnly cookie scoped to `/api/auth`. Send the header `X-Client-Type: mobile` to receive it in the JSON body instead.\n- A suspension, role change or password change takes effect on the next request.\n\n## Responses\n\nSuccess: `{ \"success\": true, \"message\": \"...\", \"data\": ..., \"meta\": { total, page, limit, totalPages }, \"pagination\": { same object } }` (`meta` and `pagination` on lists only; they are identical, read either).\n\n**Membership routes are the exception.** They answer in the shapes of the dashboard: a list is `{ \"items\": [...], \"total\": n }`, a single answer is the object itself, ids are called `id`, and a delete is `{ \"success\": true, \"id\": \"...\" }`. Errors keep the usual shape, and a failed validation there is `400`.\nError: `{ \"success\": false, \"message\": \"...\", \"code\": \"SOME_CODE\", \"errors\": [{ \"field\", \"message\" }] }`. Branch on `code`, not on `message`.\n\n| Status | Meaning |\n| --- | --- |\n| 400 | Bad request, or a rejected code, token or file |\n| 401 | Not signed in, or the token is invalid or expired |\n| 403 | Signed in, but role, permission or account status does not allow it |\n| 404 | Not found, **or a record that belongs to someone else** |\n| 409 | Conflict with the current state |\n| 413 | File or body too large |\n| 422 | Validation failed (`errors` lists each field) |\n| 429 | Rate limited (see `Retry-After`) |\n| 503 | A dependency is unavailable |\n\n## Ids\n\nAll ids are MongoDB ObjectIds (24 hex characters), except in the visa demo module (`/api/visa`), which still uses short text ids such as `vcn` and `va_101`. Timestamps are ISO 8601 UTC.\n\n## Rate limits\n\nEach sensitive route has its own limit, stated on the route. All `/api` routes are also limited to 300 requests per 15 minutes per IP."
   },
   "servers": [
     {
@@ -79,6 +79,14 @@
     {
       "name": "Membership reports",
       "description": "ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period."
+    },
+    {
+      "name": "Dashboard",
+      "description": "ADMIN, or STAFF. Numbers for the admin dashboard. Some figures are placeholders until the visa, tour booking and revenue modules exist."
+    },
+    {
+      "name": "Visa (demo data)",
+      "description": "ADMIN, or STAFF with VISA_VIEW to read and VISA_EDIT to change. Runs on in-memory demo data and does not validate its input yet: a restart resets it."
     }
   ],
   "paths": {
@@ -231,8 +239,9 @@
                     "example": "rahim@example.com"
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   },
                   "password": {
                     "type": "string",
@@ -403,7 +412,7 @@
                   },
                   "phone": {
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$",
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$",
                     "example": "+8801811111111"
                   },
                   "password": {
@@ -2374,8 +2383,9 @@
                     "maxLength": 100
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   }
                 }
               },
@@ -2911,8 +2921,9 @@
                     "maxLength": 100
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   },
                   "address": {
                     "type": "string",
@@ -3469,8 +3480,9 @@
                     "maxLength": 100
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   }
                 }
               },
@@ -3667,8 +3679,9 @@
                     "maxLength": 100
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   }
                 }
               },
@@ -3871,30 +3884,51 @@
                     "example": "rahim@example.com"
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64,
+                    "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,64}$",
+                    "description": "At least 8 and at most 64 characters, with an upper case letter, a lower case letter, a number and a symbol.",
+                    "example": "Str0ng!Pass"
                   },
                   "permissions": {
-                    "maxItems": 15,
+                    "maxItems": 27,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
+                        "VISA_VIEW",
+                        "VISA_EDIT",
+                        "VISA_UPDATE",
+                        "TOURS_VIEW",
+                        "TOURS_EDIT",
+                        "TOUR_MANAGE",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "B2C_VIEW",
+                        "MEMBERSHIPS_VIEW",
+                        "MEMBERSHIPS_EDIT",
+                        "DOCUMENTS_VIEW",
+                        "DOCUMENTS_MANAGE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "REPORTS_VIEW",
+                        "REPORT_VIEW",
+                        "USERS_VIEW",
+                        "USERS_EDIT",
                         "USER_VIEW",
                         "USER_MANAGE",
                         "STAFF_CREATE",
-                        "VISA_VIEW",
-                        "VISA_UPDATE",
                         "PASSPORT_VIEW",
                         "PASSPORT_UPDATE",
-                        "DOCUMENT_VIEW",
-                        "DOCUMENT_VERIFY",
-                        "B2B_VIEW",
-                        "B2B_MANAGE",
-                        "TOUR_MANAGE",
                         "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
-                        "REPORT_VIEW"
+                        "SETTINGS_VIEW"
                       ]
                     }
                   }
@@ -4223,8 +4257,17 @@
                     "example": "rahim@example.com"
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
+                  },
+                  "password": {
+                    "type": "string",
+                    "minLength": 8,
+                    "maxLength": 64,
+                    "pattern": "^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[^A-Za-z0-9]).{8,64}$",
+                    "description": "At least 8 and at most 64 characters, with an upper case letter, a lower case letter, a number and a symbol.",
+                    "example": "Str0ng!Pass"
                   },
                   "role": {
                     "type": "string",
@@ -4234,26 +4277,38 @@
                     ]
                   },
                   "permissions": {
-                    "maxItems": 15,
+                    "maxItems": 27,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
+                        "VISA_VIEW",
+                        "VISA_EDIT",
+                        "VISA_UPDATE",
+                        "TOURS_VIEW",
+                        "TOURS_EDIT",
+                        "TOUR_MANAGE",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "B2C_VIEW",
+                        "MEMBERSHIPS_VIEW",
+                        "MEMBERSHIPS_EDIT",
+                        "DOCUMENTS_VIEW",
+                        "DOCUMENTS_MANAGE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "REPORTS_VIEW",
+                        "REPORT_VIEW",
+                        "USERS_VIEW",
+                        "USERS_EDIT",
                         "USER_VIEW",
                         "USER_MANAGE",
                         "STAFF_CREATE",
-                        "VISA_VIEW",
-                        "VISA_UPDATE",
                         "PASSPORT_VIEW",
                         "PASSPORT_UPDATE",
-                        "DOCUMENT_VIEW",
-                        "DOCUMENT_VERIFY",
-                        "B2B_VIEW",
-                        "B2B_MANAGE",
-                        "TOUR_MANAGE",
                         "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
-                        "REPORT_VIEW"
+                        "SETTINGS_VIEW"
                       ]
                     }
                   }
@@ -4506,8 +4561,9 @@
                     "maxLength": 100
                   },
                   "phone": {
+                    "description": "Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means \"not given\".",
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   }
                 }
               },
@@ -4736,26 +4792,38 @@
                 "type": "object",
                 "properties": {
                   "permissions": {
-                    "maxItems": 15,
+                    "maxItems": 27,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
+                        "VISA_VIEW",
+                        "VISA_EDIT",
+                        "VISA_UPDATE",
+                        "TOURS_VIEW",
+                        "TOURS_EDIT",
+                        "TOUR_MANAGE",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "B2C_VIEW",
+                        "MEMBERSHIPS_VIEW",
+                        "MEMBERSHIPS_EDIT",
+                        "DOCUMENTS_VIEW",
+                        "DOCUMENTS_MANAGE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "REPORTS_VIEW",
+                        "REPORT_VIEW",
+                        "USERS_VIEW",
+                        "USERS_EDIT",
                         "USER_VIEW",
                         "USER_MANAGE",
                         "STAFF_CREATE",
-                        "VISA_VIEW",
-                        "VISA_UPDATE",
                         "PASSPORT_VIEW",
                         "PASSPORT_UPDATE",
-                        "DOCUMENT_VIEW",
-                        "DOCUMENT_VERIFY",
-                        "B2B_VIEW",
-                        "B2B_MANAGE",
-                        "TOUR_MANAGE",
                         "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
-                        "REPORT_VIEW"
+                        "SETTINGS_VIEW"
                       ]
                     }
                   }
@@ -5033,26 +5101,38 @@
                     ]
                   },
                   "permissions": {
-                    "maxItems": 15,
+                    "maxItems": 27,
                     "type": "array",
                     "items": {
                       "type": "string",
                       "enum": [
+                        "VISA_VIEW",
+                        "VISA_EDIT",
+                        "VISA_UPDATE",
+                        "TOURS_VIEW",
+                        "TOURS_EDIT",
+                        "TOUR_MANAGE",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "B2C_VIEW",
+                        "MEMBERSHIPS_VIEW",
+                        "MEMBERSHIPS_EDIT",
+                        "DOCUMENTS_VIEW",
+                        "DOCUMENTS_MANAGE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "REPORTS_VIEW",
+                        "REPORT_VIEW",
+                        "USERS_VIEW",
+                        "USERS_EDIT",
                         "USER_VIEW",
                         "USER_MANAGE",
                         "STAFF_CREATE",
-                        "VISA_VIEW",
-                        "VISA_UPDATE",
                         "PASSPORT_VIEW",
                         "PASSPORT_UPDATE",
-                        "DOCUMENT_VIEW",
-                        "DOCUMENT_VERIFY",
-                        "B2B_VIEW",
-                        "B2B_MANAGE",
-                        "TOUR_MANAGE",
                         "MEMBERSHIP_MANAGE",
                         "FLIGHT_INQUIRY_MANAGE",
-                        "REPORT_VIEW"
+                        "SETTINGS_VIEW"
                       ]
                     }
                   }
@@ -8253,7 +8333,7 @@
                   },
                   "phone": {
                     "type": "string",
-                    "pattern": "^\\+?[0-9]{8,15}$"
+                    "pattern": "^\\+?[0-9][0-9\\s-]*$"
                   },
                   "destination": {
                     "type": "string",
@@ -10340,6 +10420,2423 @@
                       "value": 1
                     }
                   ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/overview": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Admin dashboard cards",
+        "operationId": "getDashboardOverview",
+        "description": "The numbers on the top row of the admin dashboard. `totalCustomers`, `totalPartners` and `totalUsers` are counted from the database (`totalCustomers` shows a placeholder while there are no customers yet). The visa, tour and revenue figures are placeholders until those modules exist.\n\n**Access:** ADMIN, or STAFF.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Dashboard overview fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Dashboard overview fetched successfully."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "totalVisaApplications": {
+                          "type": "integer",
+                          "example": 1284
+                        },
+                        "visaDelta": {
+                          "type": "string",
+                          "example": "+8.2%"
+                        },
+                        "activeTours": {
+                          "type": "integer",
+                          "example": 48
+                        },
+                        "tourDelta": {
+                          "type": "string",
+                          "example": "+4.6%"
+                        },
+                        "totalCustomers": {
+                          "type": "integer",
+                          "example": 2310
+                        },
+                        "customerDelta": {
+                          "type": "string",
+                          "example": "+12.1%"
+                        },
+                        "revenueThisMonth": {
+                          "type": "integer",
+                          "example": 84500
+                        },
+                        "revenueDelta": {
+                          "type": "string",
+                          "example": "+6.8%"
+                        },
+                        "totalPartners": {
+                          "type": "integer",
+                          "example": 3
+                        },
+                        "totalUsers": {
+                          "type": "integer",
+                          "example": 12
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Dashboard overview fetched successfully.",
+                  "data": {
+                    "totalVisaApplications": 1284,
+                    "visaDelta": "+8.2%",
+                    "activeTours": 48,
+                    "tourDelta": "+4.6%",
+                    "totalCustomers": 2310,
+                    "customerDelta": "+12.1%",
+                    "revenueThisMonth": 84500,
+                    "revenueDelta": "+6.8%",
+                    "totalPartners": 3,
+                    "totalUsers": 12
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/recent-activities": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Latest activity",
+        "operationId": "getDashboardRecentActivities",
+        "description": "The ten newest entries of the security and audit log, worded for people (\"login failed on user:...\"). When the log is empty, placeholder entries are returned so the dashboard is not blank.\n\n**Access:** ADMIN, or STAFF.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent activities fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Recent activities fetched successfully."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+                          },
+                          "actor": {
+                            "type": "string",
+                            "example": "Super Admin"
+                          },
+                          "action": {
+                            "type": "string",
+                            "example": "login"
+                          },
+                          "at": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Recent activities fetched successfully.",
+                  "data": [
+                    {
+                      "id": "64b7f0f0f0f0f0f0f0f0f0f0",
+                      "actor": "Super Admin",
+                      "action": "login",
+                      "at": "2026-10-03T06:51:28.261Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/recent-applications": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Latest visa applications",
+        "operationId": "getDashboardRecentApplications",
+        "description": "The four most recent applications for the dashboard table. Placeholder rows until the visa module stores real applications.\n\n**Access:** ADMIN, or STAFF.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recent applications fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Recent applications fetched successfully."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string",
+                            "example": "visa_501"
+                          },
+                          "reference": {
+                            "type": "string",
+                            "example": "VS-2026-0501"
+                          },
+                          "applicant": {
+                            "type": "string",
+                            "example": "Rohan Gupta"
+                          },
+                          "country": {
+                            "type": "string",
+                            "example": "United Arab Emirates"
+                          },
+                          "submittedAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "status": {
+                            "type": "string",
+                            "example": "in_review"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Recent applications fetched successfully.",
+                  "data": [
+                    {
+                      "id": "visa_501",
+                      "reference": "VS-2026-0501",
+                      "applicant": "Rohan Gupta",
+                      "country": "United Arab Emirates",
+                      "submittedAt": "2026-10-03T06:51:28.261Z",
+                      "status": "in_review"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/tour-trend": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Tour bookings per month",
+        "operationId": "getDashboardTourTrend",
+        "description": "Nine points, January to September, for the bar chart. Placeholder values until there is a booking module.\n\n**Access:** ADMIN, or STAFF.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Tour trend fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Tour trend fetched successfully."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "example": "Jan"
+                          },
+                          "value": {
+                            "type": "integer",
+                            "example": 60
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "value"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Tour trend fetched successfully.",
+                  "data": [
+                    {
+                      "label": "Jan",
+                      "value": 18
+                    },
+                    {
+                      "label": "Feb",
+                      "value": 25
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/dashboard/visa-trend": {
+      "get": {
+        "tags": [
+          "Dashboard"
+        ],
+        "summary": "Visa applications per month",
+        "operationId": "getDashboardVisaTrend",
+        "description": "Twelve points, January to December, for the line chart. Placeholder values until the visa module stores real applications.\n\n**Access:** ADMIN, or STAFF.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa trend fetched successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa trend fetched successfully."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string",
+                            "example": "Jan"
+                          },
+                          "value": {
+                            "type": "integer",
+                            "example": 60
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "value"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa trend fetched successfully.",
+                  "data": [
+                    {
+                      "label": "Jan",
+                      "value": 60
+                    },
+                    {
+                      "label": "Feb",
+                      "value": 77
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/applications": {
+      "get": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Visa applications",
+        "operationId": "listVisaApplications",
+        "description": "Filter by `status` or search the number, the applicant name and the country. Demo data held in memory.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Only accounts with this status.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "under_review"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa applications fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa applications fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "example": "va_101"
+                              },
+                              "number": {
+                                "type": "string",
+                                "example": "VISA-2026-000101"
+                              },
+                              "countryId": {
+                                "type": "string",
+                                "example": "vcn"
+                              },
+                              "visaTypeId": {
+                                "type": "string",
+                                "example": "vt_cn_tourist"
+                              },
+                              "country": {
+                                "type": "string",
+                                "example": "China"
+                              },
+                              "visaType": {
+                                "type": "string",
+                                "example": "Tourist Visa"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "example": "b2c",
+                                "enum": [
+                                  "b2c",
+                                  "b2b"
+                                ]
+                              },
+                              "applicant": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string",
+                                    "example": "Rahim Ahmed"
+                                  },
+                                  "dob": {
+                                    "type": "string",
+                                    "example": "1992-04-18"
+                                  },
+                                  "gender": {
+                                    "type": "string",
+                                    "example": "male"
+                                  },
+                                  "nationality": {
+                                    "type": "string",
+                                    "example": "Bangladeshi"
+                                  },
+                                  "mobile": {
+                                    "type": "string",
+                                    "example": "+880 1712 556 340"
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "example": "rahim.ahmed@gmail.com"
+                                  },
+                                  "city": {
+                                    "type": "string",
+                                    "example": "Dhaka"
+                                  },
+                                  "applicantType": {
+                                    "type": "string",
+                                    "example": "individual"
+                                  }
+                                }
+                              },
+                              "passport": {
+                                "type": "object",
+                                "properties": {
+                                  "number": {
+                                    "type": "string",
+                                    "example": "BR0912345"
+                                  },
+                                  "expiry": {
+                                    "type": "string",
+                                    "example": "2030-06-15"
+                                  },
+                                  "issueDate": {
+                                    "type": "string",
+                                    "example": "2020-06-16"
+                                  },
+                                  "issuingCountry": {
+                                    "type": "string",
+                                    "example": "Bangladesh"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "example": "ordinary"
+                                  }
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "example": "under_review"
+                              },
+                              "assignedStaff": {
+                                "type": "string",
+                                "example": "Priya Nair"
+                              },
+                              "submittedAt": {
+                                "type": "string",
+                                "example": "2026-09-28"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "example": "2026-10-04"
+                              },
+                              "price": {
+                                "type": "object",
+                                "properties": {
+                                  "currency": {
+                                    "type": "string",
+                                    "example": "BDT"
+                                  },
+                                  "b2c": {
+                                    "type": "integer",
+                                    "example": 12000
+                                  },
+                                  "b2b": {
+                                    "type": "integer",
+                                    "example": 10000
+                                  }
+                                }
+                              },
+                              "documents": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {}
+                                }
+                              },
+                              "timeline": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {}
+                                }
+                              }
+                            }
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 1
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa applications fetched.",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "va_101",
+                        "number": "VISA-2026-000101",
+                        "countryId": "vcn",
+                        "visaTypeId": "vt_cn_tourist",
+                        "country": "China",
+                        "visaType": "Tourist Visa",
+                        "channel": "b2c",
+                        "applicant": {
+                          "fullName": "Rahim Ahmed",
+                          "dob": "1992-04-18",
+                          "gender": "male",
+                          "nationality": "Bangladeshi",
+                          "mobile": "+880 1712 556 340",
+                          "email": "rahim.ahmed@gmail.com",
+                          "city": "Dhaka",
+                          "applicantType": "individual"
+                        },
+                        "passport": {
+                          "number": "BR0912345",
+                          "expiry": "2030-06-15",
+                          "issueDate": "2020-06-16",
+                          "issuingCountry": "Bangladesh",
+                          "type": "ordinary"
+                        },
+                        "status": "under_review",
+                        "assignedStaff": "Priya Nair",
+                        "submittedAt": "2026-09-28",
+                        "updatedAt": "2026-10-04",
+                        "price": {
+                          "currency": "BDT",
+                          "b2c": 12000,
+                          "b2b": 10000
+                        },
+                        "documents": [],
+                        "timeline": []
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/applications/{id}": {
+      "get": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "One visa application",
+        "operationId": "getVisaApplication",
+        "description": "The application with that id. An unknown id returns the first demo application instead of `404`.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "va_101"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa application fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa application fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "va_101"
+                        },
+                        "number": {
+                          "type": "string",
+                          "example": "VISA-2026-000101"
+                        },
+                        "countryId": {
+                          "type": "string",
+                          "example": "vcn"
+                        },
+                        "visaTypeId": {
+                          "type": "string",
+                          "example": "vt_cn_tourist"
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "example": "b2c",
+                          "enum": [
+                            "b2c",
+                            "b2b"
+                          ]
+                        },
+                        "applicant": {
+                          "type": "object",
+                          "properties": {
+                            "fullName": {
+                              "type": "string",
+                              "example": "Rahim Ahmed"
+                            },
+                            "dob": {
+                              "type": "string",
+                              "example": "1992-04-18"
+                            },
+                            "gender": {
+                              "type": "string",
+                              "example": "male"
+                            },
+                            "nationality": {
+                              "type": "string",
+                              "example": "Bangladeshi"
+                            },
+                            "mobile": {
+                              "type": "string",
+                              "example": "+880 1712 556 340"
+                            },
+                            "email": {
+                              "type": "string",
+                              "example": "rahim.ahmed@gmail.com"
+                            },
+                            "city": {
+                              "type": "string",
+                              "example": "Dhaka"
+                            },
+                            "applicantType": {
+                              "type": "string",
+                              "example": "individual"
+                            }
+                          }
+                        },
+                        "passport": {
+                          "type": "object",
+                          "properties": {
+                            "number": {
+                              "type": "string",
+                              "example": "BR0912345"
+                            },
+                            "expiry": {
+                              "type": "string",
+                              "example": "2030-06-15"
+                            },
+                            "issueDate": {
+                              "type": "string",
+                              "example": "2020-06-16"
+                            },
+                            "issuingCountry": {
+                              "type": "string",
+                              "example": "Bangladesh"
+                            },
+                            "type": {
+                              "type": "string",
+                              "example": "ordinary"
+                            }
+                          }
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "under_review"
+                        },
+                        "assignedStaff": {
+                          "type": "string",
+                          "example": "Priya Nair"
+                        },
+                        "submittedAt": {
+                          "type": "string",
+                          "example": "2026-09-28"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-04"
+                        },
+                        "price": {
+                          "type": "object",
+                          "properties": {
+                            "currency": {
+                              "type": "string",
+                              "example": "BDT"
+                            },
+                            "b2c": {
+                              "type": "integer",
+                              "example": 12000
+                            },
+                            "b2b": {
+                              "type": "integer",
+                              "example": 10000
+                            }
+                          }
+                        },
+                        "documents": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "timeline": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa application fetched.",
+                  "data": {
+                    "id": "va_101",
+                    "number": "VISA-2026-000101",
+                    "countryId": "vcn",
+                    "visaTypeId": "vt_cn_tourist",
+                    "country": "China",
+                    "visaType": "Tourist Visa",
+                    "channel": "b2c",
+                    "applicant": {
+                      "fullName": "Rahim Ahmed",
+                      "dob": "1992-04-18",
+                      "gender": "male",
+                      "nationality": "Bangladeshi",
+                      "mobile": "+880 1712 556 340",
+                      "email": "rahim.ahmed@gmail.com",
+                      "city": "Dhaka",
+                      "applicantType": "individual"
+                    },
+                    "passport": {
+                      "number": "BR0912345",
+                      "expiry": "2030-06-15",
+                      "issueDate": "2020-06-16",
+                      "issuingCountry": "Bangladesh",
+                      "type": "ordinary"
+                    },
+                    "status": "under_review",
+                    "assignedStaff": "Priya Nair",
+                    "submittedAt": "2026-09-28",
+                    "updatedAt": "2026-10-04",
+                    "price": {
+                      "currency": "BDT",
+                      "b2c": 12000,
+                      "b2b": 10000
+                    },
+                    "documents": [],
+                    "timeline": []
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}": {
+      "get": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Document checklist",
+        "operationId": "getVisaChecklist",
+        "description": "The documents an applicant must give for one country, visa type and applicant type (for example `individual`). When nothing was saved, a default checklist is returned with `isDefault: true`.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "countryId",
+            "in": "path",
+            "required": true,
+            "description": "countryId",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vcn"
+          },
+          {
+            "name": "visaTypeId",
+            "in": "path",
+            "required": true,
+            "description": "visaTypeId",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vt_cn_tourist"
+          },
+          {
+            "name": "applicantType",
+            "in": "path",
+            "required": true,
+            "description": "applicantType",
+            "schema": {
+              "type": "string"
+            },
+            "example": "individual"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Checklist fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Checklist fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "vcl_1"
+                        },
+                        "countryId": {
+                          "type": "string",
+                          "example": "vcn"
+                        },
+                        "visaTypeId": {
+                          "type": "string",
+                          "example": "vt_cn_tourist"
+                        },
+                        "applicantType": {
+                          "type": "string",
+                          "example": "individual"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "example": "vci_1"
+                              },
+                              "label": {
+                                "type": "string",
+                                "example": "Passport (valid at least 6 months)"
+                              },
+                              "requirement": {
+                                "type": "string",
+                                "example": "required",
+                                "enum": [
+                                  "required",
+                                  "optional"
+                                ]
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "example": true
+                              },
+                              "submissionMode": {
+                                "type": "string",
+                                "example": "both"
+                              },
+                              "fileFormats": {
+                                "type": "string",
+                                "example": "PDF/JPG/PNG"
+                              },
+                              "maxSizeMb": {
+                                "type": "integer",
+                                "example": 10
+                              }
+                            }
+                          }
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Checklist fetched.",
+                  "data": {
+                    "id": "vcl_1",
+                    "countryId": "vcn",
+                    "visaTypeId": "vt_cn_tourist",
+                    "applicantType": "individual",
+                    "isDefault": false,
+                    "items": [
+                      {
+                        "id": "vci_1",
+                        "label": "Passport (valid at least 6 months)",
+                        "requirement": "required",
+                        "active": true,
+                        "submissionMode": "both",
+                        "fileFormats": "PDF/JPG/PNG",
+                        "maxSizeMb": 10
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "put": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Save a document checklist",
+        "operationId": "saveVisaChecklist",
+        "description": "Replaces the checklist for that country, visa type and applicant type with `items`. The body is not validated yet.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "countryId",
+            "in": "path",
+            "required": true,
+            "description": "countryId",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vcn"
+          },
+          {
+            "name": "visaTypeId",
+            "in": "path",
+            "required": true,
+            "description": "visaTypeId",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vt_cn_tourist"
+          },
+          {
+            "name": "applicantType",
+            "in": "path",
+            "required": true,
+            "description": "applicantType",
+            "schema": {
+              "type": "string"
+            },
+            "example": "individual"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "label": {
+                          "type": "string"
+                        },
+                        "requirement": {
+                          "type": "string"
+                        },
+                        "active": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "label"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "items"
+                ]
+              },
+              "example": {
+                "items": [
+                  {
+                    "id": "vci_1",
+                    "label": "Passport (valid at least 6 months)",
+                    "requirement": "required",
+                    "active": true
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Checklist saved.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Checklist saved."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "vcl_1"
+                        },
+                        "countryId": {
+                          "type": "string",
+                          "example": "vcn"
+                        },
+                        "visaTypeId": {
+                          "type": "string",
+                          "example": "vt_cn_tourist"
+                        },
+                        "applicantType": {
+                          "type": "string",
+                          "example": "individual"
+                        },
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "example": "vci_1"
+                              },
+                              "label": {
+                                "type": "string",
+                                "example": "Passport (valid at least 6 months)"
+                              },
+                              "requirement": {
+                                "type": "string",
+                                "example": "required",
+                                "enum": [
+                                  "required",
+                                  "optional"
+                                ]
+                              },
+                              "active": {
+                                "type": "boolean",
+                                "example": true
+                              },
+                              "submissionMode": {
+                                "type": "string",
+                                "example": "both"
+                              },
+                              "fileFormats": {
+                                "type": "string",
+                                "example": "PDF/JPG/PNG"
+                              },
+                              "maxSizeMb": {
+                                "type": "integer",
+                                "example": 10
+                              }
+                            }
+                          }
+                        },
+                        "isDefault": {
+                          "type": "boolean",
+                          "example": false
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Checklist saved.",
+                  "data": {
+                    "id": "vcl_1",
+                    "countryId": "vcn",
+                    "visaTypeId": "vt_cn_tourist",
+                    "applicantType": "individual",
+                    "isDefault": false,
+                    "items": [
+                      {
+                        "id": "vci_1",
+                        "label": "Passport (valid at least 6 months)",
+                        "requirement": "required",
+                        "active": true,
+                        "submissionMode": "both",
+                        "fileFormats": "PDF/JPG/PNG",
+                        "maxSizeMb": 10
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/countries": {
+      "get": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Visa countries",
+        "operationId": "listVisaCountries",
+        "description": "Countries we process visas for. `search` matches the name or the code. Demo data held in memory.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string"
+            },
+            "example": "china"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa countries fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa countries fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "example": "vcn"
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "China"
+                              },
+                              "code": {
+                                "type": "string",
+                                "example": "CN"
+                              },
+                              "flag": {
+                                "type": "string",
+                                "example": "🇨🇳"
+                              },
+                              "description": {
+                                "type": "string",
+                                "example": "Tourist, business and student visa processing."
+                              },
+                              "status": {
+                                "type": "string",
+                                "example": "active",
+                                "enum": [
+                                  "active",
+                                  "paused"
+                                ]
+                              },
+                              "displayOrder": {
+                                "type": "integer",
+                                "example": 1
+                              }
+                            }
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 1
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa countries fetched.",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "vcn",
+                        "name": "China",
+                        "code": "CN",
+                        "flag": "🇨🇳",
+                        "description": "Tourist, business and student visa processing.",
+                        "status": "active",
+                        "displayOrder": 1
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Add a visa country",
+        "operationId": "createVisaCountry",
+        "description": "Adds a country to the in-memory demo list. The server does not validate this body yet, so send at least a `name`. Lost on restart.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "flag": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "Japan",
+                "code": "JP",
+                "description": "Tourist visa processing."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Country created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Country created successfully."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "vcn"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "code": {
+                          "type": "string",
+                          "example": "CN"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "example": "🇨🇳"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Tourist, business and student visa processing."
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "active",
+                          "enum": [
+                            "active",
+                            "paused"
+                          ]
+                        },
+                        "displayOrder": {
+                          "type": "integer",
+                          "example": 1
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Country created successfully.",
+                  "data": {
+                    "id": "vcn",
+                    "name": "China",
+                    "code": "CN",
+                    "flag": "🇨🇳",
+                    "description": "Tourist, business and student visa processing.",
+                    "status": "active",
+                    "displayOrder": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/countries/{id}": {
+      "patch": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Change a visa country",
+        "operationId": "updateVisaCountry",
+        "description": "Merges the body into the country. Answers `404` when the id is unknown. The body is not validated yet.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vcn"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "code": {
+                    "type": "string"
+                  },
+                  "flag": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "status": {
+                    "type": "string"
+                  }
+                }
+              },
+              "example": {
+                "status": "paused"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Country updated successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Country updated successfully."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "vcn"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "code": {
+                          "type": "string",
+                          "example": "CN"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "example": "🇨🇳"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "Tourist, business and student visa processing."
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "active",
+                          "enum": [
+                            "active",
+                            "paused"
+                          ]
+                        },
+                        "displayOrder": {
+                          "type": "integer",
+                          "example": 1
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Country updated successfully.",
+                  "data": {
+                    "id": "vcn",
+                    "name": "China",
+                    "code": "CN",
+                    "flag": "🇨🇳",
+                    "description": "Tourist, business and student visa processing.",
+                    "status": "active",
+                    "displayOrder": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Remove a visa country",
+        "operationId": "deleteVisaCountry",
+        "description": "Removes the country from the demo list. Answers `200` even when the id did not exist.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vcn"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Country deleted successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Country deleted successfully."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Country deleted successfully."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/dashboard": {
+      "get": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Visa module counters",
+        "operationId": "getVisaDashboard",
+        "description": "Application counts by status and channel, per-country figures and the recent applications. Computed from the in-memory demo data, so a server restart resets it.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa dashboard overview fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa dashboard overview fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "total": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "submitted": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "underReview": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "actionRequired": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "processing": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "submittedToEmbassy": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "approved": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "completed": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "rejected": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "b2c": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "b2b": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "unassigned": {
+                          "type": "integer",
+                          "example": 0
+                        },
+                        "decisionRate": {
+                          "type": "integer",
+                          "example": 85
+                        },
+                        "countries": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {}
+                          }
+                        },
+                        "recent": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "example": "va_101"
+                              },
+                              "number": {
+                                "type": "string",
+                                "example": "VISA-2026-000101"
+                              },
+                              "countryId": {
+                                "type": "string",
+                                "example": "vcn"
+                              },
+                              "visaTypeId": {
+                                "type": "string",
+                                "example": "vt_cn_tourist"
+                              },
+                              "country": {
+                                "type": "string",
+                                "example": "China"
+                              },
+                              "visaType": {
+                                "type": "string",
+                                "example": "Tourist Visa"
+                              },
+                              "channel": {
+                                "type": "string",
+                                "example": "b2c",
+                                "enum": [
+                                  "b2c",
+                                  "b2b"
+                                ]
+                              },
+                              "applicant": {
+                                "type": "object",
+                                "properties": {
+                                  "fullName": {
+                                    "type": "string",
+                                    "example": "Rahim Ahmed"
+                                  },
+                                  "dob": {
+                                    "type": "string",
+                                    "example": "1992-04-18"
+                                  },
+                                  "gender": {
+                                    "type": "string",
+                                    "example": "male"
+                                  },
+                                  "nationality": {
+                                    "type": "string",
+                                    "example": "Bangladeshi"
+                                  },
+                                  "mobile": {
+                                    "type": "string",
+                                    "example": "+880 1712 556 340"
+                                  },
+                                  "email": {
+                                    "type": "string",
+                                    "example": "rahim.ahmed@gmail.com"
+                                  },
+                                  "city": {
+                                    "type": "string",
+                                    "example": "Dhaka"
+                                  },
+                                  "applicantType": {
+                                    "type": "string",
+                                    "example": "individual"
+                                  }
+                                }
+                              },
+                              "passport": {
+                                "type": "object",
+                                "properties": {
+                                  "number": {
+                                    "type": "string",
+                                    "example": "BR0912345"
+                                  },
+                                  "expiry": {
+                                    "type": "string",
+                                    "example": "2030-06-15"
+                                  },
+                                  "issueDate": {
+                                    "type": "string",
+                                    "example": "2020-06-16"
+                                  },
+                                  "issuingCountry": {
+                                    "type": "string",
+                                    "example": "Bangladesh"
+                                  },
+                                  "type": {
+                                    "type": "string",
+                                    "example": "ordinary"
+                                  }
+                                }
+                              },
+                              "status": {
+                                "type": "string",
+                                "example": "under_review"
+                              },
+                              "assignedStaff": {
+                                "type": "string",
+                                "example": "Priya Nair"
+                              },
+                              "submittedAt": {
+                                "type": "string",
+                                "example": "2026-09-28"
+                              },
+                              "updatedAt": {
+                                "type": "string",
+                                "example": "2026-10-04"
+                              },
+                              "price": {
+                                "type": "object",
+                                "properties": {
+                                  "currency": {
+                                    "type": "string",
+                                    "example": "BDT"
+                                  },
+                                  "b2c": {
+                                    "type": "integer",
+                                    "example": 12000
+                                  },
+                                  "b2b": {
+                                    "type": "integer",
+                                    "example": 10000
+                                  }
+                                }
+                              },
+                              "documents": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {}
+                                }
+                              },
+                              "timeline": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {}
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa dashboard overview fetched.",
+                  "data": {
+                    "total": 1,
+                    "submitted": 0,
+                    "underReview": 1,
+                    "actionRequired": 0,
+                    "processing": 0,
+                    "submittedToEmbassy": 0,
+                    "approved": 0,
+                    "completed": 0,
+                    "rejected": 0,
+                    "b2c": 1,
+                    "b2b": 0,
+                    "unassigned": 0,
+                    "decisionRate": 85,
+                    "countries": [
+                      {
+                        "country": "China",
+                        "flag": "🇨🇳",
+                        "applications": 1,
+                        "approved": 1,
+                        "approvalRate": 100
+                      }
+                    ],
+                    "recent": [
+                      {
+                        "id": "va_101",
+                        "number": "VISA-2026-000101",
+                        "countryId": "vcn",
+                        "visaTypeId": "vt_cn_tourist",
+                        "country": "China",
+                        "visaType": "Tourist Visa",
+                        "channel": "b2c",
+                        "applicant": {
+                          "fullName": "Rahim Ahmed",
+                          "dob": "1992-04-18",
+                          "gender": "male",
+                          "nationality": "Bangladeshi",
+                          "mobile": "+880 1712 556 340",
+                          "email": "rahim.ahmed@gmail.com",
+                          "city": "Dhaka",
+                          "applicantType": "individual"
+                        },
+                        "passport": {
+                          "number": "BR0912345",
+                          "expiry": "2030-06-15",
+                          "issueDate": "2020-06-16",
+                          "issuingCountry": "Bangladesh",
+                          "type": "ordinary"
+                        },
+                        "status": "under_review",
+                        "assignedStaff": "Priya Nair",
+                        "submittedAt": "2026-09-28",
+                        "updatedAt": "2026-10-04",
+                        "price": {
+                          "currency": "BDT",
+                          "b2c": 12000,
+                          "b2b": 10000
+                        },
+                        "documents": [],
+                        "timeline": []
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/visa/types": {
+      "get": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Visa types",
+        "operationId": "listVisaTypes",
+        "description": "Visa types with their fees. Filter by `countryId`. Demo data held in memory.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "countryId",
+            "in": "query",
+            "required": false,
+            "description": "countryId",
+            "schema": {
+              "type": "string"
+            },
+            "example": "vcn"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa types fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa types fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "items": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string",
+                                "example": "vt_cn_tourist"
+                              },
+                              "countryId": {
+                                "type": "string",
+                                "example": "vcn"
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Tourist Visa"
+                              },
+                              "processingTime": {
+                                "type": "string",
+                                "example": "5-7 working days"
+                              },
+                              "entries": {
+                                "type": "string",
+                                "example": "single"
+                              },
+                              "currency": {
+                                "type": "string",
+                                "example": "BDT"
+                              },
+                              "b2cPrice": {
+                                "type": "integer",
+                                "example": 12000
+                              },
+                              "b2bNetPrice": {
+                                "type": "integer",
+                                "example": 10000
+                              },
+                              "status": {
+                                "type": "string",
+                                "example": "active"
+                              }
+                            }
+                          }
+                        },
+                        "total": {
+                          "type": "integer",
+                          "example": 1
+                        }
+                      },
+                      "required": [
+                        "items",
+                        "total"
+                      ]
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa types fetched.",
+                  "data": {
+                    "items": [
+                      {
+                        "id": "vt_cn_tourist",
+                        "countryId": "vcn",
+                        "name": "Tourist Visa",
+                        "processingTime": "5-7 working days",
+                        "entries": "single",
+                        "currency": "BDT",
+                        "b2cPrice": 12000,
+                        "b2bNetPrice": 10000,
+                        "status": "active"
+                      }
+                    ],
+                    "total": 1
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Visa (demo data)"
+        ],
+        "summary": "Add a visa type",
+        "operationId": "createVisaType",
+        "description": "Adds a visa type to the in-memory demo list. The body is not validated yet. Lost on restart.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "countryId": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "processingTime": {
+                    "type": "string"
+                  },
+                  "entries": {
+                    "type": "string"
+                  },
+                  "currency": {
+                    "type": "string"
+                  },
+                  "b2cPrice": {
+                    "type": "number"
+                  },
+                  "b2bNetPrice": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "countryId",
+                  "name"
+                ]
+              },
+              "example": {
+                "countryId": "vcn",
+                "name": "Business Visa",
+                "processingTime": "7 working days"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Visa type created successfully.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa type created successfully."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "example": "vt_cn_tourist"
+                        },
+                        "countryId": {
+                          "type": "string",
+                          "example": "vcn"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "processingTime": {
+                          "type": "string",
+                          "example": "5-7 working days"
+                        },
+                        "entries": {
+                          "type": "string",
+                          "example": "single"
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "BDT"
+                        },
+                        "b2cPrice": {
+                          "type": "integer",
+                          "example": 12000
+                        },
+                        "b2bNetPrice": {
+                          "type": "integer",
+                          "example": 10000
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "active"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa type created successfully.",
+                  "data": {
+                    "id": "vt_cn_tourist",
+                    "countryId": "vcn",
+                    "name": "Tourist Visa",
+                    "processingTime": "5-7 working days",
+                    "entries": "single",
+                    "currency": "BDT",
+                    "b2cPrice": 12000,
+                    "b2bNetPrice": 10000,
+                    "status": "active"
+                  }
                 }
               }
             }
