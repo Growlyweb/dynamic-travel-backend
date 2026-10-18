@@ -1,0 +1,87 @@
+const request = require('supertest');
+
+const app = require('../../app');
+const { ROLES } = require('../../config/constants');
+const { PERMISSIONS } = require('../../config/rbac');
+const { createUser, createB2B, bearer } = require('./helpers/factory');
+
+// The admin dashboard numbers and the visa module are for internal users only. They once sat in the public
+// part of the API, so anyone on the internet could read them and change visa countries and checklists.
+
+const DASHBOARD = [
+  ['get', '/api/dashboard/overview'],
+  ['get', '/api/dashboard/visa-trend'],
+  ['get', '/api/dashboard/tour-trend'],
+  ['get', '/api/dashboard/recent-applications'],
+  ['get', '/api/dashboard/recent-activities']
+];
+
+const VISA_READS = [
+  ['get', '/api/visa/dashboard'],
+  ['get', '/api/visa/countries'],
+  ['get', '/api/visa/types'],
+  ['get', '/api/visa/checklists/vcn/vt_cn_tourist/individual'],
+  ['get', '/api/visa/applications'],
+  ['get', '/api/visa/applications/va_101']
+];
+
+const VISA_WRITES = [
+  ['post', '/api/visa/countries'],
+  ['patch', '/api/visa/countries/vcn'],
+  ['delete', '/api/visa/countries/vcn'],
+  ['post', '/api/visa/types'],
+  ['put', '/api/visa/checklists/vcn/vt_cn_tourist/individual']
+];
+
+const call = (method, path, headers = {}) => request(app)[method](path).set(headers).send({});
+
+const statuses = async (routes, headers) => Promise.all(routes.map(([method, path]) => call(method, path, headers).then((res) => res.status)));
+
+describe('dashboard and visa routes need a login', () => {
+  it.each([...DASHBOARD, ...VISA_READS, ...VISA_WRITES])('%s %s answers 401 without a token', async (method, path) => {
+    expect((await call(method, path)).status).toBe(401);
+  });
+});
+
+describe('who may use them', () => {
+  it('keeps customers and agencies out of everything', async () => {
+    const b2c = await createUser({ role: ROLES.B2C });
+    const { user: b2b } = await createB2B();
+
+    for (const user of [b2c, b2b]) {
+      const results = await statuses([...DASHBOARD, ...VISA_READS, ...VISA_WRITES], bearer(user));
+      expect(new Set(results)).toEqual(new Set([403]));
+    }
+  });
+
+  it('lets any staff member see the dashboard numbers, but gives them no visa access by default', async () => {
+    const staff = await createUser({ role: ROLES.STAFF });
+
+    expect(new Set(await statuses(DASHBOARD, bearer(staff)))).toEqual(new Set([200]));
+    expect(new Set(await statuses([...VISA_READS, ...VISA_WRITES], bearer(staff)))).toEqual(new Set([403]));
+  });
+
+  it('lets staff with VISA_VIEW read the visa module but not change it', async () => {
+    const staff = await createUser({ role: ROLES.STAFF, permissions: [PERMISSIONS.VISA_VIEW] });
+
+    expect(new Set(await statuses(VISA_READS, bearer(staff)))).toEqual(new Set([200]));
+    expect(new Set(await statuses(VISA_WRITES, bearer(staff)))).toEqual(new Set([403]));
+  });
+
+  it('lets staff with VISA_EDIT change it (VISA_UPDATE, the status permission, is not enough)', async () => {
+    const statusOnly = await createUser({ role: ROLES.STAFF, permissions: [PERMISSIONS.VISA_VIEW, PERMISSIONS.VISA_UPDATE] });
+    const editor = await createUser({ role: ROLES.STAFF, permissions: [PERMISSIONS.VISA_VIEW, PERMISSIONS.VISA_EDIT] });
+
+    expect(new Set(await statuses(VISA_WRITES, bearer(statusOnly)))).toEqual(new Set([403]));
+
+    // Never 401 or 403. The result itself (200, 201, 400, 404) is the module's business.
+    const allowed = await statuses(VISA_WRITES.filter(([method]) => method !== 'delete'), bearer(editor));
+    allowed.forEach((status) => expect([401, 403]).not.toContain(status));
+  });
+
+  it('lets an admin read everything', async () => {
+    const admin = await createUser({ role: ROLES.ADMIN });
+
+    expect(new Set(await statuses([...DASHBOARD, ...VISA_READS], bearer(admin)))).toEqual(new Set([200]));
+  });
+});

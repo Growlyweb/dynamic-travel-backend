@@ -91,6 +91,8 @@ app.get('/health', (req, res) => {
 
 // Public
 app.use('/api/auth', authRoutes);
+
+// Admin dashboard numbers and the visa module. Internal users only: the guards are inside each router.
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/visa', visaRoutes);
 
