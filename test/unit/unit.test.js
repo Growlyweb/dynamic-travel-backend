@@ -1,6 +1,6 @@
 const mongoose = require('mongoose');
 
-const { password, email, phone } = require('../../validations/common');
+const { password, email, phone, optionalPhone } = require('../../validations/common');
 const { hashValue, safeEqual, generateOtp } = require('../../utils/crypto');
 const { checkOwnership } = require('../../middleware/ownershipMiddleware');
 const { requireRole, requirePermission } = require('../../middleware/authorizeMiddleware');
@@ -33,7 +33,25 @@ describe('input normalisation', () => {
     expect(phone.safeParse('+8801712345678').success).toBe(true);
     expect(phone.safeParse('01712345678').success).toBe(true);
     expect(phone.safeParse('12-34').success).toBe(false);
-    expect(phone.safeParse('+880 1712 345678').success).toBe(false);
+    expect(phone.safeParse('abc').success).toBe(false);
+  });
+
+  it('removes spaces and dashes typed as formatting, so only digits are stored', () => {
+    expect(phone.parse('+880 1712 345678')).toBe('+8801712345678');
+    expect(phone.parse(' 01712-345-678 ')).toBe('01712345678');
+  });
+
+  it('never accepts an empty phone number (stored as "" it would collide in the unique index)', () => {
+    expect(phone.safeParse('').success).toBe(false);
+    expect(phone.safeParse('   ').success).toBe(false);
+  });
+
+  it('treats a blank optional phone as "not given"', () => {
+    expect(optionalPhone.parse('')).toBeUndefined();
+    expect(optionalPhone.parse('  ')).toBeUndefined();
+    expect(optionalPhone.parse(undefined)).toBeUndefined();
+    expect(optionalPhone.parse('+880 1712 345678')).toBe('+8801712345678');
+    expect(optionalPhone.safeParse('12-34').success).toBe(false);
   });
 });
 

@@ -10,13 +10,21 @@ const email = z
   .email('Enter a valid email address.')
   .max(254, 'Email is too long.');
 
+// Spaces and dashes are accepted as formatting ("+880 1712-345678") and removed, so only digits are stored.
+// An empty value is NOT a phone number: stored as "", it would collide with the next empty one in the unique index.
+// The first check (formatting allowed) is what the API documentation shows; the last one is the real rule.
+const PHONE_MESSAGE = 'Enter a valid phone number (digits only, optional leading +).';
 const phone = z
   .string('Phone must be text.')
   .trim()
+  .regex(/^\+?[0-9][0-9\s-]*$/, PHONE_MESSAGE)
   .transform((val) => val.replace(/[\s-]/g, ''))
-  .refine((val) => val === '' || /^\+?[0-9]{8,15}$/.test(val), {
-    message: 'Enter a valid phone number (digits only, optional leading +).'
-  });
+  .refine((val) => /^\+?[0-9]{8,15}$/.test(val), PHONE_MESSAGE);
+
+// For forms where the phone can be left out: a blank field means "not given", not "invalid".
+const optionalPhone = z
+  .preprocess((value) => (typeof value === 'string' && value.trim() === '' ? undefined : value), phone.optional())
+  .describe('Optional. 8 to 15 digits with an optional leading +. Spaces and dashes are removed. A blank value means "not given".');
 
 const name = z
   .string('Name is required.')
@@ -48,4 +56,4 @@ const pagination = {
 
 const search = z.string().trim().max(100).optional();
 
-module.exports = { email, phone, name, password, otp, objectId, idParam, pagination, search };
+module.exports = { email, phone, optionalPhone, name, password, otp, objectId, idParam, pagination, search };
