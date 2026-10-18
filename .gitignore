@@ -16,3 +16,5 @@ firebaseAuth.json
 *serviceAccount*.json
 *service-account*.json
 convo-history.md
+# The file mail provider (E2E and local runs) writes every email here, one-time codes included
+mail.jsonl
