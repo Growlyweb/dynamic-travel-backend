@@ -47,6 +47,7 @@ npm run setup            # creates .env if missing, and fills the three secrets 
 npm run seed             # creates the first ADMIN from ADMIN_SEED_* (needs MongoDB running)
 npm run seed:tours       # creates the 8 starting tour categories and the Cox's Bazar sample tour (safe to run again)
 npm run seed:membership  # creates the 4 starting membership plans, with placeholder prices (safe to run again)
+npm run seed:data        # DEVELOPMENT ONLY: demo admin, staff, customers and agencies with known passwords (refuses to run in production)
 npm run dev              # http://localhost:5000 (interactive API docs at http://localhost:5000/docs)
 npm run console          # browser test page at http://localhost:5173 (needs the API running)
 npm test                 # runs the whole suite against an in-memory MongoDB
@@ -259,7 +260,7 @@ Dependencies point downward only: routes -> controllers -> services -> models.
 | B2C register | `POST /api/auth/register`: validate, reject duplicates, hash, create `PENDING`, email a 6-digit OTP. `POST /api/auth/verify-otp` activates and signs in. |
 | B2C with Firebase | `POST /api/auth/firebase` with the Firebase `idToken`: verify, find or create the B2C user, issue OUR tokens. |
 | B2B register | `POST /api/auth/b2b/register` (multipart). Required: name, email, mobile, address, company name, license number, password and a **trade license** file. Optional: business card, other documents. Creates the user and a `PENDING` partner, then emails an OTP. After verifying, the owner can log in. Operational APIs stay closed until an Admin approves. |
-| Admin or Staff | Created by an Admin (`POST /api/admin/users` or `/api/admin/staff`) without a password. The person opens the emailed link and sets one with `POST /api/auth/setup-account`. |
+| Admin or Staff | Created by an Admin (`POST /api/admin/users` or `/api/admin/staff`). Without a `password` the account stays pending: the person opens the emailed link and sets one with `POST /api/auth/setup-account`. With a `password` (the same rules as everyone else's) the account is active at once and no email is sent. |
 | Login | Email and password. The same `Invalid credentials` answer for every failure. |
 | Refresh | The refresh token rotates on every use. Reusing an already-rotated one revokes every session of that user. |
 | Logout | Revokes this device, or all devices with `{ "allDevices": true }`. |
