@@ -1,3 +1,5 @@
+const bcrypt = require('bcryptjs');
+
 const env = require('../config/env');
 const { ROLES, USER_STATUS, OTP_PURPOSE, AUDIT_ACTIONS } = require('../config/constants');
 const { INVITABLE_ROLES, canHavePermissions } = require('../config/rbac');
@@ -72,10 +74,10 @@ const sendInvite = async (user) => {
   return notificationService.trySend(() => notificationService.staffInvite(user, token));
 };
 
-const bcrypt = require('bcryptjs');
-
-// Creates an internal (ADMIN or STAFF) account. If a password is provided, it hashes it,
-// verifies the account and activates it immediately. Otherwise an invite link is sent.
+// Creates an internal (ADMIN or STAFF) account. Two ways in:
+//   with a password : the admin chose it (it must pass the normal password rules), so the account is ACTIVE at once.
+//   without one     : the account stays PENDING with no password and the person sets it from the emailed invite link
+//                     (POST /api/auth/setup-account), which also activates it and verifies the email.
 const createInternal = async (admin, { name, email, phone, role, password, permissions = [] }, context = {}) => {
   if (!INTERNAL_ROLES.includes(role)) {
     throw new ApiError(400, `Only ${INTERNAL_ROLES.join(' and ')} accounts can be created by an admin.`);
@@ -95,9 +97,11 @@ const createInternal = async (admin, { name, email, phone, role, password, permi
     phone,
     role,
     passwordHash,
-    emailVerified: true,
+    // An invited account proves its email when the link is opened; one created with a password is trusted now.
+    emailVerified: Boolean(password),
+    // Staff start with NOTHING and get only what the admin lists. Admins bypass permission checks.
     permissions: canHavePermissions(role) ? permissions : [],
-    status: USER_STATUS.ACTIVE
+    status: password ? USER_STATUS.ACTIVE : USER_STATUS.PENDING
   });
 
   await auditService.record({

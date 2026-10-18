@@ -1,7 +1,7 @@
 const { z } = require('zod');
 const { ROLES, USER_STATUS } = require('../config/constants');
 const { ALL_PERMISSIONS, INVITABLE_ROLES } = require('../config/rbac');
-const { email, phone, name, idParam, pagination, search } = require('./common');
+const { email, optionalPhone, name, password, idParam, pagination, search } = require('./common');
 
 const permissions = z.array(z.enum(ALL_PERMISSIONS, 'Unknown permission.')).max(ALL_PERMISSIONS.length);
 
@@ -19,8 +19,9 @@ const listUsers = z.object({
 const createUser = z.object({
   name,
   email,
-  phone: phone.optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters.').optional(),
+  phone: optionalPhone,
+  // Optional: with a password the account is active at once, without one an invite link is emailed.
+  password: password.optional(),
   role: z.enum(INTERNAL_ROLES, `Role must be ${INTERNAL_ROLES_TEXT}.`),
   permissions: permissions.optional()
 });
@@ -28,8 +29,9 @@ const createUser = z.object({
 const createStaff = z.object({
   name,
   email,
-  phone: phone.optional(),
-  password: z.string().min(6, 'Password must be at least 6 characters.').optional(),
+  phone: optionalPhone,
+  // Optional: with a password the account is active at once, without one an invite link is emailed.
+  password: password.optional(),
   permissions: permissions.optional()
 });
 
