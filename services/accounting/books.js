@@ -494,13 +494,25 @@ const listReceipts = async ({ from, to, search, page = 1, limit = 100 } = {}) =>
     const files = await SaleFile.find({ $or: [{ fileNo: rx }, { category: rx }] }).select('_id').lean();
     filter.$or = [{ no: rx }, { manualNo: rx }, { narration: rx }, { party: { $in: parties.map((p) => p._id) } }, { file: { $in: files.map((f) => f._id) } }];
   }
-  const all = await Journal.find(filter).sort({ date: -1, no: -1 }).lean();
-  const rows = await presentReceipts(all);
-  const where = (codes) => rows.filter((row) => codes.includes(row.accountCode)).reduce((sum, row) => sum + row.amount, 0);
+  // One page is read from the database. The summary is added up by the database over every match.
+  const [pageRows, total, sums] = await Promise.all([
+    Journal.find(filter).sort({ date: -1, no: -1 }).skip((page - 1) * limit).limit(limit).lean(),
+    Journal.countDocuments(filter),
+    Journal.aggregate([
+      { $match: filter },
+      { $unwind: '$lines' },
+      { $match: { $or: [{ 'lines.account': { $in: CASH_ACCOUNTS }, 'lines.debit': { $gt: 0 } }, { 'lines.account': DISCOUNT_ACCOUNT, 'lines.kind': 'discount' }] } },
+      { $group: { _id: '$lines.account', debit: { $sum: '$lines.debit' } } }
+    ])
+  ]);
+  const taken = (codes) => fromMinor(sums.filter((row) => codes.includes(row._id)).reduce((sum, row) => sum + row.debit, 0));
+  const cash = taken(['1010']);
+  const bank = taken(['1020', '1030']);
+  const bkash = taken(['1040']);
   return {
-    rows: rows.slice((page - 1) * limit, page * limit),
-    total: rows.length,
-    summary: { count: rows.length, total: rows.reduce((sum, row) => sum + row.amount, 0), cash: where(['1010']), bank: where(['1020', '1030']), bkash: where(['1040']), discount: rows.reduce((sum, row) => sum + row.discount, 0) }
+    rows: await presentReceipts(pageRows),
+    total,
+    summary: { count: total, total: taken(CASH_ACCOUNTS), cash, bank, bkash, discount: taken([DISCOUNT_ACCOUNT]) }
   };
 };
 

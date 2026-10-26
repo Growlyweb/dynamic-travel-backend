@@ -105,6 +105,9 @@ const fileFilter = async ({ type, status, from, to, search, segment, category } 
   return filter;
 };
 
+// The figures of one file in taka, in the shape summarize() adds up.
+const figuresInTaka = (f = ZERO) => ({ sale: taka(f.sale), discount: taka(f.discount), cost: taka(f.cost), received: taka(f.received), due: taka(Math.max(0, f.ar)) });
+
 const summarize = (rows) => {
   const sale = rows.reduce((sum, row) => sum + row.sale, 0);
   const discount = rows.reduce((sum, row) => sum + row.discount, 0);
@@ -126,27 +129,33 @@ const summarize = (rows) => {
 // All files that match, with their figures. The summary covers every match, the rows are one page.
 const listFiles = async (filters = {}, { page = 1, limit = 100 } = {}) => {
   const filter = await fileFilter(filters);
-  const ids = await SaleFile.find(filter).select('_id').lean();
-  const figures = await fileFigures(ids.map((row) => row._id));
-  const everyone = await SaleFile.find(filter).populate('party', 'phone').sort({ date: -1, fileNo: -1 });
+  const ids = (await SaleFile.find(filter).select('_id').lean()).map((row) => row._id);
+  const figures = await fileFigures(ids);
+  const pageFiles = await SaleFile.find(filter).populate('party', 'phone').sort({ date: -1, fileNo: -1 }).skip((page - 1) * limit).limit(limit);
   const today = dates.todayISO();
-  const all = everyone.map((file) => presentFile(file, figures.get(String(file._id)), today));
-  const rows = all.slice((page - 1) * limit, page * limit);
-  return { rows, summary: summarize(all), total: all.length };
+  const rows = pageFiles.map((file) => presentFile(file, figures.get(String(file._id)), today));
+  return { rows, summary: summarize(ids.map((id) => figuresInTaka(figures.get(String(id))))), total: ids.length };
 };
 
 // Files that still owe money, oldest first.
 const listDues = async ({ page = 1, limit = 100 } = {}) => {
   const figures = await fileFigures();
   const owing = [...figures.entries()].filter(([, f]) => f.ar > 0).map(([id]) => id);
-  const files = await SaleFile.find({ _id: { $in: owing }, status: { $ne: 'Cancelled' } }).populate('party', 'phone').sort({ date: 1 });
+  // The totals cover every file that owes. Only the files of the requested page are loaded in full.
+  const owingFiles = await SaleFile.find({ _id: { $in: owing }, status: { $ne: 'Cancelled' } }).select('partyType date dueDate').sort({ date: 1, fileNo: 1 }).lean();
   const today = dates.todayISO();
-  const all = files.map((file) => presentFile(file, figures.get(String(file._id)), today));
-  const sum = (kind) => all.filter((row) => row.partyType === kind).reduce((total, row) => total + row.due, 0);
+  const dueOf = (file) => taka(Math.max(0, figures.get(String(file._id)).ar));
+  const sum = (kind) => owingFiles.filter((file) => file.partyType === kind).reduce((total, file) => total + dueOf(file), 0);
+  const overdue = owingFiles.filter((file) => dates.daysBetween(file.dueDate || file.date, today) > 0).reduce((total, file) => total + dueOf(file), 0);
+
+  const pageIds = owingFiles.slice((page - 1) * limit, page * limit).map((file) => file._id);
+  const pageFiles = await SaleFile.find({ _id: { $in: pageIds } }).populate('party', 'phone');
+  const byId = new Map(pageFiles.map((file) => [String(file._id), file]));
+  const rows = pageIds.map((id) => byId.get(String(id))).map((file) => presentFile(file, figures.get(String(file._id)), today));
   return {
-    rows: all.slice((page - 1) * limit, page * limit),
-    totals: { due: all.reduce((total, row) => total + row.due, 0), b2b: sum('B2B'), b2c: sum('B2C'), overdue: all.filter((row) => row.daysOverdue > 0).reduce((total, row) => total + row.due, 0), count: all.length },
-    total: all.length
+    rows,
+    totals: { due: owingFiles.reduce((total, file) => total + dueOf(file), 0), b2b: sum('B2B'), b2c: sum('B2C'), overdue, count: owingFiles.length },
+    total: owingFiles.length
   };
 };
 
