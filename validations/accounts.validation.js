@@ -57,4 +57,6 @@ const monthlyQuery = z.object({ year: whole('Year'), month: whole('Month').refin
 const yearlyQuery = z.object({ year: whole('Year') });
 const receiptParam = z.object({ id: z.string().trim().min(3).max(40) });
 
-module.exports = { idParam, receiptParam, listSales, createSale, updateSale, cancelSale, addCost, listReceipts, createReceipt, voidBody, createExpense, partnerTransaction, listParties, createParty, createCategory, range, homeQuery, monthlyQuery, yearlyQuery, paging, pagingQuery: z.object(paging) };
+const listDues = z.object({ ...paging, search: text('Search', 100).optional(), type: z.enum(['B2B', 'B2C']).optional() });
+
+module.exports = { idParam, listDues, receiptParam, listSales, createSale, updateSale, cancelSale, addCost, listReceipts, createReceipt, voidBody, createExpense, partnerTransaction, listParties, createParty, createCategory, range, homeQuery, monthlyQuery, yearlyQuery, paging, pagingQuery: z.object(paging) };

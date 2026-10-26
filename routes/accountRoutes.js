@@ -51,7 +51,7 @@ router.get('/sales/:id', view, validate({ params: schemas.idParam }), controller
 router.patch('/sales/:id', edit, validate({ params: schemas.idParam, body: schemas.updateSale }), controller.updateSale);
 router.post('/sales/:id/cancel', voider, validate({ params: schemas.idParam, body: schemas.cancelSale }), controller.cancelSale);
 router.post('/sales/:id/costs', edit, validate({ params: schemas.idParam, body: schemas.addCost }), controller.addCost);
-router.get('/dues', view, validate({ query: schemas.pagingQuery }), controller.dues);
+router.get('/dues', view, validate({ query: schemas.listDues }), controller.dues);
 
 // Receipts and expenses
 router.get('/receipts', view, validate({ query: schemas.listReceipts }), controller.listReceipts);

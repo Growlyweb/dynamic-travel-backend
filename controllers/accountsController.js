@@ -45,7 +45,7 @@ exports.cancelSale = asyncHandler(async (req, res) => ok(res, 'Sale cancelled.',
 exports.addCost = asyncHandler(async (req, res) => ok(res, 'Cost added.', await books.addCost(req.user, req.params.id, req.body), 201));
 exports.dues = asyncHandler(async (req, res) => {
   const { page, limit } = paginate(req.query);
-  const { rows, totals, total } = await reports.listDues({ page, limit });
+  const { rows, totals, total } = await reports.listDues({ page, limit, search: req.query.search, type: req.query.type });
   paged(res, 'Dues fetched.', { rows, total, totals }, req.query);
 });
 

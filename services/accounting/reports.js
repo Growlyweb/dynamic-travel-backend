@@ -138,11 +138,17 @@ const listFiles = async (filters = {}, { page = 1, limit = 100 } = {}) => {
 };
 
 // Files that still owe money, oldest first.
-const listDues = async ({ page = 1, limit = 100 } = {}) => {
+const listDues = async ({ page = 1, limit = 100, search, type } = {}) => {
   const figures = await fileFigures();
   const owing = [...figures.entries()].filter(([, f]) => f.ar > 0).map(([id]) => id);
   // The totals cover every file that owes. Only the files of the requested page are loaded in full.
-  const owingFiles = await SaleFile.find({ _id: { $in: owing }, status: { $ne: 'Cancelled' } }).select('partyType date dueDate').sort({ date: 1, fileNo: 1 }).lean();
+  const where = { _id: { $in: owing }, status: { $ne: 'Cancelled' } };
+  if (type) where.partyType = type;
+  if (search) {
+    const rx = { $regex: escape(search.trim()), $options: 'i' };
+    where.$or = [{ fileNo: rx }, { partyName: rx }, { category: rx }, { applicant: rx }];
+  }
+  const owingFiles = await SaleFile.find(where).select('partyType date dueDate').sort({ date: 1, fileNo: 1 }).lean();
   const today = dates.todayISO();
   const dueOf = (file) => taka(Math.max(0, figures.get(String(file._id)).ar));
   const sum = (kind) => owingFiles.filter((file) => file.partyType === kind).reduce((total, file) => total + dueOf(file), 0);
