@@ -37,6 +37,7 @@
     "VISA_VIEW": "View Visa Operations",
     "VISA_EDIT": "Edit & Process Visas",
     "VISA_UPDATE": "Change status of visa applications",
+    "VISA_PAYMENT_VOID": "Void a payment entry on a visa application",
     "TOURS_VIEW": "View Tour Packages",
     "TOURS_EDIT": "Create & Edit Tour Packages",
     "TOUR_MANAGE": "Manage tour packages and custom tours",

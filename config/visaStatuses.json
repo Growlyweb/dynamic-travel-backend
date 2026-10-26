@@ -1,0 +1,115 @@
+{
+  "statuses": [
+    {
+      "key": "submitted",
+      "displayName": "Submitted",
+      "category": "in_progress",
+      "displayOrder": 1,
+      "publicStage": "submitted",
+      "customerMessage": "We have received your visa application.",
+      "internalDescription": "Application created and waiting for a first review.",
+      "transitions": ["under_review", "action_required", "rejected", "cancelled"]
+    },
+    {
+      "key": "under_review",
+      "displayName": "Under Review",
+      "category": "in_progress",
+      "displayOrder": 2,
+      "publicStage": "processing",
+      "customerMessage": "Your application is being reviewed by our team.",
+      "internalDescription": "A staff member is checking the application and documents.",
+      "transitions": ["action_required", "documents_completed", "processing", "rejected", "cancelled"]
+    },
+    {
+      "key": "action_required",
+      "displayName": "Action Required",
+      "category": "action_required",
+      "displayOrder": 3,
+      "publicStage": "processing",
+      "customerMessage": "We need something more from you to continue.",
+      "internalDescription": "Waiting for the applicant to send documents or information.",
+      "transitions": ["under_review", "documents_completed", "rejected", "cancelled"]
+    },
+    {
+      "key": "documents_completed",
+      "displayName": "Documents Completed",
+      "category": "in_progress",
+      "displayOrder": 4,
+      "publicStage": "processing",
+      "customerMessage": "All your documents are complete.",
+      "internalDescription": "Every required document is verified.",
+      "transitions": ["processing", "action_required", "rejected", "cancelled"]
+    },
+    {
+      "key": "processing",
+      "displayName": "Processing",
+      "category": "in_progress",
+      "displayOrder": 5,
+      "publicStage": "processing",
+      "customerMessage": "Your visa is being processed.",
+      "internalDescription": "Being prepared for the embassy or visa center.",
+      "transitions": ["submitted_to_embassy", "action_required", "rejected", "cancelled"]
+    },
+    {
+      "key": "submitted_to_embassy",
+      "displayName": "Submitted to Embassy",
+      "category": "in_progress",
+      "displayOrder": 6,
+      "publicStage": "processing",
+      "customerMessage": "Your application has been submitted to the embassy.",
+      "internalDescription": "With the embassy or visa center, waiting for a decision.",
+      "transitions": ["approved", "action_required", "rejected", "cancelled"]
+    },
+    {
+      "key": "approved",
+      "displayName": "Approved",
+      "category": "success",
+      "displayOrder": 7,
+      "publicStage": "approved",
+      "customerMessage": "Congratulations! Your visa has been approved.",
+      "internalDescription": "Visa granted by the embassy.",
+      "transitions": ["passport_ready", "completed"]
+    },
+    {
+      "key": "passport_ready",
+      "displayName": "Passport Ready",
+      "category": "success",
+      "displayOrder": 8,
+      "publicStage": "ready",
+      "customerMessage": "Your passport is ready for collection.",
+      "internalDescription": "Passport is back and waiting for pickup or delivery.",
+      "transitions": ["completed"]
+    },
+    {
+      "key": "completed",
+      "displayName": "Completed",
+      "category": "success",
+      "displayOrder": 9,
+      "publicStage": "collected",
+      "customerMessage": "Your application is complete. Thank you for choosing us.",
+      "internalDescription": "Passport handed over. Nothing left to do.",
+      "transitions": []
+    },
+    {
+      "key": "rejected",
+      "displayName": "Rejected",
+      "category": "failed",
+      "displayOrder": 10,
+      "publicStage": "rejected",
+      "customerMessage": "Unfortunately your visa application was rejected.",
+      "internalDescription": "Visa refused by the embassy or by us.",
+      "transitions": []
+    },
+    {
+      "key": "cancelled",
+      "displayName": "Cancelled",
+      "category": "cancelled",
+      "displayOrder": 11,
+      "publicStage": "cancelled",
+      "customerMessage": "Your application has been cancelled.",
+      "internalDescription": "Withdrawn by the applicant or by us.",
+      "transitions": []
+    }
+  ],
+  "reopenTo": "under_review"
+}
