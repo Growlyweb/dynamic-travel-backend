@@ -29,7 +29,12 @@ const VISA_READS = [
   ['get', `/api/visa/checklists/${ID}/${OTHER}/individual`],
   ['get', '/api/visa/statuses'],
   ['get', '/api/visa/applications'],
-  ['get', `/api/visa/applications/${ID}`]
+  ['get', `/api/visa/applications/${ID}`],
+  ['get', '/api/visa/templates'],
+  ['get', '/api/visa/messages'],
+  ['get', '/api/visa/partners'],
+  ['get', '/api/visa/quotations'],
+  ['get', `/api/visa/quotations/${ID}`]
 ];
 
 const VISA_WRITES = [
@@ -48,7 +53,17 @@ const VISA_WRITES = [
   ['post', `/api/visa/applications/${ID}/notes`],
   ['post', `/api/visa/applications/${ID}/payments`],
   ['post', `/api/visa/applications/${ID}/documents`],
-  ['delete', `/api/visa/applications/${ID}/documents/${OTHER}`]
+  ['delete', `/api/visa/applications/${ID}/documents/${OTHER}`],
+  ['post', '/api/visa/templates'],
+  ['patch', `/api/visa/templates/${ID}`],
+  ['delete', `/api/visa/templates/${ID}`],
+  ['patch', `/api/visa/messages/${ID}`],
+  ['post', `/api/visa/messages/${ID}/send`],
+  ['post', `/api/visa/applications/${ID}/messages`],
+  ['post', '/api/visa/quotations'],
+  ['patch', `/api/visa/quotations/${ID}`],
+  ['patch', `/api/visa/quotations/${ID}/status`],
+  ['delete', `/api/visa/quotations/${ID}`]
 ];
 
 // Each of these needs its own permission, beyond VISA_VIEW or VISA_EDIT.

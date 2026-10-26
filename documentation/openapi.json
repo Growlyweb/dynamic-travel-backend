@@ -15155,6 +15155,254 @@
         }
       }
     },
+    "/api/visa/applications/{id}/messages": {
+      "post": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Send a message to the applicant",
+        "operationId": "sendVisaMessage",
+        "description": "Pick a template (`templateId`) or write your own (`channel` and `message`). The words in double braces are filled in from the application. An **email** is sent at once through EmailJS and the log row says `sent` or `failed`. An **sms** becomes a `pending` row; add `markSent: true` when you already sent it from your own phone.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67253"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "templateId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "sms",
+                      "email"
+                    ]
+                  },
+                  "subject": {
+                    "type": "string",
+                    "maxLength": 150
+                  },
+                  "message": {
+                    "type": "string",
+                    "maxLength": 5000
+                  },
+                  "markSent": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "channel": "sms",
+                "message": "Dear {{applicantName}}, please call us about {{applicationNumber}}.",
+                "markSent": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Message created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Message created."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67259"
+                        },
+                        "application": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67253"
+                        },
+                        "applicationNumber": {
+                          "type": "string",
+                          "example": "VISA-2026-000001"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "example": "sms",
+                          "enum": [
+                            "sms",
+                            "email"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "example": "+8801712556340"
+                        },
+                        "toName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "example": "Under Review"
+                        },
+                        "trigger": {
+                          "type": "string",
+                          "example": "under_review"
+                        },
+                        "subject": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "body": {
+                          "type": "string",
+                          "example": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review."
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "pending",
+                          "enum": [
+                            "pending",
+                            "sent",
+                            "failed"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "example": "auto",
+                          "enum": [
+                            "auto",
+                            "manual"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string",
+                          "example": "manual"
+                        },
+                        "error": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "System"
+                        },
+                        "sentAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "sentByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Message created.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67259",
+                    "application": "6ac0a5f0eebc510147c67253",
+                    "applicationNumber": "VISA-2026-000001",
+                    "channel": "sms",
+                    "to": "+8801712556340",
+                    "toName": "Rahim Ahmed",
+                    "templateName": "Under Review",
+                    "trigger": "under_review",
+                    "subject": "",
+                    "body": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review.",
+                    "status": "pending",
+                    "source": "auto",
+                    "provider": "manual",
+                    "error": "",
+                    "createdByName": "System",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `APPLICATION_NOT_FOUND`, `TEMPLATE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "APPLICATION_NOT_FOUND",
+                  "code": "APPLICATION_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `UNKNOWN_VARIABLE`, `CHANNEL_MISMATCH`, `NO_EMAIL`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Trade license document is required.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/visa/applications/{id}/notes": {
       "post": {
         "tags": [
@@ -20557,6 +20805,2357 @@
         }
       }
     },
+    "/api/visa/messages": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Message log",
+        "operationId": "listVisaMessages",
+        "description": "Every message prepared for an applicant, newest first, with the text exactly as written. `status` is `pending` (an SMS waiting to be sent by hand), `sent` or `failed` (with `error`). `source` says whether the system made it at a status change (`auto`) or a person did (`manual`). Filter by `applicationId`.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "applicationId",
+            "in": "query",
+            "required": false,
+            "description": "applicationId",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            }
+          },
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "description": "channel",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sms",
+                "email"
+              ]
+            },
+            "example": "sms"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Only accounts with this status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "pending",
+                "sent",
+                "failed"
+              ]
+            },
+            "example": "pending"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Messages fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Messages fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67259"
+                          },
+                          "application": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67253"
+                          },
+                          "applicationNumber": {
+                            "type": "string",
+                            "example": "VISA-2026-000001"
+                          },
+                          "channel": {
+                            "type": "string",
+                            "example": "sms",
+                            "enum": [
+                              "sms",
+                              "email"
+                            ]
+                          },
+                          "to": {
+                            "type": "string",
+                            "example": "+8801712556340"
+                          },
+                          "toName": {
+                            "type": "string",
+                            "example": "Rahim Ahmed"
+                          },
+                          "templateName": {
+                            "type": "string",
+                            "example": "Under Review"
+                          },
+                          "trigger": {
+                            "type": "string",
+                            "example": "under_review"
+                          },
+                          "subject": {
+                            "type": "string",
+                            "example": ""
+                          },
+                          "body": {
+                            "type": "string",
+                            "example": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review."
+                          },
+                          "status": {
+                            "type": "string",
+                            "example": "pending",
+                            "enum": [
+                              "pending",
+                              "sent",
+                              "failed"
+                            ]
+                          },
+                          "source": {
+                            "type": "string",
+                            "example": "auto",
+                            "enum": [
+                              "auto",
+                              "manual"
+                            ]
+                          },
+                          "provider": {
+                            "type": "string",
+                            "example": "manual"
+                          },
+                          "error": {
+                            "type": "string",
+                            "example": ""
+                          },
+                          "createdByName": {
+                            "type": "string",
+                            "example": "System"
+                          },
+                          "sentAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "sentByName": {
+                            "type": "string",
+                            "example": "Admin Person"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Messages fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67259",
+                      "application": "6ac0a5f0eebc510147c67253",
+                      "applicationNumber": "VISA-2026-000001",
+                      "channel": "sms",
+                      "to": "+8801712556340",
+                      "toName": "Rahim Ahmed",
+                      "templateName": "Under Review",
+                      "trigger": "under_review",
+                      "subject": "",
+                      "body": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review.",
+                      "status": "pending",
+                      "source": "auto",
+                      "provider": "manual",
+                      "error": "",
+                      "createdByName": "System",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of applicationId is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.applicationId",
+                      "message": "The value of applicationId is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/messages/{id}": {
+      "patch": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Mark an SMS as sent or failed",
+        "operationId": "markVisaMessage",
+        "description": "Staff send an SMS by hand, then say what happened. `sent` records who and when and puts it on the application timeline. `failed` needs an `error`. A sent message stays sent. Only an SMS is marked by hand.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67259"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "sent",
+                      "failed"
+                    ]
+                  },
+                  "error": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              "example": {
+                "status": "sent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Message updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Message updated."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67259"
+                        },
+                        "application": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67253"
+                        },
+                        "applicationNumber": {
+                          "type": "string",
+                          "example": "VISA-2026-000001"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "example": "sms",
+                          "enum": [
+                            "sms",
+                            "email"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "example": "+8801712556340"
+                        },
+                        "toName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "example": "Under Review"
+                        },
+                        "trigger": {
+                          "type": "string",
+                          "example": "under_review"
+                        },
+                        "subject": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "body": {
+                          "type": "string",
+                          "example": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review."
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "pending",
+                          "enum": [
+                            "pending",
+                            "sent",
+                            "failed"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "example": "auto",
+                          "enum": [
+                            "auto",
+                            "manual"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string",
+                          "example": "manual"
+                        },
+                        "error": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "System"
+                        },
+                        "sentAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "sentByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Message updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67259",
+                    "application": "6ac0a5f0eebc510147c67253",
+                    "applicationNumber": "VISA-2026-000001",
+                    "channel": "sms",
+                    "to": "+8801712556340",
+                    "toName": "Rahim Ahmed",
+                    "templateName": "Under Review",
+                    "trigger": "under_review",
+                    "subject": "",
+                    "body": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review.",
+                    "status": "sent",
+                    "source": "auto",
+                    "provider": "manual",
+                    "error": "",
+                    "createdByName": "System",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "sentAt": "2026-10-03T06:51:28.261Z",
+                    "sentByName": "Admin Person"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `MESSAGE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "MESSAGE_NOT_FOUND",
+                  "code": "MESSAGE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `NOT_AN_SMS`, `MESSAGE_ALREADY_SENT`, `INVALID_MESSAGE_CHANGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "NOT_AN_SMS",
+                  "code": "NOT_AN_SMS"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of status is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.status",
+                      "message": "The value of status is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/messages/{id}/send": {
+      "post": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Send a failed email again",
+        "operationId": "resendVisaEmail",
+        "description": "Tries an email that failed (or has no result yet) again through EmailJS. The log row is updated with the new result.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67259"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Email sent again.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Email sent again."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67259"
+                        },
+                        "application": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67253"
+                        },
+                        "applicationNumber": {
+                          "type": "string",
+                          "example": "VISA-2026-000001"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "example": "sms",
+                          "enum": [
+                            "sms",
+                            "email"
+                          ]
+                        },
+                        "to": {
+                          "type": "string",
+                          "example": "+8801712556340"
+                        },
+                        "toName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "templateName": {
+                          "type": "string",
+                          "example": "Under Review"
+                        },
+                        "trigger": {
+                          "type": "string",
+                          "example": "under_review"
+                        },
+                        "subject": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "body": {
+                          "type": "string",
+                          "example": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review."
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "pending",
+                          "enum": [
+                            "pending",
+                            "sent",
+                            "failed"
+                          ]
+                        },
+                        "source": {
+                          "type": "string",
+                          "example": "auto",
+                          "enum": [
+                            "auto",
+                            "manual"
+                          ]
+                        },
+                        "provider": {
+                          "type": "string",
+                          "example": "manual"
+                        },
+                        "error": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "System"
+                        },
+                        "sentAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "sentByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Email sent again.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67259",
+                    "application": "6ac0a5f0eebc510147c67253",
+                    "applicationNumber": "VISA-2026-000001",
+                    "channel": "email",
+                    "to": "rahim@example.com",
+                    "toName": "Rahim Ahmed",
+                    "templateName": "Under Review",
+                    "trigger": "under_review",
+                    "subject": "",
+                    "body": "Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review.",
+                    "status": "sent",
+                    "source": "auto",
+                    "provider": "emailjs",
+                    "error": "",
+                    "createdByName": "System",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `MESSAGE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "MESSAGE_NOT_FOUND",
+                  "code": "MESSAGE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `NOT_AN_EMAIL`, `MESSAGE_ALREADY_SENT`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "NOT_AN_EMAIL",
+                  "code": "NOT_AN_EMAIL"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `NO_EMAIL`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "NO_EMAIL",
+                  "code": "NO_EMAIL"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/partners": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Partners for a quotation",
+        "operationId": "listVisaPartners",
+        "description": "Approved agencies, with only their id and company name, for the partner drop-down. Needs `VISA_VIEW`, not the partner management permission.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": "abc"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Partners fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Partners fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c6725b"
+                          },
+                          "companyName": {
+                            "type": "string",
+                            "example": "ABC Travels"
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Partners fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c6725b",
+                      "companyName": "ABC Travels"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of search is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.search",
+                      "message": "The value of search is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/quotations": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Quotations",
+        "operationId": "listVisaQuotations",
+        "description": "Price quotes for B2B partners, newest first. A draft or sent quotation past its date is shown with the status `expired` (the stored status is in `storedStatus`). `search` matches the number, partner, client and country.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Only accounts with this status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "draft",
+                "sent",
+                "accepted",
+                "rejected",
+                "expired"
+              ]
+            },
+            "example": "sent"
+          },
+          {
+            "name": "partnerId",
+            "in": "query",
+            "required": false,
+            "description": "Partner id (MongoDB ObjectId), the `_id` of the Partner record.",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            }
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quotations fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Quotations fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c6725a"
+                          },
+                          "number": {
+                            "type": "string",
+                            "example": "QT-2026-0001"
+                          },
+                          "partner": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c6725b"
+                          },
+                          "partnerName": {
+                            "type": "string",
+                            "example": "ABC Travels"
+                          },
+                          "clientName": {
+                            "type": "string",
+                            "example": "Rahim Ahmed"
+                          },
+                          "country": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67251"
+                          },
+                          "countryName": {
+                            "type": "string",
+                            "example": "China"
+                          },
+                          "visaType": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67252"
+                          },
+                          "visaTypeName": {
+                            "type": "string",
+                            "example": "Tourist Visa"
+                          },
+                          "quantity": {
+                            "type": "integer",
+                            "example": 2
+                          },
+                          "currency": {
+                            "type": "string",
+                            "example": "BDT"
+                          },
+                          "rateToBase": {
+                            "type": "number",
+                            "example": 1
+                          },
+                          "netPrice": {
+                            "type": "number",
+                            "example": 10000
+                          },
+                          "additionalFee": {
+                            "type": "number",
+                            "example": 1500
+                          },
+                          "total": {
+                            "type": "number",
+                            "example": 21500
+                          },
+                          "totalBase": {
+                            "type": "number",
+                            "example": 21500
+                          },
+                          "validUntil": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "notes": {
+                            "type": "string",
+                            "example": ""
+                          },
+                          "status": {
+                            "type": "string",
+                            "example": "draft",
+                            "enum": [
+                              "draft",
+                              "sent",
+                              "accepted",
+                              "rejected",
+                              "expired"
+                            ]
+                          },
+                          "storedStatus": {
+                            "type": "string",
+                            "example": "draft",
+                            "enum": [
+                              "draft",
+                              "sent",
+                              "accepted",
+                              "rejected"
+                            ]
+                          },
+                          "createdByName": {
+                            "type": "string",
+                            "example": "Admin Person"
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Quotations fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c6725a",
+                      "number": "QT-2026-0001",
+                      "partner": "6ac0a5f0eebc510147c6725b",
+                      "partnerName": "ABC Travels",
+                      "clientName": "Rahim Ahmed",
+                      "country": "6ac0a5f0eebc510147c67251",
+                      "countryName": "China",
+                      "visaType": "6ac0a5f0eebc510147c67252",
+                      "visaTypeName": "Tourist Visa",
+                      "quantity": 2,
+                      "currency": "BDT",
+                      "rateToBase": 1,
+                      "netPrice": 10000,
+                      "additionalFee": 1500,
+                      "total": 21500,
+                      "totalBase": 21500,
+                      "validUntil": "2026-10-03T06:51:28.261Z",
+                      "notes": "",
+                      "status": "draft",
+                      "storedStatus": "draft",
+                      "createdByName": "Admin Person",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of status is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.status",
+                      "message": "The value of status is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Create a quotation",
+        "operationId": "createVisaQuotation",
+        "description": "The server numbers it (`QT-<year>-<4 digits>`, restarting every year), copies the partner net price, the currency and the exchange rate from the visa type, and calculates `total = net price x quantity + additional fee`. The browser cannot set the price. The partner must be approved. `validUntil` defaults to 14 days from now.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "partnerId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "clientName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "countryId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "visaTypeId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "additionalFee": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "validUntil": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                },
+                "required": [
+                  "partnerId",
+                  "clientName",
+                  "countryId",
+                  "visaTypeId"
+                ]
+              },
+              "example": {
+                "partnerId": "6ac0a5f0eebc510147c6725b",
+                "clientName": "Rahim Ahmed",
+                "countryId": "6ac0a5f0eebc510147c67251",
+                "visaTypeId": "6ac0a5f0eebc510147c67252",
+                "quantity": 2,
+                "additionalFee": 1500,
+                "validUntil": "2026-11-15"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Quotation created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Quotation created."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725a"
+                        },
+                        "number": {
+                          "type": "string",
+                          "example": "QT-2026-0001"
+                        },
+                        "partner": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725b"
+                        },
+                        "partnerName": {
+                          "type": "string",
+                          "example": "ABC Travels"
+                        },
+                        "clientName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "BDT"
+                        },
+                        "rateToBase": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "netPrice": {
+                          "type": "number",
+                          "example": 10000
+                        },
+                        "additionalFee": {
+                          "type": "number",
+                          "example": 1500
+                        },
+                        "total": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "totalBase": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "notes": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected",
+                            "expired"
+                          ]
+                        },
+                        "storedStatus": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Quotation created.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6725a",
+                    "number": "QT-2026-0001",
+                    "partner": "6ac0a5f0eebc510147c6725b",
+                    "partnerName": "ABC Travels",
+                    "clientName": "Rahim Ahmed",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "quantity": 2,
+                    "currency": "BDT",
+                    "rateToBase": 1,
+                    "netPrice": 10000,
+                    "additionalFee": 1500,
+                    "total": 21500,
+                    "totalBase": 21500,
+                    "validUntil": "2026-10-03T06:51:28.261Z",
+                    "notes": "",
+                    "status": "draft",
+                    "storedStatus": "draft",
+                    "createdByName": "Admin Person",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `PARTNER_NOT_FOUND`, `COUNTRY_NOT_FOUND`, `VISA_TYPE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "PARTNER_NOT_FOUND",
+                  "code": "PARTNER_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `PARTNER_NOT_APPROVED`, `CATALOG_PAUSED`, `CURRENCY_NOT_ENABLED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Trade license document is required.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/quotations/{id}": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "One quotation",
+        "operationId": "getVisaQuotation",
+        "description": "The quotation with that id. An unknown id answers `404`.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6725a"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quotation fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Quotation fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725a"
+                        },
+                        "number": {
+                          "type": "string",
+                          "example": "QT-2026-0001"
+                        },
+                        "partner": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725b"
+                        },
+                        "partnerName": {
+                          "type": "string",
+                          "example": "ABC Travels"
+                        },
+                        "clientName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "BDT"
+                        },
+                        "rateToBase": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "netPrice": {
+                          "type": "number",
+                          "example": 10000
+                        },
+                        "additionalFee": {
+                          "type": "number",
+                          "example": 1500
+                        },
+                        "total": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "totalBase": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "notes": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected",
+                            "expired"
+                          ]
+                        },
+                        "storedStatus": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Quotation fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6725a",
+                    "number": "QT-2026-0001",
+                    "partner": "6ac0a5f0eebc510147c6725b",
+                    "partnerName": "ABC Travels",
+                    "clientName": "Rahim Ahmed",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "quantity": 2,
+                    "currency": "BDT",
+                    "rateToBase": 1,
+                    "netPrice": 10000,
+                    "additionalFee": 1500,
+                    "total": 21500,
+                    "totalBase": 21500,
+                    "validUntil": "2026-10-03T06:51:28.261Z",
+                    "notes": "",
+                    "status": "draft",
+                    "storedStatus": "draft",
+                    "createdByName": "Admin Person",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `QUOTATION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "QUOTATION_NOT_FOUND",
+                  "code": "QUOTATION_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Change a draft quotation",
+        "operationId": "updateVisaQuotation",
+        "description": "Only a draft can change (`QUOTATION_LOCKED` once sent). The price is copied again only when the visa type changes, and the total is recalculated.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6725a"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "partnerId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "clientName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 120
+                  },
+                  "countryId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "visaTypeId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "quantity": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 1000
+                  },
+                  "additionalFee": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100000000
+                  },
+                  "validUntil": {
+                    "type": "string"
+                  },
+                  "notes": {
+                    "type": "string",
+                    "maxLength": 1000
+                  }
+                }
+              },
+              "example": {
+                "quantity": 3,
+                "validUntil": "2026-11-30"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quotation updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Quotation updated."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725a"
+                        },
+                        "number": {
+                          "type": "string",
+                          "example": "QT-2026-0001"
+                        },
+                        "partner": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725b"
+                        },
+                        "partnerName": {
+                          "type": "string",
+                          "example": "ABC Travels"
+                        },
+                        "clientName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "BDT"
+                        },
+                        "rateToBase": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "netPrice": {
+                          "type": "number",
+                          "example": 10000
+                        },
+                        "additionalFee": {
+                          "type": "number",
+                          "example": 1500
+                        },
+                        "total": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "totalBase": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "notes": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected",
+                            "expired"
+                          ]
+                        },
+                        "storedStatus": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Quotation updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6725a",
+                    "number": "QT-2026-0001",
+                    "partner": "6ac0a5f0eebc510147c6725b",
+                    "partnerName": "ABC Travels",
+                    "clientName": "Rahim Ahmed",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "quantity": 2,
+                    "currency": "BDT",
+                    "rateToBase": 1,
+                    "netPrice": 10000,
+                    "additionalFee": 1500,
+                    "total": 21500,
+                    "totalBase": 21500,
+                    "validUntil": "2026-10-03T06:51:28.261Z",
+                    "notes": "",
+                    "status": "draft",
+                    "storedStatus": "draft",
+                    "createdByName": "Admin Person",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `QUOTATION_NOT_FOUND`, `PARTNER_NOT_FOUND`, `COUNTRY_NOT_FOUND`, `VISA_TYPE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "QUOTATION_NOT_FOUND",
+                  "code": "QUOTATION_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `QUOTATION_LOCKED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "QUOTATION_LOCKED",
+                  "code": "QUOTATION_LOCKED"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `PARTNER_NOT_APPROVED`, `CATALOG_PAUSED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Trade license document is required.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Delete a draft quotation",
+        "operationId": "deleteVisaQuotation",
+        "description": "Only a draft can be deleted (`QUOTATION_LOCKED`).\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6725a"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Quotation deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Quotation deleted."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Quotation deleted."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `QUOTATION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "QUOTATION_NOT_FOUND",
+                  "code": "QUOTATION_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `QUOTATION_LOCKED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "QUOTATION_LOCKED",
+                  "code": "QUOTATION_LOCKED"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/quotations/{id}/status": {
+      "patch": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Send, accept or reject a quotation",
+        "operationId": "changeVisaQuotationStatus",
+        "description": "A draft can be sent. A sent quotation can be accepted or rejected. Nothing leaves accepted or rejected. A quotation past its date cannot be sent or accepted (`QUOTATION_EXPIRED`): extend the date of the draft first. Accepting raises an event that the accounting module will use later.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c6725a"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "draft",
+                      "sent",
+                      "accepted",
+                      "rejected"
+                    ]
+                  }
+                },
+                "required": [
+                  "status"
+                ]
+              },
+              "example": {
+                "status": "sent"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Quotation status changed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Quotation status changed."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725a"
+                        },
+                        "number": {
+                          "type": "string",
+                          "example": "QT-2026-0001"
+                        },
+                        "partner": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c6725b"
+                        },
+                        "partnerName": {
+                          "type": "string",
+                          "example": "ABC Travels"
+                        },
+                        "clientName": {
+                          "type": "string",
+                          "example": "Rahim Ahmed"
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "quantity": {
+                          "type": "integer",
+                          "example": 2
+                        },
+                        "currency": {
+                          "type": "string",
+                          "example": "BDT"
+                        },
+                        "rateToBase": {
+                          "type": "number",
+                          "example": 1
+                        },
+                        "netPrice": {
+                          "type": "number",
+                          "example": 10000
+                        },
+                        "additionalFee": {
+                          "type": "number",
+                          "example": 1500
+                        },
+                        "total": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "totalBase": {
+                          "type": "number",
+                          "example": 21500
+                        },
+                        "validUntil": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "notes": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected",
+                            "expired"
+                          ]
+                        },
+                        "storedStatus": {
+                          "type": "string",
+                          "example": "draft",
+                          "enum": [
+                            "draft",
+                            "sent",
+                            "accepted",
+                            "rejected"
+                          ]
+                        },
+                        "createdByName": {
+                          "type": "string",
+                          "example": "Admin Person"
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Quotation status changed.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6725a",
+                    "number": "QT-2026-0001",
+                    "partner": "6ac0a5f0eebc510147c6725b",
+                    "partnerName": "ABC Travels",
+                    "clientName": "Rahim Ahmed",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "quantity": 2,
+                    "currency": "BDT",
+                    "rateToBase": 1,
+                    "netPrice": 10000,
+                    "additionalFee": 1500,
+                    "total": 21500,
+                    "totalBase": 21500,
+                    "validUntil": "2026-10-03T06:51:28.261Z",
+                    "notes": "",
+                    "status": "sent",
+                    "storedStatus": "sent",
+                    "createdByName": "Admin Person",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `QUOTATION_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "QUOTATION_NOT_FOUND",
+                  "code": "QUOTATION_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `INVALID_STATUS_CHANGE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "INVALID_STATUS_CHANGE",
+                  "code": "INVALID_STATUS_CHANGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `QUOTATION_EXPIRED`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Trade license document is required.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/visa/staff": {
       "get": {
         "tags": [
@@ -21371,6 +23970,714 @@
                   "success": false,
                   "message": "STATUS_LOCKED",
                   "code": "STATUS_LOCKED"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/templates": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Message templates",
+        "operationId": "listVisaTemplates",
+        "description": "The wording used when an application reaches a status. An **email** template is sent automatically through EmailJS at that moment. An **sms** template makes a prepared message in the log, which staff send by hand (no SMS provider is connected yet). Each template has an on/off switch (`active`).\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "channel",
+            "in": "query",
+            "required": false,
+            "description": "channel",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "sms",
+                "email"
+              ]
+            },
+            "example": "sms"
+          },
+          {
+            "name": "active",
+            "in": "query",
+            "required": false,
+            "description": "active",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 100.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Message templates fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Message templates fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67258"
+                          },
+                          "name": {
+                            "type": "string",
+                            "example": "Under Review"
+                          },
+                          "channel": {
+                            "type": "string",
+                            "example": "sms",
+                            "enum": [
+                              "sms",
+                              "email"
+                            ]
+                          },
+                          "trigger": {
+                            "type": "string",
+                            "example": "under_review"
+                          },
+                          "subject": {
+                            "type": "string",
+                            "example": ""
+                          },
+                          "message": {
+                            "type": "string",
+                            "example": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review."
+                          },
+                          "active": {
+                            "type": "boolean",
+                            "example": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Message templates fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67258",
+                      "name": "Under Review",
+                      "channel": "sms",
+                      "trigger": "under_review",
+                      "subject": "",
+                      "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.",
+                      "active": true,
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of channel is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.channel",
+                      "message": "The value of channel is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Add a message template",
+        "operationId": "createVisaTemplate",
+        "description": "The `trigger` is a status key. The text may use only {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}}; any other word is refused (`UNKNOWN_VARIABLE`). An email template needs a `subject`. The name must be new for its channel.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "sms",
+                      "email"
+                    ]
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "subject": {
+                    "type": "string",
+                    "maxLength": 150
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "name",
+                  "channel",
+                  "trigger",
+                  "message"
+                ]
+              },
+              "example": {
+                "name": "Under Review",
+                "channel": "sms",
+                "trigger": "under_review",
+                "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review."
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Template created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Template created."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67258"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Under Review"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "example": "sms",
+                          "enum": [
+                            "sms",
+                            "email"
+                          ]
+                        },
+                        "trigger": {
+                          "type": "string",
+                          "example": "under_review"
+                        },
+                        "subject": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review."
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Template created.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67258",
+                    "name": "Under Review",
+                    "channel": "sms",
+                    "trigger": "under_review",
+                    "subject": "",
+                    "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.",
+                    "active": true,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `TEMPLATE_EXISTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "TEMPLATE_EXISTS",
+                  "code": "TEMPLATE_EXISTS"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `UNKNOWN_STATUS`, `UNKNOWN_VARIABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Trade license document is required.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/templates/{id}": {
+      "patch": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Change a message template",
+        "operationId": "updateVisaTemplate",
+        "description": "Send only what changes. Set `active` to false to switch a template off without deleting it.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67258"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 80
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "sms",
+                      "email"
+                    ]
+                  },
+                  "trigger": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 40
+                  },
+                  "subject": {
+                    "type": "string",
+                    "maxLength": 150
+                  },
+                  "message": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 5000
+                  },
+                  "active": {
+                    "type": "boolean"
+                  }
+                }
+              },
+              "example": {
+                "active": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Template updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Template updated."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67258"
+                        },
+                        "name": {
+                          "type": "string",
+                          "example": "Under Review"
+                        },
+                        "channel": {
+                          "type": "string",
+                          "example": "sms",
+                          "enum": [
+                            "sms",
+                            "email"
+                          ]
+                        },
+                        "trigger": {
+                          "type": "string",
+                          "example": "under_review"
+                        },
+                        "subject": {
+                          "type": "string",
+                          "example": ""
+                        },
+                        "message": {
+                          "type": "string",
+                          "example": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review."
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Template updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67258",
+                    "name": "Under Review",
+                    "channel": "sms",
+                    "trigger": "under_review",
+                    "subject": "",
+                    "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.",
+                    "active": true,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `TEMPLATE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "TEMPLATE_NOT_FOUND",
+                  "code": "TEMPLATE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `TEMPLATE_EXISTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "TEMPLATE_EXISTS",
+                  "code": "TEMPLATE_EXISTS"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `UNKNOWN_STATUS`, `UNKNOWN_VARIABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "Trade license document is required.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Delete a message template",
+        "operationId": "deleteVisaTemplate",
+        "description": "Messages already made from it stay in the log.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67258"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Template deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Template deleted."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Template deleted."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `TEMPLATE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "TEMPLATE_NOT_FOUND",
+                  "code": "TEMPLATE_NOT_FOUND"
                 }
               }
             }

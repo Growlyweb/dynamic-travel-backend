@@ -34,7 +34,7 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Phone OTP | Open on purpose (see `ToDo.md`) |
 | Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
 | Membership plans, memberships and reports | Done (see "Membership" below). Prices are the spec's placeholders. |
-| Visa: catalog, applications, payments, documents, passport handling | Done (see "Visa module" below). SMS and quotations are not built yet. |
+| Visa: catalog, applications, payments, documents, passport handling, messages, quotations | Done (see "Visa module" below). The customer and partner side and the public status check are not built yet. |
 | Settings: currencies and exchange rates, document limits, retention | Done (see "Settings" below) |
 | Automated tests | 468 unit and integration (Jest), 130 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
@@ -262,6 +262,8 @@ Dependencies point downward only: routes -> controllers -> services -> models.
 | `Setting` | Platform settings: currencies, document limits, retention, duplicate window. Defaults live in `services/settingService.js`. |
 | `VisaCountry`, `VisaType`, `VisaChecklist`, `VisaStatusConfig` | The visa catalog. |
 | `VisaApplication` | One visa file with its money, payments, documents, timeline, notes and passport handling embedded. |
+| `MessageTemplate`, `VisaMessage` | Wording per status and channel, and the log of every message prepared or sent to an applicant. |
+| `VisaQuotation` | A price quote for a B2B partner with its price snapshot. |
 
 ## Registration and sign-in
 
@@ -369,7 +371,10 @@ Everything lives under `/api/visa` and is for internal users: an admin, or staff
 - **Passports.** Submission method (online, office, pickup), pickup request and staff, and the passport status steps, limited by what the visa type allows.
 - **Events.** `utils/events.js` raises `visa.application.created`, `visa.status.changed`, `visa.payment.recorded` and `visa.payment.voided`. Messages, notifications and accounting will listen to them later.
 
-Not built yet: SMS templates and the message log, quotations, the customer and partner side, and the public status check. Staff send SMS by hand for now.
+- **Messages.** Templates (`MessageTemplate`) belong to a status and a channel. An **email** template is sent automatically through EmailJS when an application is created (status `submitted`) or reaches its status, and the result is logged. An **sms** template prepares a message in the log (`pending`) that staff send by hand and then mark as sent, because no SMS provider is connected. Each template has an on/off switch (`active`). A template may use only {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}}, and a typo is refused when it is saved. Staff can also write a message by hand, and send a failed email again. The free EmailJS plan has a monthly limit (about 200), shared with codes and invites: switch a template off to save requests.
+- **Quotations.** Price quotes for approved B2B partners. The server numbers them (`QT-2026-0001`), copies the net price, currency and exchange rate from the visa type, and calculates `total = net price x quantity + additional fee`. A draft can change, a sent one is locked. draft, sent, accepted or rejected; a draft or sent quotation past its date is shown as `expired`. Accepting raises `visa.quotation.accepted` for the accounting module later.
+
+Not built yet: the customer and partner side (apply form, own lists, partner pickups), the public status check by email code, and the link to accounting. Set `VISA_TRACKING_URL` to change the link in messages (default: `APP_URL` + `/visa-status`).
 
 ## Settings
 
@@ -428,6 +433,7 @@ All are read in `config/env.js`.
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
+| `VISA_TRACKING_URL` | The link in visa messages (`{{trackingUrl}}`). The application number is added after it. | `APP_URL` + `/visa-status` |
 | `STORAGE_DRIVER` | Where uploaded files are kept. Only `local` exists (the folder in `PRIVATE_STORAGE_DIR`). A cloud driver can be added without changing the visa code. | `local` |
 | `NODE_ENV`, `PORT` | Mode and port | `development`, `5000` |
 | `MONGODB_URI` | Database (required in production) | local MongoDB |
@@ -535,6 +541,9 @@ Production never returns stack traces or internal messages.
 | PATCH | `/api/visa/applications/:id/status` | ADMIN, or STAFF with `VISA_UPDATE` |
 | POST | `/api/visa/applications/:id/payments/:paymentId/void` | ADMIN, or STAFF with `VISA_PAYMENT_VOID` |
 | POST, DELETE | `/api/visa/applications/:id/documents`, `/:id/documents/:docId` | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/visa/templates`, `/api/visa/messages`, `/api/visa/partners`, `/api/visa/quotations`, `/api/visa/quotations/:id` | ADMIN, or STAFF with `VISA_VIEW` |
+| POST, PATCH, DELETE | `/api/visa/templates`, `/api/visa/templates/:id`, `/api/visa/quotations`, `/api/visa/quotations/:id`, `/api/visa/quotations/:id/status` | ADMIN, or STAFF with `VISA_EDIT` |
+| POST, PATCH | `/api/visa/applications/:id/messages`, `/api/visa/messages/:id`, `/api/visa/messages/:id/send` | ADMIN, or STAFF with `VISA_EDIT` |
 | GET | `/api/visa/applications/:id/documents/:docId/file` | ADMIN, or STAFF with `VISA_VIEW` and `DOCUMENT_VIEW` |
 | PATCH | `/api/visa/applications/:id/documents/:docId` | ADMIN, or STAFF with `DOCUMENT_VERIFY` |
 | PATCH | `/api/visa/applications/:id/passport` | ADMIN, or STAFF with `PASSPORT_UPDATE` |

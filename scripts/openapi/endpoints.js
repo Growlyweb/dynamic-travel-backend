@@ -198,6 +198,45 @@ const list = (message, schema, example) => ok(200, message, arrayOf(schema), [ex
 const APP_PARAM = { id: ID_APP };
 const DOC_PARAM = { id: ID_APP, docId: ID_DOC };
 
+// ---- messages and quotations
+const visaMessage = require('../../validations/visaMessage.validation');
+const visaQuotation = require('../../validations/visaQuotation.validation');
+const ID_TEMPLATE = '6ac0a5f0eebc510147c67258';
+const ID_MESSAGE = '6ac0a5f0eebc510147c67259';
+const ID_QUOTATION = '6ac0a5f0eebc510147c6725a';
+const ID_PARTNER = '6ac0a5f0eebc510147c6725b';
+
+const MESSAGE_TEMPLATE = obj({
+  _id: str(ID_TEMPLATE), name: str('Under Review'), channel: str('sms', { enum: ['sms', 'email'] }), trigger: str('under_review'), subject: str(''),
+  message: str('Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.'), active: bool(true), createdAt: str(NOW), updatedAt: str(NOW)
+});
+const MESSAGE_TEMPLATE_EXAMPLE = {
+  _id: ID_TEMPLATE, name: 'Under Review', channel: 'sms', trigger: 'under_review', subject: '',
+  message: 'Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.', active: true, createdAt: NOW, updatedAt: NOW
+};
+const VISA_MESSAGE = obj({
+  _id: str(ID_MESSAGE), application: str(ID_APP), applicationNumber: str('VISA-2026-000001'), channel: str('sms', { enum: ['sms', 'email'] }), to: str('+8801712556340'),
+  toName: str('Rahim Ahmed'), templateName: str('Under Review'), trigger: str('under_review'), subject: str(''), body: str('Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review.'),
+  status: str('pending', { enum: ['pending', 'sent', 'failed'] }), source: str('auto', { enum: ['auto', 'manual'] }), provider: str('manual'), error: str(''),
+  createdByName: str('System'), sentAt: str(NOW), sentByName: str('Admin Person'), createdAt: str(NOW)
+});
+const VISA_MESSAGE_EXAMPLE = {
+  _id: ID_MESSAGE, application: ID_APP, applicationNumber: 'VISA-2026-000001', channel: 'sms', to: '+8801712556340', toName: 'Rahim Ahmed', templateName: 'Under Review', trigger: 'under_review',
+  subject: '', body: 'Dear Rahim Ahmed, your visa application VISA-2026-000001 is now under review.', status: 'pending', source: 'auto', provider: 'manual', error: '', createdByName: 'System', createdAt: NOW, updatedAt: NOW
+};
+const VISA_QUOTATION = obj({
+  _id: str(ID_QUOTATION), number: str('QT-2026-0001'), partner: str(ID_PARTNER), partnerName: str('ABC Travels'), clientName: str('Rahim Ahmed'), country: str(ID_COUNTRY), countryName: str('China'),
+  visaType: str(ID_TYPE), visaTypeName: str('Tourist Visa'), quantity: INT(2), currency: str('BDT'), rateToBase: NUM(1), netPrice: NUM(10000), additionalFee: NUM(1500), total: NUM(21500), totalBase: NUM(21500),
+  validUntil: str(NOW), notes: str(''), status: str('draft', { enum: ['draft', 'sent', 'accepted', 'rejected', 'expired'] }), storedStatus: str('draft', { enum: ['draft', 'sent', 'accepted', 'rejected'] }),
+  createdByName: str('Admin Person'), createdAt: str(NOW), updatedAt: str(NOW)
+});
+const VISA_QUOTATION_EXAMPLE = {
+  _id: ID_QUOTATION, number: 'QT-2026-0001', partner: ID_PARTNER, partnerName: 'ABC Travels', clientName: 'Rahim Ahmed', country: ID_COUNTRY, countryName: 'China', visaType: ID_TYPE, visaTypeName: 'Tourist Visa',
+  quantity: 2, currency: 'BDT', rateToBase: 1, netPrice: 10000, additionalFee: 1500, total: 21500, totalBase: 21500, validUntil: NOW, notes: '', status: 'draft', storedStatus: 'draft',
+  createdByName: 'Admin Person', createdAt: NOW, updatedAt: NOW
+};
+const QUOTATION_PARAM = { id: ID_QUOTATION };
+
 // shared success shapes
 const SESSION = ref('Session');
 
@@ -1089,6 +1128,81 @@ const endpoints = [
       params: visaApp.idParam, paramExamples: APP_PARAM, body: visaApp.updatePassport, bodyExample: { passportStatus: 'received_at_office', details: { receivedDate: '2026-10-01', receivedBy: 'Ahmed Karim', remarks: 'Two blank pages.' } },
       success: ok(200, 'Passport updated.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 409: ['INVALID_PASSPORT_CHANGE'], 422: ['VALIDATION_ERROR', 'INVALID_STAFF'] }
     }),
+
+  // ---- messages
+  V('get', '/api/visa/templates', 'listVisaTemplates', 'Message templates',
+    'The wording used when an application reaches a status. An **email** template is sent automatically through EmailJS at that moment. An **sms** template makes a prepared message in the log, which staff send by hand (no SMS provider is connected yet). Each template has an on/off switch (`active`).',
+    ACCESS.view, { query: visaMessage.listTemplates, queryExample: { channel: 'sms' }, success: list('Message templates fetched.', MESSAGE_TEMPLATE, MESSAGE_TEMPLATE_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
+  V('post', '/api/visa/templates', 'createVisaTemplate', 'Add a message template',
+    'The `trigger` is a status key. The text may use only {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}}; any other word is refused (`UNKNOWN_VARIABLE`). An email template needs a `subject`. The name must be new for its channel.',
+    ACCESS.edit, {
+      body: visaMessage.createTemplate, bodyExample: { name: 'Under Review', channel: 'sms', trigger: 'under_review', message: 'Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.' },
+      success: ok(201, 'Template created.', MESSAGE_TEMPLATE, MESSAGE_TEMPLATE_EXAMPLE), errors: { 401: true, 403: true, 409: ['TEMPLATE_EXISTS'], 422: ['VALIDATION_ERROR', 'UNKNOWN_STATUS', 'UNKNOWN_VARIABLE'] }
+    }),
+  V('patch', '/api/visa/templates/{id}', 'updateVisaTemplate', 'Change a message template', 'Send only what changes. Set `active` to false to switch a template off without deleting it.',
+    ACCESS.edit, {
+      params: visaMessage.idParam, paramExamples: { id: ID_TEMPLATE }, body: visaMessage.updateTemplate, bodyExample: { active: false },
+      success: ok(200, 'Template updated.', MESSAGE_TEMPLATE, MESSAGE_TEMPLATE_EXAMPLE), errors: { 401: true, 403: true, 404: ['TEMPLATE_NOT_FOUND'], 409: ['TEMPLATE_EXISTS'], 422: ['VALIDATION_ERROR', 'UNKNOWN_STATUS', 'UNKNOWN_VARIABLE'] }
+    }),
+  V('delete', '/api/visa/templates/{id}', 'deleteVisaTemplate', 'Delete a message template', 'Messages already made from it stay in the log.',
+    ACCESS.edit, { params: visaMessage.idParam, paramExamples: { id: ID_TEMPLATE }, success: ok(200, 'Template deleted.'), errors: { 401: true, 403: true, 404: ['TEMPLATE_NOT_FOUND'], 422: true } }),
+  V('get', '/api/visa/messages', 'listVisaMessages', 'Message log',
+    'Every message prepared for an applicant, newest first, with the text exactly as written. `status` is `pending` (an SMS waiting to be sent by hand), `sent` or `failed` (with `error`). `source` says whether the system made it at a status change (`auto`) or a person did (`manual`). Filter by `applicationId`.',
+    ACCESS.view, { query: visaMessage.listMessages, queryExample: { status: 'pending', channel: 'sms' }, success: list('Messages fetched.', VISA_MESSAGE, VISA_MESSAGE_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
+  V('patch', '/api/visa/messages/{id}', 'markVisaMessage', 'Mark an SMS as sent or failed',
+    'Staff send an SMS by hand, then say what happened. `sent` records who and when and puts it on the application timeline. `failed` needs an `error`. A sent message stays sent. Only an SMS is marked by hand.',
+    ACCESS.edit, {
+      params: visaMessage.idParam, paramExamples: { id: ID_MESSAGE }, body: visaMessage.markMessage, bodyExample: { status: 'sent' },
+      success: ok(200, 'Message updated.', VISA_MESSAGE, { ...VISA_MESSAGE_EXAMPLE, status: 'sent', sentAt: NOW, sentByName: 'Admin Person' }),
+      errors: { 401: true, 403: true, 404: ['MESSAGE_NOT_FOUND'], 409: ['NOT_AN_SMS', 'MESSAGE_ALREADY_SENT', 'INVALID_MESSAGE_CHANGE'], 422: true }
+    }),
+  V('post', '/api/visa/messages/{id}/send', 'resendVisaEmail', 'Send a failed email again', 'Tries an email that failed (or has no result yet) again through EmailJS. The log row is updated with the new result.',
+    ACCESS.edit, {
+      params: visaMessage.idParam, paramExamples: { id: ID_MESSAGE },
+      success: ok(200, 'Email sent again.', VISA_MESSAGE, { ...VISA_MESSAGE_EXAMPLE, channel: 'email', to: 'rahim@example.com', status: 'sent', provider: 'emailjs' }),
+      errors: { 401: true, 403: true, 404: ['MESSAGE_NOT_FOUND'], 409: ['NOT_AN_EMAIL', 'MESSAGE_ALREADY_SENT'], 422: ['NO_EMAIL'] }
+    }),
+  V('post', '/api/visa/applications/{id}/messages', 'sendVisaMessage', 'Send a message to the applicant',
+    'Pick a template (`templateId`) or write your own (`channel` and `message`). The words in double braces are filled in from the application. An **email** is sent at once through EmailJS and the log row says `sent` or `failed`. An **sms** becomes a `pending` row; add `markSent: true` when you already sent it from your own phone.',
+    ACCESS.edit, {
+      params: visaApp.idParam, paramExamples: APP_PARAM, body: visaMessage.sendMessage, bodyExample: { channel: 'sms', message: 'Dear {{applicantName}}, please call us about {{applicationNumber}}.', markSent: false },
+      success: ok(201, 'Message created.', VISA_MESSAGE, VISA_MESSAGE_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND', 'TEMPLATE_NOT_FOUND'], 422: ['VALIDATION_ERROR', 'UNKNOWN_VARIABLE', 'CHANNEL_MISMATCH', 'NO_EMAIL'] }
+    }),
+
+  // ---- quotations
+  V('get', '/api/visa/partners', 'listVisaPartners', 'Partners for a quotation', 'Approved agencies, with only their id and company name, for the partner drop-down. Needs `VISA_VIEW`, not the partner management permission.',
+    ACCESS.view, {
+      query: visaQuotation.partnerLookup, queryExample: { search: 'abc' },
+      success: ok(200, 'Partners fetched.', arrayOf(obj({ _id: str(ID_PARTNER), companyName: str('ABC Travels') })), [{ _id: ID_PARTNER, companyName: 'ABC Travels' }]), errors: { 401: true, 403: true, 422: true }
+    }),
+  V('get', '/api/visa/quotations', 'listVisaQuotations', 'Quotations',
+    'Price quotes for B2B partners, newest first. A draft or sent quotation past its date is shown with the status `expired` (the stored status is in `storedStatus`). `search` matches the number, partner, client and country.',
+    ACCESS.view, { query: visaQuotation.listQuotations, queryExample: { status: 'sent' }, success: list('Quotations fetched.', VISA_QUOTATION, VISA_QUOTATION_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
+  V('post', '/api/visa/quotations', 'createVisaQuotation', 'Create a quotation',
+    'The server numbers it (`QT-<year>-<4 digits>`, restarting every year), copies the partner net price, the currency and the exchange rate from the visa type, and calculates `total = net price x quantity + additional fee`. The browser cannot set the price. The partner must be approved. `validUntil` defaults to 14 days from now.',
+    ACCESS.edit, {
+      body: visaQuotation.createQuotation, bodyExample: { partnerId: ID_PARTNER, clientName: 'Rahim Ahmed', countryId: ID_COUNTRY, visaTypeId: ID_TYPE, quantity: 2, additionalFee: 1500, validUntil: '2026-11-15' },
+      success: ok(201, 'Quotation created.', VISA_QUOTATION, VISA_QUOTATION_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['PARTNER_NOT_FOUND', 'COUNTRY_NOT_FOUND', 'VISA_TYPE_NOT_FOUND'], 422: ['VALIDATION_ERROR', 'PARTNER_NOT_APPROVED', 'CATALOG_PAUSED', 'CURRENCY_NOT_ENABLED'] }
+    }),
+  V('get', '/api/visa/quotations/{id}', 'getVisaQuotation', 'One quotation', 'The quotation with that id. An unknown id answers `404`.',
+    ACCESS.view, { params: visaQuotation.idParam, paramExamples: QUOTATION_PARAM, success: ok(200, 'Quotation fetched.', VISA_QUOTATION, VISA_QUOTATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['QUOTATION_NOT_FOUND'], 422: true } }),
+  V('patch', '/api/visa/quotations/{id}', 'updateVisaQuotation', 'Change a draft quotation',
+    'Only a draft can change (`QUOTATION_LOCKED` once sent). The price is copied again only when the visa type changes, and the total is recalculated.',
+    ACCESS.edit, {
+      params: visaQuotation.idParam, paramExamples: QUOTATION_PARAM, body: visaQuotation.updateQuotation, bodyExample: { quantity: 3, validUntil: '2026-11-30' },
+      success: ok(200, 'Quotation updated.', VISA_QUOTATION, VISA_QUOTATION_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['QUOTATION_NOT_FOUND', 'PARTNER_NOT_FOUND', 'COUNTRY_NOT_FOUND', 'VISA_TYPE_NOT_FOUND'], 409: ['QUOTATION_LOCKED'], 422: ['VALIDATION_ERROR', 'PARTNER_NOT_APPROVED', 'CATALOG_PAUSED'] }
+    }),
+  V('patch', '/api/visa/quotations/{id}/status', 'changeVisaQuotationStatus', 'Send, accept or reject a quotation',
+    'A draft can be sent. A sent quotation can be accepted or rejected. Nothing leaves accepted or rejected. A quotation past its date cannot be sent or accepted (`QUOTATION_EXPIRED`): extend the date of the draft first. Accepting raises an event that the accounting module will use later.',
+    ACCESS.edit, {
+      params: visaQuotation.idParam, paramExamples: QUOTATION_PARAM, body: visaQuotation.changeStatus, bodyExample: { status: 'sent' },
+      success: ok(200, 'Quotation status changed.', VISA_QUOTATION, { ...VISA_QUOTATION_EXAMPLE, status: 'sent', storedStatus: 'sent' }), errors: { 401: true, 403: true, 404: ['QUOTATION_NOT_FOUND'], 409: ['INVALID_STATUS_CHANGE'], 422: ['VALIDATION_ERROR', 'QUOTATION_EXPIRED'] }
+    }),
+  V('delete', '/api/visa/quotations/{id}', 'deleteVisaQuotation', 'Delete a draft quotation', 'Only a draft can be deleted (`QUOTATION_LOCKED`).',
+    ACCESS.edit, { params: visaQuotation.idParam, paramExamples: QUOTATION_PARAM, success: ok(200, 'Quotation deleted.'), errors: { 401: true, 403: true, 404: ['QUOTATION_NOT_FOUND'], 409: ['QUOTATION_LOCKED'], 422: true } }),
 
   // =============================================================== SETTINGS (internal)
   { method: 'get', path: '/api/settings', tag: 'Settings', id: 'listSettings', summary: 'All settings',
