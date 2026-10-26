@@ -145,7 +145,8 @@ const create = async (user, body, context = {}) => {
     passportSubmissionMethod: passportRequired ? 'office' : 'online',
     passportStatus: passportRequired ? 'not_received' : 'not_required',
     duplicateNote,
-    createdBy: actor.id
+    createdBy: actor.id,
+    statusHistory: [{ status: 'submitted', at: new Date() }]
   });
 
   addTimeline(application, { event: 'Application Created', message: 'Application created successfully.', visibility: 'both', actor });
@@ -157,7 +158,7 @@ const create = async (user, body, context = {}) => {
   await application.save();
   await auditService.record({ actorUserId: user.id, action: AUDIT_ACTIONS.VISA_APPLICATION_CREATED, resource: `visa-application:${application._id}`, ip: context.ip, meta: { number: application.number } });
   events.emit(events.EVENTS.VISA_APPLICATION_CREATED, { applicationId: String(application._id), number: application.number });
-  if (advance > 0) events.emit(events.EVENTS.VISA_PAYMENT_RECORDED, { applicationId: String(application._id), number: application.number, amount: advance, currency });
+  if (advance > 0) events.emit(events.EVENTS.VISA_PAYMENT_RECORDED, { applicationId: String(application._id), paymentId: String(application.payments[0]._id), number: application.number, amount: advance, currency });
   return load(application._id);
 };
 

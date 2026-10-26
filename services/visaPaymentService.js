@@ -39,7 +39,7 @@ const add = async (user, id, { amount, method, date, note }, context = {}) => {
   await application.save();
 
   await auditService.record({ actorUserId: user.id, action: AUDIT_ACTIONS.VISA_PAYMENT_RECORDED, resource: `visa-application:${application._id}`, ip: context.ip, meta: { amount, method } });
-  events.emit(events.EVENTS.VISA_PAYMENT_RECORDED, { applicationId: String(application._id), number: application.number, amount, currency: application.price.currency });
+  events.emit(events.EVENTS.VISA_PAYMENT_RECORDED, { applicationId: String(application._id), paymentId: String(application.payments[application.payments.length - 1]._id), number: application.number, amount, currency: application.price.currency });
   return application;
 };
 
@@ -61,7 +61,7 @@ const voidPayment = async (user, id, paymentId, { reason }, context = {}) => {
   await application.save();
 
   await auditService.record({ actorUserId: user.id, action: AUDIT_ACTIONS.VISA_PAYMENT_VOIDED, resource: `visa-application:${application._id}`, ip: context.ip, meta: { paymentId: String(payment._id), amount: payment.amount } });
-  events.emit(events.EVENTS.VISA_PAYMENT_VOIDED, { applicationId: String(application._id), number: application.number, amount: payment.amount, currency: application.price.currency });
+  events.emit(events.EVENTS.VISA_PAYMENT_VOIDED, { applicationId: String(application._id), paymentId: String(payment._id), number: application.number, amount: payment.amount, currency: application.price.currency });
   return application;
 };
 
