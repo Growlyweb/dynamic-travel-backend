@@ -3,8 +3,12 @@ const router = express.Router();
 
 const catalog = require('../controllers/visaCatalogController');
 const applicationController = require('../controllers/visaApplicationController');
+const messageController = require('../controllers/visaMessageController');
+const quotationController = require('../controllers/visaQuotationController');
 const memoryUpload = require('../middleware/memoryUploadMiddleware');
 const appSchemas = require('../validations/visaApplication.validation');
+const messageSchemas = require('../validations/visaMessage.validation');
+const quotationSchemas = require('../validations/visaQuotation.validation');
 const { authenticate } = require('../middleware/authMiddleware');
 const { requirePermission } = require('../middleware/authorizeMiddleware');
 const validate = require('../middleware/validationMiddleware');
@@ -97,5 +101,28 @@ router.patch(
   validate({ params: appSchemas.idParam, body: appSchemas.updatePassport }),
   applicationController.updatePassport
 );
+
+// ---------------------------------------------------------------- messages
+// Email templates send automatically when an application reaches their status. SMS templates prepare a message that
+// staff send by hand and then mark as sent (there is no SMS provider yet). Every message is kept in the log.
+router.get('/templates', view, validate({ query: messageSchemas.listTemplates }), messageController.listTemplates);
+router.post('/templates', edit, validate({ body: messageSchemas.createTemplate }), messageController.createTemplate);
+router.patch('/templates/:id', edit, validate({ params: messageSchemas.idParam, body: messageSchemas.updateTemplate }), messageController.updateTemplate);
+router.delete('/templates/:id', edit, validate({ params: messageSchemas.idParam }), messageController.removeTemplate);
+
+router.get('/messages', view, validate({ query: messageSchemas.listMessages }), messageController.listMessages);
+router.patch('/messages/:id', edit, validate({ params: messageSchemas.idParam, body: messageSchemas.markMessage }), messageController.mark);
+router.post('/messages/:id/send', edit, validate({ params: messageSchemas.idParam }), messageController.resend);
+router.post('/applications/:id/messages', edit, validate({ params: appSchemas.idParam, body: messageSchemas.sendMessage }), messageController.send);
+
+// ---------------------------------------------------------------- quotations
+// Price quotes for B2B partners. The server copies the net price from the visa type and calculates the total.
+router.get('/partners', view, validate({ query: quotationSchemas.partnerLookup }), quotationController.partners);
+router.get('/quotations', view, validate({ query: quotationSchemas.listQuotations }), quotationController.list);
+router.post('/quotations', edit, validate({ body: quotationSchemas.createQuotation }), quotationController.create);
+router.get('/quotations/:id', view, validate({ params: quotationSchemas.idParam }), quotationController.get);
+router.patch('/quotations/:id', edit, validate({ params: quotationSchemas.idParam, body: quotationSchemas.updateQuotation }), quotationController.update);
+router.patch('/quotations/:id/status', edit, validate({ params: quotationSchemas.idParam, body: quotationSchemas.changeStatus }), quotationController.changeStatus);
+router.delete('/quotations/:id', edit, validate({ params: quotationSchemas.idParam }), quotationController.remove);
 
 module.exports = router;

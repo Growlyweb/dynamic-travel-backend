@@ -26,6 +26,10 @@ const b2cRoutes = require('./routes/b2c');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const visaRoutes = require('./routes/visaRoutes');
 const settingRoutes = require('./routes/settingRoutes');
+const visaMessageService = require('./services/visaMessageService');
+
+// Visa messages are made when an application is created or changes status.
+visaMessageService.register();
 
 const app = express();
 
