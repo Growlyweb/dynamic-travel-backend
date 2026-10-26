@@ -9,7 +9,10 @@ const VisaType = require('../../models/VisaType');
 const VisaStatusConfig = require('../../models/VisaStatusConfig');
 const Counter = require('../../models/Counter');
 const { run } = require('../../scripts/seed');
-const { createUser, bearer } = require('./helpers/factory');
+const VisaQuotation = require('../../models/VisaQuotation');
+const VisaMessage = require('../../models/VisaMessage');
+const MessageTemplate = require('../../models/MessageTemplate');
+const { createUser, createB2B, bearer } = require('./helpers/factory');
 
 const quiet = { log: () => {} };
 
@@ -17,9 +20,13 @@ describe('the seed commands (npm run seed:all, seed:clear, seed:reset)', () => {
   it('creates the visa catalog and sample applications, and the API serves them', async () => {
     const admin = await createUser({ role: ROLES.ADMIN });
     const staff = await createUser({ role: ROLES.STAFF, name: 'Priya Nair' });
+    await createB2B();
 
     const summary = await run('seed', [], quiet);
-    expect(summary['visa.seeded']).toMatchObject({ statuses: 11, countries: 8, types: 10, checklists: 1, applications: 8 });
+    expect(summary['visa.seeded']).toMatchObject({ statuses: 11, countries: 8, types: 10, checklists: 1, applications: 8, templates: 11, messages: 2, quotations: 3 });
+    expect(await MessageTemplate.countDocuments({ channel: 'email' })).toBe(4);
+    expect((await VisaMessage.find().lean()).map((m) => m.status).sort()).toEqual(['pending', 'sent']);
+    expect((await VisaQuotation.find().lean()).map((q) => q.status).sort()).toEqual(['accepted', 'draft', 'sent']);
     expect(await VisaApplication.countDocuments()).toBe(8);
 
     const statuses = (await VisaApplication.find().lean()).map((a) => a.status).sort();
@@ -38,9 +45,12 @@ describe('the seed commands (npm run seed:all, seed:clear, seed:reset)', () => {
 
   it('is safe to run again', async () => {
     await createUser({ role: ROLES.ADMIN });
+    await createB2B();
     await run('seed', [], quiet);
     const again = await run('seed', [], quiet);
-    expect(again['visa.seeded']).toMatchObject({ statuses: 11, countries: 0, types: 0, checklists: 0, applications: 0 });
+    expect(again['visa.seeded']).toMatchObject({ statuses: 11, countries: 0, types: 0, checklists: 0, applications: 0, templates: 0, messages: 0, quotations: 0 });
+    expect(await MessageTemplate.countDocuments()).toBe(11);
+    expect(await VisaQuotation.countDocuments()).toBe(3);
     expect(await VisaCountry.countDocuments()).toBe(8);
     expect(await VisaType.countDocuments()).toBe(10);
     expect(await VisaApplication.countDocuments()).toBe(8);
@@ -55,10 +65,11 @@ describe('the seed commands (npm run seed:all, seed:clear, seed:reset)', () => {
 
   it('clears the module, and reset clears then seeds', async () => {
     await createUser({ role: ROLES.ADMIN });
+    await createB2B();
     await run('seed', [], quiet);
 
     const cleared = await run('clear', ['visa'], quiet);
-    expect(cleared['visa.cleared']).toMatchObject({ applications: 8, countries: 8, types: 10, statuses: 11 });
+    expect(cleared['visa.cleared']).toMatchObject({ applications: 8, countries: 8, types: 10, statuses: 11, templates: 11, messages: 2, quotations: 3 });
     expect(await VisaApplication.countDocuments()).toBe(0);
     expect(await VisaStatusConfig.countDocuments()).toBe(0);
     expect(await Counter.countDocuments({ _id: /^VISA:/ })).toBe(0);

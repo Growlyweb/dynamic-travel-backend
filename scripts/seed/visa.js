@@ -10,13 +10,20 @@ const VisaType = require('../../models/VisaType');
 const VisaChecklist = require('../../models/VisaChecklist');
 const VisaStatusConfig = require('../../models/VisaStatusConfig');
 const VisaApplication = require('../../models/VisaApplication');
+const VisaQuotation = require('../../models/VisaQuotation');
+const VisaMessage = require('../../models/VisaMessage');
+const MessageTemplate = require('../../models/MessageTemplate');
+const Partner = require('../../models/Partner');
 const Counter = require('../../models/Counter');
 const User = require('../../models/User');
-const { ROLES, USER_STATUS } = require('../../config/constants');
+const { ROLES, USER_STATUS, APPROVAL_STATUS } = require('../../config/constants');
 const { PRIVATE_ROOT } = require('../../utils/file');
 const catalog = require('../../services/visaCatalogService');
 const applications = require('../../services/visaApplicationService');
 const statusService = require('../../services/visaStatusService');
+const messages = require('../../services/visaMessageService');
+const quotations = require('../../services/visaQuotationService');
+const events = require('../../utils/events');
 
 const keyOf = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 
@@ -76,6 +83,71 @@ const MOVE_TEXT = {
   cancelled: { internalReason: 'Applicant withdrew.' }
 };
 
+// [name, channel, trigger, subject, message]. The words in double braces are filled in from the application.
+const TEMPLATES = [
+  ['Application Received', 'sms', 'submitted', '', 'Dear {{applicantName}}, we have received your {{country}} {{visaType}} application {{applicationNumber}}. Track it at {{trackingUrl}}.'],
+  ['Under Review', 'sms', 'under_review', '', 'Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.'],
+  ['Action Required', 'sms', 'action_required', '', 'Dear {{applicantName}}, action is required on your visa application {{applicationNumber}}. Please send the requested documents.'],
+  ['Submitted to Embassy', 'sms', 'submitted_to_embassy', '', 'Dear {{applicantName}}, your {{country}} visa application {{applicationNumber}} has been submitted to the embassy.'],
+  ['Visa Approved', 'sms', 'approved', '', 'Dear {{applicantName}}, your {{country}} visa application {{applicationNumber}} has been approved. Congratulations!'],
+  ['Visa Rejected', 'sms', 'rejected', '', 'Dear {{applicantName}}, unfortunately your {{country}} visa application {{applicationNumber}} was rejected. Please contact us for details.'],
+  ['Passport Ready', 'sms', 'passport_ready', '', 'Dear {{applicantName}}, your passport for application {{applicationNumber}} is ready for collection.'],
+  ['Application Received (email)', 'email', 'submitted', 'We received your visa application {{applicationNumber}}', 'Dear {{applicantName}},\n\nWe have received your {{country}} {{visaType}} application. Your reference is {{applicationNumber}}.\nYou can follow it here: {{trackingUrl}}\n\nThank you for choosing us.'],
+  ['Action Required (email)', 'email', 'action_required', 'Action needed on application {{applicationNumber}}', 'Dear {{applicantName}},\n\nWe need something more from you to continue with your {{country}} visa application {{applicationNumber}}.\nFollow it here: {{trackingUrl}}'],
+  ['Visa Approved (email)', 'email', 'approved', 'Your {{country}} visa is approved', 'Dear {{applicantName}},\n\nGood news. Your {{country}} {{visaType}} application {{applicationNumber}} has been approved.'],
+  ['Visa Rejected (email)', 'email', 'rejected', 'Update on visa application {{applicationNumber}}', 'Dear {{applicantName}},\n\nUnfortunately your {{country}} visa application {{applicationNumber}} was not approved. Please contact us for details.']
+];
+
+// [partner index, client, country, visa type, quantity, additional fee, days valid, status moves]
+const QUOTATIONS = [
+  [0, 'Rahim Ahmed', 'China', 'Tourist Visa', 2, 1500, 14, ['sent', 'accepted']],
+  [0, 'Chattogram Group (5 pax)', 'Malaysia', 'Tourist Visa', 5, 2500, 10, ['sent']],
+  [0, 'Kamal Hossain', 'Schengen (France)', 'Business Visa', 1, 2000, 21, []]
+];
+
+// Templates are made after the applications, so seeding never writes to an applicant: a template that exists while an
+// application changes status would send a real email.
+const seedMessages = async (actor) => {
+  // Wait for the listeners of the events raised above, so none of them sees the templates made below.
+  await events.idle();
+  const result = { templates: 0, messages: 0 };
+  for (const [name, channel, trigger, subject, message] of TEMPLATES) {
+    const nameKey = keyOf(name);
+    if (await MessageTemplate.exists({ channel, nameKey })) continue;
+    await MessageTemplate.create({ name, nameKey, channel, trigger, subject, message });
+    result.templates += 1;
+  }
+
+  if (!actor || (await VisaMessage.exists({}))) return result;
+  const sms = await MessageTemplate.findOne({ channel: 'sms', trigger: 'under_review' });
+  const sample = await VisaApplication.find().sort({ createdAt: 1 }).limit(2);
+  for (const [index, application] of sample.entries()) {
+    await messages.send(actor, application._id, { templateId: String(sms._id), markSent: index === 1 });
+    result.messages += 1;
+  }
+  return result;
+};
+
+const seedQuotations = async (actor) => {
+  if (await VisaQuotation.exists({})) return { quotations: 0 };
+  const partners = await Partner.find({ approvalStatus: APPROVAL_STATUS.APPROVED }).sort({ createdAt: 1 });
+  if (!actor || !partners.length) return { quotations: 0, quotationNote: 'no approved partner found: run `npm run seed:data` first' };
+
+  let count = 0;
+  for (const [partnerIndex, clientName, country, visaType, quantity, additionalFee, days, moves] of QUOTATIONS) {
+    const countryRow = await VisaCountry.findOne({ nameKey: keyOf(country) });
+    const typeRow = await VisaType.findOne({ country: countryRow._id, nameKey: keyOf(visaType) });
+    const quotation = await quotations.create(actor, {
+      partnerId: String(partners[partnerIndex % partners.length]._id),
+      clientName, countryId: String(countryRow._id), visaTypeId: String(typeRow._id), quantity, additionalFee,
+      validUntil: new Date(Date.now() + days * 24 * 60 * 60 * 1000)
+    });
+    for (const status of moves) await quotations.changeStatus(actor, quotation._id, { status });
+    count += 1;
+  }
+  return { quotations: count };
+};
+
 const seedCatalog = async () => {
   const created = { countries: 0, types: 0, checklists: 0 };
   const countryIds = {};
@@ -109,12 +181,15 @@ const seedCatalog = async () => {
   return created;
 };
 
-const seedApplications = async () => {
-  if (await VisaApplication.exists({})) return { applications: 0, note: 'applications already exist' };
+const adminActor = async () => {
   const admin = await User.findOne({ role: ROLES.ADMIN, status: USER_STATUS.ACTIVE });
-  if (!admin) return { applications: 0, note: 'no admin account found: run `npm run seed` first' };
+  return admin ? { id: String(admin._id), role: ROLES.ADMIN, permissions: [] } : null;
+};
+
+const seedApplications = async (actor) => {
+  if (await VisaApplication.exists({})) return { applications: 0, note: 'applications already exist' };
+  if (!actor) return { applications: 0, note: 'no admin account found: run `npm run seed` first' };
   const staff = await User.findOne({ role: ROLES.STAFF, status: USER_STATUS.ACTIVE });
-  const actor = { id: String(admin._id), role: ROLES.ADMIN, permissions: [] };
 
   let count = 0;
   for (const [name, passportNumber, phone, email, country, visaType, discountAmount, advancePaid, paymentMethod, moves, assign] of APPLICATIONS) {
@@ -140,18 +215,22 @@ module.exports = {
     await catalog.ensureSystemStatuses();
     const result = { statuses: await VisaStatusConfig.countDocuments() };
     if (!demo) return result;
-    Object.assign(result, await seedCatalog(), await seedApplications());
+    const actor = await adminActor();
+    Object.assign(result, await seedCatalog(), await seedApplications(actor), await seedQuotations(actor), await seedMessages(actor));
     return result;
   },
 
   async clear() {
-    const [applicationsRemoved, checklists, types, countries, statuses, counters] = await Promise.all([
+    const [applicationsRemoved, checklists, types, countries, statuses, counters, templatesRemoved, messagesRemoved, quotationsRemoved] = await Promise.all([
       VisaApplication.deleteMany({}),
       VisaChecklist.deleteMany({}),
       VisaType.deleteMany({}),
       VisaCountry.deleteMany({}),
       VisaStatusConfig.deleteMany({}),
-      Counter.deleteMany({ _id: /^(VISA|QT):/ })
+      Counter.deleteMany({ _id: /^(VISA|QT):/ }),
+      MessageTemplate.deleteMany({}),
+      VisaMessage.deleteMany({}),
+      VisaQuotation.deleteMany({})
     ]);
     fs.rmSync(path.join(PRIVATE_ROOT, 'visa'), { recursive: true, force: true });
     return {
@@ -160,7 +239,10 @@ module.exports = {
       types: types.deletedCount,
       countries: countries.deletedCount,
       statuses: statuses.deletedCount,
-      counters: counters.deletedCount
+      counters: counters.deletedCount,
+      templates: templatesRemoved.deletedCount,
+      messages: messagesRemoved.deletedCount,
+      quotations: quotationsRemoved.deletedCount
     };
   }
 };
