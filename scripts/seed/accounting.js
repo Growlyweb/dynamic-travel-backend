@@ -24,9 +24,9 @@ const events = require('../../utils/events');
 const daysAgo = (n) => dates.addDays(dates.todayISO(), -n);
 
 const VENDORS = [
-  { name: 'Skyline Visa Services', phone: '+8801711000001', contactPerson: 'Mr. Alam', creditLimit: 500000, openingBalance: 20000, openingBalanceType: 'due' },
-  { name: 'Grand Hotels Supplier', phone: '+8801711000002', contactPerson: 'Ms. Rima', creditLimit: 300000 },
-  { name: 'Air Connect Agency', phone: '+8801711000003', contactPerson: 'Mr. Tarek', creditLimit: 800000 }
+  { name: 'Skyline Visa Services', phone: '+8801711482905', contactPerson: 'Mr. Alam', creditLimit: 500000, openingBalance: 20000, openingBalanceType: 'due' },
+  { name: 'Grand Hotels Supplier', phone: '+8801913670248', contactPerson: 'Ms. Rima', creditLimit: 300000 },
+  { name: 'Air Connect Agency', phone: '+8801819356074', contactPerson: 'Mr. Tarek', creditLimit: 800000 }
 ];
 
 // [vendor index, days ago, amount, account, service, invoice]
@@ -38,12 +38,12 @@ const BILLS = [
 
 // [category, B2B or B2C, client, phone, sale, cost, received, discount, days ago]
 const SALES = [
-  ['Visa', 'B2C', 'Mizanur Rahman', '+8801811000001', 12000, 8500, 12000, 0, 25],
-  ['Visa', 'B2B', 'Sunrise Tours', '+8801811000002', 36000, 28000, 20000, 0, 18],
-  ['Tour Package', 'B2C', 'Farzana Akter', '+8801811000003', 60000, 45000, 30000, 0, 14],
-  ['Air Ticket', 'B2B', 'Nimbus Travels', '+8801811000004', 94000, 86000, 50000, 0, 9],
-  ['Hotel', 'B2C', 'Imran Hossain', '+8801811000005', 25000, 18000, 24000, 1000, 5],
-  ['Transport', 'B2C', 'Shirin Sultana', '+8801811000006', 5000, 3000, 0, 0, 2]
+  ['Visa', 'B2C', 'Mizanur Rahman', '+8801712945360', 12000, 8500, 12000, 0, 25],
+  ['Visa', 'B2B', 'Sunrise Tours', '+8801819027653', 36000, 28000, 20000, 0, 18],
+  ['Tour Package', 'B2C', 'Farzana Akter', '+8801534861290', 60000, 45000, 30000, 0, 14],
+  ['Air Ticket', 'B2B', 'Nimbus Travels', '+8801973410856', 94000, 86000, 50000, 0, 9],
+  ['Hotel', 'B2C', 'Imran Hossain', '+8801684729513', 25000, 18000, 24000, 1000, 5],
+  ['Transport', 'B2C', 'Shirin Sultana', '+8801765038294', 5000, 3000, 0, 0, 2]
 ];
 
 const EXPENSES = [

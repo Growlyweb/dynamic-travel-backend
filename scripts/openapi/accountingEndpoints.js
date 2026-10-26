@@ -46,16 +46,14 @@ module.exports = ({ ok, obj, str, bool, arrayOf, INT, NUM, NOW }) => {
   const PAYMENT_EXAMPLE = { _id: PAY_ID, voucherNo: 'VP-2026-0001', vendorId: VENDOR_ID, vendorName: 'Skyline Visa Services', date: '2026-10-22', amount: 20000, method: 'city', isAdvance: false, status: 'posted' };
 
   const STATUS_VIEW = obj({
-    applicationNo: str('VISA-2026-000001'), status: str('processing', { enum: ['submitted', 'processing', 'approved', 'ready', 'collected', 'docs_required', 'rejected', 'cancelled'] }), statusLabel: str('Under Review'),
-    message: str('Your application is being reviewed by our team.'), applicant: obj({ fullName: str('Rahim Ahmed') }), country: obj({ name: str('China') }), visaType: str('Tourist Visa'), entryType: str('single'),
-    submittedAt: str(NOW), events: obj({}), stages: arrayOf(str('submitted')), actionRequired: { type: 'object', nullable: true }, rejectionReason: { type: 'string', nullable: true },
-    documents: arrayOf(obj({ type: str('Passport'), status: str('verified'), reviewNote: str('') })), passport: { type: 'object', nullable: true },
-    timeline: arrayOf(obj({ at: str(NOW), event: str('Under Review'), message: str('Your application is being reviewed by our team.') }))
+    status: str('processing', { enum: ['submitted', 'processing', 'approved', 'ready', 'collected', 'docs_required', 'rejected', 'cancelled'] }),
+    applicant: obj({ fullName: str('Rahim Ahmed'), passportNo: str('BR****67', { description: 'Masked.' }), phone: str('+880*******71', { description: 'Masked.' }) }),
+    country: obj({ code: str('cn'), name: str('China') }), visaType: str('Tourist Visa'), entryType: str('Single Entry'), applicationNo: str('VISA-2026-000001'),
+    submittedAt: str(NOW), processingTime: str('7-10 working days'), events: { type: 'object', additionalProperties: str(NOW), description: 'When each stage was reached, keyed by stage. A stop (docs_required, rejected, cancelled) is keyed by its own name.' }
   });
   const STATUS_VIEW_EXAMPLE = {
-    applicationNo: 'VISA-2026-000001', status: 'processing', statusLabel: 'Under Review', message: 'Your application is being reviewed by our team.', applicant: { fullName: 'Rahim Ahmed' }, country: { name: 'China' }, visaType: 'Tourist Visa', entryType: 'single',
-    submittedAt: NOW, events: { submitted: NOW, processing: NOW }, stages: ['submitted', 'processing', 'approved', 'ready', 'collected'], actionRequired: null, rejectionReason: null,
-    documents: [{ type: 'Passport', status: 'verified', reviewNote: '' }], passport: null, timeline: [{ at: NOW, event: 'Under Review', message: 'Your application is being reviewed by our team.' }]
+    status: 'processing', applicant: { fullName: 'Rahim Ahmed', passportNo: 'BR****67', phone: '+880*******71' }, country: { code: 'cn', name: 'China' }, visaType: 'Tourist Visa', entryType: 'Single Entry',
+    applicationNo: 'VISA-2026-000001', submittedAt: NOW, processingTime: '7-10 working days', events: { submitted: NOW, processing: NOW }
   };
 
   const A = (method, path, id, summary, description, access, rest) => ({ method, path, tag: 'Accounts', id, summary, description, access, needsAuth: true, ...rest });
@@ -68,18 +66,18 @@ module.exports = ({ ok, obj, str, bool, arrayOf, INT, NUM, NOW }) => {
 
   return [
     // =============================================================== PUBLIC VISA STATUS
-    { method: 'post', path: '/api/visa/public/status/code', tag: 'Visa: public status', id: 'requestVisaStatusCode', summary: 'Ask for a status code',
-      description: 'The applicant enters the application number and the email address used on the application. A six digit code is emailed to that address (valid 10 minutes, works once). **The answer is always the same**, whether or not the application exists, so nobody can find out which numbers are real. Rate limit: 3 requests per 15 minutes per IP + email.',
-      access: 'Public', body: publicV.requestCode, bodyExample: { reference: 'VISA-2026-000001', email: 'rahim@example.com' },
-      success: ok(200, 'If the details match an application, a code has been sent to its email address.', obj({ sent: bool(true), resendInSeconds: INT(60) }), { sent: true, resendInSeconds: 60 }), errors: { 422: true, 429: true } },
+    { method: 'get', path: '/api/visa/public/status/link/{ref}', tag: 'Visa: public status', id: 'checkVisaStatusLink', summary: 'Is this a real status link',
+      description: 'The storefront page opens `/visa-status/<application number>`. `valid` says whether that number exists. Rate limit: 30 requests per 15 minutes per IP.',
+      access: 'Public', params: publicV.linkParam, paramExamples: { ref: 'VISA-2026-000001' },
+      success: ok(200, 'Link checked.', obj({ valid: bool(true) }), { valid: true }), errors: { 422: true, 429: true } },
+    { method: 'post', path: '/api/visa/public/status/otp', tag: 'Visa: public status', id: 'requestVisaStatusCode', summary: 'Ask for a status code',
+      description: 'The applicant enters the passport number and the phone number. Both must match the application, otherwise `NOT_FOUND`. A six digit code is emailed to the address on the application (valid 10 minutes, works once). There is no SMS provider yet, so an application with no email answers `SERVICE_UNAVAILABLE`. A link locked after five wrong codes answers `TOO_MANY_ATTEMPTS` with `retryAfter` seconds. Rate limit: 5 requests per 15 minutes per IP + application.',
+      access: 'Public', body: publicV.requestCode, bodyExample: { ref: 'VISA-2026-000001', passportNo: 'BR1234567', phone: '+8801712345671' },
+      success: ok(200, 'A code has been sent.', obj({ resendInSeconds: INT(60) }), { resendInSeconds: 60 }), errors: { 404: ['NOT_FOUND'], 422: true, 429: ['TOO_MANY_ATTEMPTS'], 503: ['SERVICE_UNAVAILABLE'] } },
     { method: 'post', path: '/api/visa/public/status/verify', tag: 'Visa: public status', id: 'verifyVisaStatusCode', summary: 'Check the code and see the status',
-      description: 'Returns the status in the simple stages of the storefront page, the timeline entries meant for the applicant, documents with the note meant for them, and a short token (`accessToken`, 15 minutes) for refreshing. It never contains money, staff names, internal notes, contact data or passport numbers. The code locks after 5 wrong tries. Every failure answers `INVALID_CODE`. Rate limit: 10 requests per 15 minutes per IP + email.',
-      access: 'Public', body: publicV.verifyCode, bodyExample: { reference: 'VISA-2026-000001', email: 'rahim@example.com', code: '123456' },
-      success: ok(200, 'Visa status fetched.', STATUS_VIEW, { ...STATUS_VIEW_EXAMPLE, accessToken: 'eyJhbGciOi...', expiresInSeconds: 900 }), errors: { 400: ['INVALID_CODE'], 422: true, 429: true } },
-    { method: 'get', path: '/api/visa/public/status/{reference}', tag: 'Visa: public status', id: 'getVisaStatus', summary: 'Refresh the status with the token',
-      description: 'The same view as the check, without a new code. Send the token from the check in the header `X-Status-Token`. It opens that one application only and is not accepted on any other route.',
-      access: 'Public, with the status token', params: publicV.statusParam, paramExamples: { reference: 'VISA-2026-000001' },
-      success: ok(200, 'Visa status fetched.', STATUS_VIEW, STATUS_VIEW_EXAMPLE), errors: { 401: ['TOKEN_INVALID'], 422: true } },
+      description: 'Returns the status in the shape of the storefront page: the status key, the applicant with the passport and phone masked, the country, visa type, entry type, application number, dates and the time each stage was reached. It never contains money, staff names or internal notes. Five wrong codes lock the link for 15 minutes. Rate limit: 10 requests per 15 minutes per IP + application.',
+      access: 'Public', body: publicV.verifyCode, bodyExample: { ref: 'VISA-2026-000001', passportNo: 'BR1234567', phone: '+8801712345671', otp: '123456' },
+      success: ok(200, 'Visa status fetched.', STATUS_VIEW, STATUS_VIEW_EXAMPLE), errors: { 400: ['INVALID_OTP', 'OTP_EXPIRED'], 404: ['NOT_FOUND'], 422: true, 429: ['TOO_MANY_ATTEMPTS'] } },
 
     // =============================================================== ACCOUNTS: reports
     A('get', '/api/accounts/home', 'getAccountsHome', 'Accounts overview',

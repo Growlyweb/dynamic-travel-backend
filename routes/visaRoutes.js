@@ -5,7 +5,7 @@ const catalog = require('../controllers/visaCatalogController');
 const applicationController = require('../controllers/visaApplicationController');
 const publicController = require('../controllers/visaPublicController');
 const publicSchemas = require('../validations/visaPublic.validation');
-const { visaStatusCodeLimiter, visaStatusVerifyLimiter } = require('../middleware/rateLimitMiddleware');
+const { visaStatusLinkLimiter, visaStatusCodeLimiter, visaStatusVerifyLimiter } = require('../middleware/rateLimitMiddleware');
 const messageController = require('../controllers/visaMessageController');
 const quotationController = require('../controllers/visaQuotationController');
 const memoryUpload = require('../middleware/memoryUploadMiddleware');
@@ -21,10 +21,10 @@ const { PERMISSIONS } = require('../config/rbac');
 // Mounted at /api/visa. Internal users only. An admin always passes; staff need the permission an admin gave them:
 // VISA_VIEW to read, VISA_EDIT to change countries, visa types, checklists and statuses.
 // ---------------------------------------------------------------- public status check (no login)
-// The applicant proves they own the application with a code sent to the email address on it. See services/visaPublicService.js.
-router.post('/public/status/code', visaStatusCodeLimiter, validate({ body: publicSchemas.requestCode }), publicController.requestCode);
+// The storefront's status page: the link, then the passport and the phone, then a code sent to the email on the application.
+router.get('/public/status/link/:ref', visaStatusLinkLimiter, validate({ params: publicSchemas.linkParam }), publicController.checkLink);
+router.post('/public/status/otp', visaStatusCodeLimiter, validate({ body: publicSchemas.requestCode }), publicController.requestCode);
 router.post('/public/status/verify', visaStatusVerifyLimiter, validate({ body: publicSchemas.verifyCode }), publicController.verifyCode);
-router.get('/public/status/:reference', validate({ params: publicSchemas.statusParam }), publicController.getStatus);
 
 router.use(authenticate);
 

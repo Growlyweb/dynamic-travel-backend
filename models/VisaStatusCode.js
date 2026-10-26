@@ -10,6 +10,8 @@ const visaStatusCodeSchema = new mongoose.Schema(
     expiresAt: { type: Date, required: true },
     usedAt: { type: Date, default: null },
     attempts: { type: Number, default: 0 },
+    // Set when five wrong codes were typed. The record then lives until the lock ends, because it is what remembers the lock.
+    lockedUntil: { type: Date, default: null },
     requestMeta: { ip: String, userAgent: String }
   },
   { timestamps: true }

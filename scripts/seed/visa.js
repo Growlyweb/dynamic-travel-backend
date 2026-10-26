@@ -67,14 +67,14 @@ const CHECKLIST_ITEMS = [
 
 // [name, passport, phone, email, country, visa type, discount, advance, method, status moves, assign to staff?]
 const APPLICATIONS = [
-  ['Rahim Ahmed', 'BR0912345', '+8801712556340', 'rahim.ahmed@example.com', 'China', 'Tourist Visa', 0, 5000, 'Bank Transfer', ['under_review'], true],
-  ['Nusrat Jahan', 'BR2233445', '+8801811223344', 'nusrat.jahan@example.com', 'United Arab Emirates', 'Tourist Visa', 500, 6000, 'Cash', ['under_review', 'documents_completed', 'processing'], true],
-  ['Farhana Islam', 'BR5566778', '+8801913456780', 'farhana.islam@example.com', 'Malaysia', 'Tourist Visa', 0, 0, 'Cash', [], false],
-  ['Jahangir Alam', 'BR7788990', '+8801711222333', 'jahangir.alam@example.com', 'Singapore', 'Tourist Visa', 0, 8500, 'bKash / Nagad', ['under_review', 'processing', 'submitted_to_embassy', 'approved'], true],
-  ['Anika Tabassum', 'BR1122334', '+8801611777888', 'anika.tabassum@example.com', 'Thailand', 'Tourist Visa', 0, 5500, 'Credit / Debit Card', ['under_review', 'processing', 'submitted_to_embassy', 'approved', 'completed'], false],
-  ['Kamal Hossain', 'BR9988776', '+8801555666777', 'kamal.hossain@example.com', 'Schengen (France)', 'Business Visa', 1000, 6000, 'Bank Transfer', ['under_review', 'action_required'], true],
-  ['Sadia Rahman', 'BR4455667', '+8801777888999', 'sadia.rahman@example.com', 'China', 'Business Visa', 0, 9000, 'Cash', ['under_review', 'rejected'], false],
-  ['Tanvir Hasan', 'BR3344556', '+8801899000111', 'tanvir.hasan@example.com', 'Malaysia', 'Tourist Visa', 0, 1000, 'Cash', ['cancelled'], false]
+  ['Rahim Ahmed', 'A02218431', '+8801712556340', 'rahim.ahmed@example.com', 'China', 'Tourist Visa', 0, 5000, 'Bank Transfer', ['under_review'], true],
+  ['Nusrat Jahan', 'A03561972', '+8801819264710', 'nusrat.jahan@example.com', 'United Arab Emirates', 'Tourist Visa', 500, 6000, 'Cash', ['under_review', 'documents_completed', 'processing'], true],
+  ['Farhana Islam', 'EA0475218', '+8801936275081', 'farhana.islam@example.com', 'Malaysia', 'Tourist Visa', 0, 0, 'Cash', [], false],
+  ['Jahangir Alam', 'A01937264', '+8801718453092', 'jahangir.alam@example.com', 'Singapore', 'Tourist Visa', 0, 8500, 'bKash / Nagad', ['under_review', 'processing', 'submitted_to_embassy', 'approved'], true],
+  ['Anika Tabassum', 'A04820653', '+8801634958127', 'anika.tabassum@example.com', 'Thailand', 'Tourist Visa', 0, 5500, 'Credit / Debit Card', ['under_review', 'processing', 'submitted_to_embassy', 'approved', 'completed'], false],
+  ['Kamal Hossain', 'A00631587', '+8801521847365', 'kamal.hossain@example.com', 'Schengen (France)', 'Business Visa', 1000, 6000, 'Bank Transfer', ['under_review', 'action_required'], true],
+  ['Sadia Rahman', 'EB1052846', '+8801792614085', 'sadia.rahman@example.com', 'China', 'Business Visa', 0, 9000, 'Cash', ['under_review', 'rejected'], false],
+  ['Tanvir Hasan', 'A02984170', '+8801867330492', 'tanvir.hasan@example.com', 'Malaysia', 'Tourist Visa', 0, 1000, 'Cash', ['cancelled'], false]
 ];
 
 const MOVE_TEXT = {
