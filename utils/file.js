@@ -37,7 +37,8 @@ const uploadedFilesOf = (req) => {
 // If a request fails AFTER multer saved files, delete them so nothing is orphaned.
 // Called once, from the error middleware, so no route has to remember it.
 const cleanupUploadedFiles = async (req) => {
-  await Promise.all(uploadedFilesOf(req).map((file) => unlinkQuietly(file.path)));
+  // Files held in memory (storageService uploads) have no path and nothing on disk to remove.
+  await Promise.all(uploadedFilesOf(req).filter((file) => file.path).map((file) => unlinkQuietly(file.path)));
 };
 
 module.exports = { PRIVATE_ROOT, isInside, cleanupUploadedFiles };
