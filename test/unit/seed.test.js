@@ -12,6 +12,11 @@ const { run } = require('../../scripts/seed');
 const VisaQuotation = require('../../models/VisaQuotation');
 const VisaMessage = require('../../models/VisaMessage');
 const MessageTemplate = require('../../models/MessageTemplate');
+const Journal = require('../../models/Journal');
+const SaleFile = require('../../models/SaleFile');
+const Party = require('../../models/Party');
+const Account = require('../../models/Account');
+const { ACCOUNTS } = require('../../config/accounting');
 const { createUser, createB2B, bearer } = require('./helpers/factory');
 
 const quiet = { log: () => {} };
@@ -41,6 +46,18 @@ describe('the seed commands (npm run seed:all, seed:clear, seed:reset)', () => {
     expect(countries.body.data.map((c) => c.name)).toContain('Thailand');
     const dashboard = await request(app).get('/api/visa/dashboard').set(bearer(admin));
     expect(dashboard.body.data.total).toBe(8);
+
+    // the books: the chart, 3 vendors, 6 typed sales, and one file for each of the 8 visa applications
+    expect(summary['accounting.seeded']).toMatchObject({ accounts: ACCOUNTS.length, vendors: 3, bills: 3, payments: 2, sales: 6, expenses: 3, visaFiles: 8 });
+    expect(await Account.countDocuments()).toBe(ACCOUNTS.length);
+    expect(await SaleFile.countDocuments()).toBe(14);
+    for (const journal of await Journal.find()) expect(journal.lines.reduce((s, l) => s + l.debit, 0)).toBe(journal.lines.reduce((s, l) => s + l.credit, 0));
+    const sales = await request(app).get('/api/accounts/sales?limit=50').set(bearer(admin));
+    expect(sales.body.data).toHaveLength(14);
+    const home = await request(app).get('/api/accounts/home').set(bearer(admin));
+    expect(home.body.data.sale).toBeGreaterThan(0);
+    expect(home.body.data.vendorDue).toBeGreaterThan(0);
+    expect((await request(app).get('/api/vendors').set(bearer(admin))).body.data.length).toBeGreaterThanOrEqual(3);
   });
 
   it('is safe to run again', async () => {
@@ -54,6 +71,9 @@ describe('the seed commands (npm run seed:all, seed:clear, seed:reset)', () => {
     expect(await VisaCountry.countDocuments()).toBe(8);
     expect(await VisaType.countDocuments()).toBe(10);
     expect(await VisaApplication.countDocuments()).toBe(8);
+    expect(again['accounting.seeded'].note).toMatch(/already exist/);
+    expect(await SaleFile.countDocuments()).toBe(14);
+    expect(await Party.countDocuments({ type: 'Vendor' })).toBeGreaterThanOrEqual(3);
   });
 
   it('seeds the catalog without applications when there is no admin yet, and says why', async () => {
@@ -68,8 +88,11 @@ describe('the seed commands (npm run seed:all, seed:clear, seed:reset)', () => {
     await createB2B();
     await run('seed', [], quiet);
 
-    const cleared = await run('clear', ['visa'], quiet);
+    const cleared = await run('clear', [], quiet);
     expect(cleared['visa.cleared']).toMatchObject({ applications: 8, countries: 8, types: 10, statuses: 11, templates: 11, messages: 2, quotations: 3 });
+    expect(cleared['accounting.cleared']).toMatchObject({ files: 14 });
+    expect(await Journal.countDocuments()).toBe(0);
+    expect(await Account.countDocuments()).toBe(ACCOUNTS.length);
     expect(await VisaApplication.countDocuments()).toBe(0);
     expect(await VisaStatusConfig.countDocuments()).toBe(0);
     expect(await Counter.countDocuments({ _id: /^VISA:/ })).toBe(0);

@@ -21,7 +21,8 @@
     "seed:all": "node scripts/seed/index.js seed",
     "seed:visa": "node scripts/seed/index.js seed visa",
     "seed:clear": "node scripts/seed/index.js clear",
-    "seed:reset": "node scripts/seed/index.js reset"
+    "seed:reset": "node scripts/seed/index.js reset",
+    "seed:accounting": "node scripts/seed/index.js seed accounting"
   },
   "engines": {
     "node": ">=20"

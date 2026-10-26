@@ -11,7 +11,8 @@
 const connectDB = require('../../config/db');
 const env = require('../../config/env');
 
-const MODULES = [require('./visa')];
+// Order matters: accounting follows visa, because the books of the sample visa applications are built from them.
+const MODULES = [require('./visa'), require('./accounting')];
 
 const byName = Object.fromEntries(MODULES.map((module) => [module.name, module]));
 
