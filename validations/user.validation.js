@@ -2,7 +2,7 @@ const { z } = require('zod');
 const { ROLES, USER_STATUS } = require('../config/constants');
 const { ALL_PERMISSIONS, INVITABLE_ROLES } = require('../config/rbac');
 const { email, optionalPhone, name, password, objectId, idParam, pagination, search } = require('./common');
-const templates = require('../config/roleTemplates');
+const templates = require('../config/rbac');
 
 const permissions = z.array(z.enum(ALL_PERMISSIONS, 'Unknown permission.')).max(ALL_PERMISSIONS.length);
 

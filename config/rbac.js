@@ -1,6 +1,7 @@
 // Loads roles and permissions from config/rbac.json and checks the file is well formed.
-// Edit the JSON to add a permission, then restart the server. The roles an admin hands to staff are data, made in the
-// dashboard (Role model), starting from the templates in config/roleTemplates.json.
+// Everything about access that a developer decides is in that one file: the account types, the permission keys, the
+// templates a role is started from, which permission needs which, the sensitive ones, and how the screen groups them.
+// Edit the JSON, then restart the server. The roles an admin hands to staff are data, made in the dashboard (Role model).
 //
 // The code relies on four role codes existing (ADMIN, STAFF, B2B, B2C): routes, registration and
 // the seed script refer to them by name. Everything else (labels, who can be invited, who bypasses
@@ -9,6 +10,8 @@ const raw = require('./rbac.json');
 
 const REQUIRED_ROLES = ['ADMIN', 'STAFF', 'B2B', 'B2C'];
 const ROLE_FLAGS = ['selfRegister', 'invitable', 'bypassPermissions', 'assignablePermissions'];
+// The template of the built-in role that a new staff account gets until an admin decides.
+const SYSTEM_TEMPLATE = 'no_access';
 const CODE_PATTERN = /^[A-Z][A-Z0-9_]*$/;
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -44,6 +47,32 @@ const validate = (config) => {
       throw new Error(`config/rbac.json: permission "${code}" needs a text description.`);
     }
   });
+  validateRoleParts(config);
+};
+
+// The parts that roles are made from. Every permission named here must exist, so a typo stops the boot.
+const validateRoleParts = (config) => {
+  ['templates', 'dependencies', 'sensitive'].forEach((key) => {
+    if (!isPlainObject(config[key])) throw new Error(`config/rbac.json: "${key}" must be an object.`);
+  });
+  if (!Array.isArray(config.groups)) throw new Error('config/rbac.json: "groups" must be a list.');
+
+  const known = new Set(Object.keys(config.permissions));
+  const check = (where, keys) =>
+    keys.forEach((key) => {
+      if (!known.has(key)) throw new Error(`config/rbac.json: ${where} names unknown permission "${key}".`);
+    });
+
+  Object.entries(config.templates).forEach(([code, template]) => {
+    if (!template || typeof template.label !== 'string' || !Array.isArray(template.defaults) || !Array.isArray(template.optional)) {
+      throw new Error(`config/rbac.json: template "${code}" needs a label, defaults and optional.`);
+    }
+    check(`template "${code}"`, [...template.defaults, ...template.optional]);
+  });
+  if (!config.templates[SYSTEM_TEMPLATE]) throw new Error(`config/rbac.json: the template "${SYSTEM_TEMPLATE}" is required: it is the built-in role for new staff.`);
+  Object.entries(config.dependencies).forEach(([key, needs]) => check(`dependency of "${key}"`, [key, ...needs]));
+  check('sensitive', Object.keys(config.sensitive));
+  config.groups.forEach((group) => check(`group "${group.key}"`, group.permissions || []));
 };
 
 // Builds the helpers from a config object (exported separately so tests can try bad files).
@@ -54,6 +83,27 @@ const build = (config) => {
   const ROLES = Object.freeze(Object.fromEntries(roleCodes.map((code) => [code, code])));
   const PERMISSIONS = Object.freeze(Object.fromEntries(Object.keys(config.permissions).map((code) => [code, code])));
   const rolesWith = (flag) => roleCodes.filter((code) => config.roles[code][flag]);
+  const permissionOrder = Object.keys(config.permissions);
+
+  // A permission that no group lists still shows on the role screen, in a group of its own at the end.
+  const listed = new Set(config.groups.flatMap((group) => group.permissions || []));
+  const unlisted = permissionOrder.filter((key) => !listed.has(key));
+  const groups = unlisted.length ? [...config.groups, { key: 'other', label: 'Other', permissions: unlisted }] : config.groups;
+
+  // The list with everything it depends on added, unique, in the order of the permission list.
+  const withDependencies = (permissions) => {
+    const result = new Set(permissions);
+    const queue = [...result];
+    while (queue.length) {
+      (config.dependencies[queue.pop()] || []).forEach((needed) => {
+        if (!result.has(needed)) {
+          result.add(needed);
+          queue.push(needed);
+        }
+      });
+    }
+    return permissionOrder.filter((key) => result.has(key));
+  };
 
   return Object.freeze({
     ROLES,
@@ -71,13 +121,25 @@ const build = (config) => {
     // ADMIN-like roles pass every permission check.
     bypassesPermissions: (role) => Boolean(config.roles[role] && config.roles[role].bypassPermissions),
     // STAFF-like roles get their permissions from the roles an admin gives them (see services/roleService.js and
-    // config/roleTemplates.json), plus the old per-person list on accounts made before roles existed.
+    // the templates in this file), plus the old per-person list on accounts made before roles existed.
     canHavePermissions: (role) => Boolean(config.roles[role] && config.roles[role].assignablePermissions),
+
+    // The blueprints a role is made from, the permissions that need another, the sensitive ones, and the screen groups.
+    TEMPLATES: Object.freeze(config.templates),
+    DEPENDENCIES: Object.freeze(config.dependencies),
+    SENSITIVE: Object.freeze(config.sensitive),
+    GROUPS: Object.freeze(groups),
+    SYSTEM_TEMPLATE,
+    withDependencies,
 
     // Plain shape for the admin UI (GET /api/admin/rbac).
     describe: () => ({
       roles: roleCodes.map((code) => ({ code, ...config.roles[code] })),
-      permissions: Object.entries(config.permissions).map(([code, description]) => ({ code, description }))
+      permissions: Object.entries(config.permissions).map(([code, description]) => ({ code, description })),
+      templates: Object.entries(config.templates).map(([key, template]) => ({ key, ...template })),
+      dependencies: config.dependencies,
+      sensitive: config.sensitive,
+      groups
     })
   });
 };

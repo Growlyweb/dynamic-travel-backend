@@ -22,6 +22,26 @@ describe('config/rbac.json', () => {
     expect(rbac.canHavePermissions('NOPE')).toBe(false);
   });
 
+  it('refuses a template, a dependency or a group that names a permission that does not exist', () => {
+    const template = clone();
+    template.templates.accountant.defaults.push('NOPE');
+    expect(() => rbac.build(template)).toThrow('template "accountant" names unknown permission "NOPE"');
+
+    const dependency = clone();
+    dependency.dependencies.VISA_EDIT = ['NOPE'];
+    expect(() => rbac.build(dependency)).toThrow('dependency of "VISA_EDIT" names unknown permission "NOPE"');
+
+    // A permission no group lists is not an error: it shows in a group called Other.
+    const grouped = clone();
+    grouped.groups[0].permissions = grouped.groups[0].permissions.slice(1);
+    const other = rbac.build(grouped).GROUPS.at(-1);
+    expect(other).toMatchObject({ key: 'other', permissions: [raw.groups[0].permissions[0]] });
+
+    const missing = clone();
+    delete missing.templates.no_access;
+    expect(() => rbac.build(missing)).toThrow('the template "no_access" is required');
+  });
+
   it('changing the JSON changes the behaviour (a new permission and a new invitable role)', () => {
     const config = clone();
     config.permissions.INVOICE_VIEW = 'See invoices';

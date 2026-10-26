@@ -1,12 +1,12 @@
 const { AUDIT_ACTIONS } = require('../config/constants');
 const { canHavePermissions } = require('../config/rbac');
-const templates = require('../config/roleTemplates');
+const templates = require('../config/rbac');
 const Role = require('../models/Role');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const auditService = require('./auditService');
 
-// Roles are named permission sets made from templates (config/roleTemplates.json).
+// Roles are named permission sets made from templates (config/rbac.json).
 // A person's permissions are the union of their roles and the old per-person list. A change applies on the next
 // request, because the access check reads the roles every time.
 
@@ -221,6 +221,4 @@ const defaultRoleIds = async (roleIds) => {
   return [(await ensureSystemRoles())._id];
 };
 
-const describe = () => ({ ...templates.describe() });
-
-module.exports = { ensureSystemRoles, list, getById, create, update, remove, effectivePermissions, rolesOf, assignRoles, convertPermissions, defaultRoleIds, describe, present, NO_ACCESS_NAME };
+module.exports = { ensureSystemRoles, list, getById, create, update, remove, effectivePermissions, rolesOf, assignRoles, convertPermissions, defaultRoleIds, present, NO_ACCESS_NAME };

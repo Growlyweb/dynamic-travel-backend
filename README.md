@@ -591,7 +591,7 @@ Production never returns stack traces or internal messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/rbac` | The permissions from `config/rbac.json`, plus the role templates, what needs what, the sensitive permissions and the groups (`config/roleTemplates.json`) |
+| GET | `/rbac` | The permissions from `config/rbac.json`, plus the role templates, what needs what, the sensitive permissions and the groups (all in `config/rbac.json`) |
 | GET, POST | `/roles` | The roles (named permission sets) and with how many people each; create one from a template |
 | GET, PATCH, DELETE | `/roles/:id` | One role. The built-in "No access yet" is locked. A role in use cannot be deleted. |
 | PATCH | `/users/:id/roles` | Replace the roles of a staff member (at least one). Nobody changes their own. |

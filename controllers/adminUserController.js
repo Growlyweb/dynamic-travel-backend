@@ -12,7 +12,7 @@ const rbac = require('../config/rbac');
 
 // GET /api/admin/rbac   (roles and permissions as defined in config/rbac.json, for admin screens)
 exports.getRbac = asyncHandler(async (req, res) => {
-  sendResponse(res, 200, true, 'Roles and permissions fetched.', { ...rbac.describe(), ...roleService.describe() });
+  sendResponse(res, 200, true, 'Roles and permissions fetched.', rbac.describe());
 });
 
 // GET /api/admin/roles

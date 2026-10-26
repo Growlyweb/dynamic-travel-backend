@@ -6,7 +6,7 @@
 const Role = require('../../models/Role');
 const User = require('../../models/User');
 const { ROLES, USER_STATUS } = require('../../config/constants');
-const templates = require('../../config/roleTemplates');
+const templates = require('../../config/rbac');
 const authService = require('../../services/authService');
 const roleService = require('../../services/roleService');
 
