@@ -19,6 +19,7 @@
     "e2e:api": "playwright test -c test/playwright.config.js --project=api",
     "e2e:ui": "playwright test -c test/playwright.config.js --project=ui",
     "seed:all": "node scripts/seed/index.js seed",
+    "seed:access": "node scripts/seed/index.js seed access",
     "seed:visa": "node scripts/seed/index.js seed visa",
     "seed:clear": "node scripts/seed/index.js clear",
     "seed:reset": "node scripts/seed/index.js reset",

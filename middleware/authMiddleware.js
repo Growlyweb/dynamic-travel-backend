@@ -3,11 +3,12 @@ const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 const asyncHandler = require('../utils/asyncHandler');
 const tokenService = require('../services/tokenService');
+const roleService = require('../services/roleService');
 
 // WHO are you? Verifies the access token, reloads the user from the database (so role, status and
 // permission changes apply immediately), checks status + tokenVersion, then sets req.user.
 //
-//   req.user = { id, role, status, partnerId, permissions }
+//   req.user = { id, role, status, partnerId, permissions }   (permissions = from the person's roles plus the old list)
 //
 // Use on every protected route. Run authorize / ownership checks AFTER it.
 const authenticate = asyncHandler(async (req, res, next) => {
@@ -19,7 +20,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
 
   const payload = tokenService.verifyAccessToken(token);
 
-  const user = await User.findById(payload.sub).select('role status tokenVersion partnerId permissions');
+  const user = await User.findById(payload.sub).select('role status tokenVersion partnerId permissions roles');
   if (!user || user.tokenVersion !== payload.tv) {
     throw new ApiError(401, 'Session expired.', { code: 'SESSION_EXPIRED' });
   }
@@ -32,7 +33,8 @@ const authenticate = asyncHandler(async (req, res, next) => {
     role: user.role,
     status: user.status,
     partnerId: user.partnerId ? String(user.partnerId) : null,
-    permissions: user.permissions
+    // Roles and the old per-person list together, read fresh on every request so a change works at once.
+    permissions: await roleService.effectivePermissions(user)
   };
   next();
 });

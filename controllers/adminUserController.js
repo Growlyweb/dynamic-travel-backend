@@ -1,6 +1,7 @@
 const userService = require('../services/userService');
 const profileService = require('../services/profileService');
 const auditService = require('../services/auditService');
+const roleService = require('../services/roleService');
 const sendResponse = require('../utils/response');
 const asyncHandler = require('../utils/asyncHandler');
 const contextOf = require('../utils/requestContext');
@@ -11,7 +12,45 @@ const rbac = require('../config/rbac');
 
 // GET /api/admin/rbac   (roles and permissions as defined in config/rbac.json, for admin screens)
 exports.getRbac = asyncHandler(async (req, res) => {
-  sendResponse(res, 200, true, 'Roles and permissions fetched.', rbac.describe());
+  sendResponse(res, 200, true, 'Roles and permissions fetched.', { ...rbac.describe(), ...roleService.describe() });
+});
+
+// GET /api/admin/roles
+exports.listRoles = asyncHandler(async (req, res) => {
+  sendResponse(res, 200, true, 'Roles fetched.', await roleService.list());
+});
+
+// GET /api/admin/roles/:id
+exports.getRole = asyncHandler(async (req, res) => {
+  sendResponse(res, 200, true, 'Role fetched.', await roleService.getById(req.params.id));
+});
+
+// POST /api/admin/roles
+exports.createRole = asyncHandler(async (req, res) => {
+  sendResponse(res, 201, true, 'Role created.', await roleService.create(req.user, req.body, contextOf(req)));
+});
+
+// PATCH /api/admin/roles/:id
+exports.updateRoleDefinition = asyncHandler(async (req, res) => {
+  sendResponse(res, 200, true, 'Role updated.', await roleService.update(req.user, req.params.id, req.body, contextOf(req)));
+});
+
+// DELETE /api/admin/roles/:id
+exports.deleteRole = asyncHandler(async (req, res) => {
+  await roleService.remove(req.user, req.params.id, contextOf(req));
+  sendResponse(res, 200, true, 'Role deleted.');
+});
+
+// PATCH /api/admin/users/:id/roles
+exports.assignRoles = asyncHandler(async (req, res) => {
+  const user = await roleService.assignRoles(req.user, req.params.id, req.body.roleIds, contextOf(req));
+  sendResponse(res, 200, true, 'Roles updated.', user);
+});
+
+// POST /api/admin/users/:id/permissions-to-role
+exports.convertPermissions = asyncHandler(async (req, res) => {
+  const result = await roleService.convertPermissions(req.user, req.params.id, req.body, contextOf(req));
+  sendResponse(res, 201, true, 'The individual permissions are now a role.', result);
 });
 
 // GET /api/admin/users

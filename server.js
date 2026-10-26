@@ -7,6 +7,7 @@ const logger = require('./utils/logger');
 const membershipJob = require('./services/membershipJob');
 const visaCatalogService = require('./services/visaCatalogService');
 const { ensureChart } = require('./services/accounting/chart');
+const roleService = require('./services/roleService');
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
 
@@ -20,6 +21,8 @@ const start = async () => {
   await visaCatalogService.ensureSystemStatuses();
   // The chart of accounts and the five built-in sale categories.
   await ensureChart();
+  // The built-in role "No access yet".
+  await roleService.ensureSystemRoles();
 
   const server = app.listen(env.port, () => {
     logger.info(`Server running in ${env.nodeEnv} mode on port ${env.port}`);

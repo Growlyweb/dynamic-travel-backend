@@ -53,6 +53,8 @@
     "REPORTS_VIEW": "View Reports",
     "ACCOUNTS_EDIT": "Record sales, receipts, expenses, costs and vendor bills",
     "ACCOUNTS_VOID": "Void receipts and payments, and cancel sales",
+    "ACCOUNTS_LOCK": "Close and reopen accounting months (reserved: period locking is not built yet)",
+    "ACCOUNTS_JOURNAL": "Post manual vouchers (reserved: manual vouchers are not built yet)",
     "VENDOR_VIEW": "View vendors, their bills and payments",
     "VENDOR_MANAGE": "Create and change vendors",
     "REPORT_VIEW": "View operational reports",

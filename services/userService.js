@@ -11,6 +11,7 @@ const auditService = require('./auditService');
 const notificationService = require('./notificationService');
 const otpService = require('./otpService');
 const tokenService = require('./tokenService');
+const roleService = require('./roleService');
 
 // Admin-side account management. `admin` is req.user ({ id, role, ... }); `context` is { ip }.
 // Every change here is audit-logged.
@@ -60,14 +61,17 @@ const list = async (query) => {
   }
 
   const [items, total] = await Promise.all([
-    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit),
+    User.find(filter).sort({ createdAt: -1 }).skip(skip).limit(limit).populate('roles', 'name system'),
     User.countDocuments(filter)
   ]);
 
   return { items, meta: buildMeta(total, page, limit) };
 };
 
-const getById = (id) => findOrFail(id);
+const getById = async (id) => {
+  const user = await findOrFail(id);
+  return user.populate('roles', 'name system');
+};
 
 const sendInvite = async (user) => {
   const token = await otpService.issueLinkToken(user._id, OTP_PURPOSE.STAFF_INVITE, env.staffInviteExpiresHours);
@@ -78,7 +82,7 @@ const sendInvite = async (user) => {
 //   with a password : the admin chose it (it must pass the normal password rules), so the account is ACTIVE at once.
 //   without one     : the account stays PENDING with no password and the person sets it from the emailed invite link
 //                     (POST /api/auth/setup-account), which also activates it and verifies the email.
-const createInternal = async (admin, { name, email, phone, role, password, permissions = [] }, context = {}) => {
+const createInternal = async (admin, { name, email, phone, role, password, permissions = [], roleIds }, context = {}) => {
   if (!INTERNAL_ROLES.includes(role)) {
     throw new ApiError(400, `Only ${INTERNAL_ROLES.join(' and ')} accounts can be created by an admin.`);
   }
@@ -101,15 +105,17 @@ const createInternal = async (admin, { name, email, phone, role, password, permi
     emailVerified: Boolean(password),
     // Staff start with NOTHING and get only what the admin lists. Admins bypass permission checks.
     permissions: canHavePermissions(role) ? permissions : [],
+    roles: canHavePermissions(role) ? await roleService.defaultRoleIds(roleIds) : [],
     status: password ? USER_STATUS.ACTIVE : USER_STATUS.PENDING
   });
 
+  await user.populate('roles', 'name system');
   await auditService.record({
     actorUserId: admin.id,
     targetUserId: user._id,
     action: AUDIT_ACTIONS.USER_CREATED,
     ip: context.ip,
-    meta: { role, permissions: user.permissions }
+    meta: { role, permissions: user.permissions, roles: user.roles.map((role) => role.name) }
   });
 
   let inviteSent = false;
@@ -180,6 +186,7 @@ const updateRole = async (admin, id, { role, permissions }, context = {}) => {
   const previous = { role: user.role, permissions: user.permissions };
   user.role = role;
   user.permissions = canHavePermissions(role) ? permissions || [] : [];
+  user.roles = canHavePermissions(role) ? (user.roles.length ? user.roles : await roleService.defaultRoleIds()) : [];
   await user.save();
   await tokenService.invalidateUserTokens(user);
 

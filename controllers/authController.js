@@ -1,5 +1,7 @@
 const authService = require('../services/authService');
 const profileService = require('../services/profileService');
+const roleService = require('../services/roleService');
+const { bypassesPermissions } = require('../config/rbac');
 const sendResponse = require('../utils/response');
 const asyncHandler = require('../utils/asyncHandler');
 const contextOf = require('../utils/requestContext');
@@ -129,5 +131,7 @@ exports.setupAccount = asyncHandler(async (req, res) => {
 // GET /api/auth/me
 exports.me = asyncHandler(async (req, res) => {
   const { user, partner } = await profileService.get(req.user.id);
-  sendResponse(res, 200, true, 'Current user profile.', { user, ...(partner ? { partner } : {}) });
+  // What the dashboard needs to decide what to show: the roles and the permissions that result from them.
+  const access = { roles: await roleService.rolesOf(user), permissions: req.user.permissions, isAdmin: bypassesPermissions(user.role) };
+  sendResponse(res, 200, true, 'Current user profile.', { user, access, ...(partner ? { partner } : {}) });
 });

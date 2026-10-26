@@ -15,7 +15,10 @@ const userSchema = new mongoose.Schema(
 
     // No default on purpose: every creation path must choose the role explicitly.
     role: { type: String, enum: Object.values(ROLES), required: true, index: true },
+    // Individual permissions: the old way, kept for accounts made before roles existed. New access comes from `roles`.
     permissions: { type: [{ type: String, enum: ALL_PERMISSIONS }], default: [] },
+    // What the person may do is the union of these roles and the old list above.
+    roles: { type: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Role' }], default: [] },
     status: { type: String, enum: Object.values(USER_STATUS), default: USER_STATUS.PENDING, index: true },
 
     emailVerified: { type: Boolean, default: false },
