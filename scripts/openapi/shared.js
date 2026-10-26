@@ -605,6 +605,7 @@ const STATUS_TEXT = {
   413: 'Too large',
   422: 'Validation failed',
   429: 'Rate limited',
+  502: 'Upstream service failed',
   503: 'Service unavailable'
 };
 

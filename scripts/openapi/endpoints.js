@@ -30,7 +30,8 @@ const TAGS = [
   { name: 'Memberships', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Assign a plan to a B2C customer, record the payment, cancel, extend, delete.' },
   { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' },
   { name: 'Dashboard', description: 'ADMIN, or STAFF. Numbers for the admin dashboard. Some figures are placeholders until the visa, tour booking and revenue modules exist.' },
-  { name: 'Visa (demo data)', description: 'ADMIN, or STAFF with VISA_VIEW to read and VISA_EDIT to change. Runs on in-memory demo data and does not validate its input yet: a restart resets it.' }
+  { name: 'Visa', description: 'ADMIN, or STAFF with the permission each route names. Countries, visa types, document checklists, statuses, applications with their money, documents and passport handling. Lists answer with `meta` and `pagination`.' },
+  { name: 'Settings', description: 'Internal users. Currencies with their exchange rates, document limits and retention. Changing most of them is for admins.' }
 ];
 
 // Tags whose operations keep the order they are written in (a flow: sign up, then verify, then log in). Every other
@@ -62,62 +63,140 @@ const deleted = () => obj({ success: bool(true), id: str('6ac0a5f0eebc510147c672
 // A failed validation of a membership route is 400, with the first message and the field list.
 const invalid = (message, field) => ({ codes: ['VALIDATION_ERROR'], message, fields: [{ field, message }] });
 
-// ---- dashboard and visa module (internal users, in-memory demo data: nothing here is stored yet)
+// ---- dashboard numbers, visa module and settings (internal users)
 const INT = (example) => ({ type: 'integer', example });
-const itemsOf = (item) => obj({ items: arrayOf(item), total: INT(1) }, ['items', 'total']);
+const NUM = (example) => ({ type: 'number', example });
 const TREND_POINT = obj({ label: str('Jan'), value: INT(60) }, ['label', 'value']);
 
+const OID = '6ac0a5f0eebc510147c67250';
+const ID_COUNTRY = '6ac0a5f0eebc510147c67251';
+const ID_TYPE = '6ac0a5f0eebc510147c67252';
+const ID_APP = '6ac0a5f0eebc510147c67253';
+const ID_DOC = '6ac0a5f0eebc510147c67254';
+const ID_PAYMENT = '6ac0a5f0eebc510147c67255';
+const ID_STATUS = '6ac0a5f0eebc510147c67256';
+const ID_STAFF = '6ac0a5f0eebc510147c67257';
+
 const VISA_COUNTRY = obj({
-  id: str('vcn'), name: str('China'), code: str('CN'), flag: str('🇨🇳'), description: str('Tourist, business and student visa processing.'),
-  status: str('active', { enum: ['active', 'paused'] }), displayOrder: INT(1)
+  _id: str(ID_COUNTRY), name: str('China'), code: str('CN'), flag: str('🇨🇳'), description: str('Tourist, business and student visa processing.'),
+  status: str('active', { enum: ['active', 'paused'] }), displayOrder: INT(1), processingMode: str('Embassy'), processingTime: str('5-7 working days'),
+  physicalPassportRequired: bool(true), expressAvailable: bool(false), richChecklist: str('<h3>Mandatory Requirements</h3><ul><li>Passport</li></ul>'),
+  sampleDocs: arrayOf(obj({ name: str('Sample bank statement'), type: str('document'), url: str('https://example.com/sample.pdf') })), createdAt: str(NOW), updatedAt: str(NOW)
 });
-const VISA_COUNTRY_EXAMPLE = { id: 'vcn', name: 'China', code: 'CN', flag: '🇨🇳', description: 'Tourist, business and student visa processing.', status: 'active', displayOrder: 1 };
+const VISA_COUNTRY_EXAMPLE = {
+  _id: ID_COUNTRY, name: 'China', code: 'CN', flag: '🇨🇳', description: 'Tourist, business and student visa processing.', status: 'active', displayOrder: 1,
+  processingMode: 'Embassy', processingTime: '5-7 working days', physicalPassportRequired: true, expressAvailable: false,
+  richChecklist: '<h3>Mandatory Requirements</h3><ul><li>Passport</li></ul>', sampleDocs: [], createdAt: NOW, updatedAt: NOW
+};
 
 const VISA_TYPE = obj({
-  id: str('vt_cn_tourist'), countryId: str('vcn'), name: str('Tourist Visa'), processingTime: str('5-7 working days'), entries: str('single'),
-  currency: str('BDT'), b2cPrice: INT(12000), b2bNetPrice: INT(10000), status: str('active')
+  _id: str(ID_TYPE), country: str(ID_COUNTRY), name: str('Tourist Visa'), description: str(''), processingTime: str('5-7 working days'),
+  entries: str('single', { enum: ['single', 'double', 'multiple'] }), currency: str('BDT'), b2cPrice: NUM(12000), b2bNetPrice: NUM(10000),
+  fees: obj({ embassy: NUM(8500), service: NUM(3000), vat: NUM(500) }), validFrom: str(NOW), terms: str(''), status: str('active', { enum: ['active', 'paused'] }),
+  passportRequirement: str('physical_required', { enum: ['online_processing', 'physical_required'] }), pickupAvailable: bool(true), officeSubmissionAvailable: bool(true),
+  createdAt: str(NOW), updatedAt: str(NOW)
 });
-const VISA_TYPE_EXAMPLE = { id: 'vt_cn_tourist', countryId: 'vcn', name: 'Tourist Visa', processingTime: '5-7 working days', entries: 'single', currency: 'BDT', b2cPrice: 12000, b2bNetPrice: 10000, status: 'active' };
+const VISA_TYPE_EXAMPLE = {
+  _id: ID_TYPE, country: ID_COUNTRY, name: 'Tourist Visa', description: '', processingTime: '5-7 working days', entries: 'single', currency: 'BDT', b2cPrice: 12000, b2bNetPrice: 10000,
+  fees: { embassy: 8500, service: 3000, vat: 500 }, validFrom: NOW, terms: '', status: 'active', passportRequirement: 'physical_required', pickupAvailable: true,
+  officeSubmissionAvailable: true, createdAt: NOW, updatedAt: NOW
+};
 
 const VISA_CHECKLIST_ITEM = obj({
-  id: str('vci_1'), label: str('Passport (valid at least 6 months)'), requirement: str('required', { enum: ['required', 'optional'] }), active: bool(true),
-  submissionMode: str('both'), fileFormats: str('PDF/JPG/PNG'), maxSizeMb: INT(10)
+  _id: str(OID), label: str('Passport (valid at least 6 months)'), requirement: str('required', { enum: ['required', 'optional', 'conditional'] }), active: bool(true),
+  submissionMode: str('both', { enum: ['digital', 'physical', 'both'] }), fileFormats: str('PDF/JPG/PNG'), maxSizeMb: INT(10)
 });
 const VISA_CHECKLIST = obj({
-  id: { type: 'string', nullable: true, example: 'vcl_1' }, countryId: str('vcn'), visaTypeId: str('vt_cn_tourist'), applicantType: str('individual'),
+  _id: { type: 'string', nullable: true, example: OID }, country: str(ID_COUNTRY), visaType: str(ID_TYPE), applicantType: str('individual'),
   items: arrayOf(VISA_CHECKLIST_ITEM), isDefault: bool(false)
 });
 const VISA_CHECKLIST_EXAMPLE = {
-  id: 'vcl_1', countryId: 'vcn', visaTypeId: 'vt_cn_tourist', applicantType: 'individual', isDefault: false,
-  items: [{ id: 'vci_1', label: 'Passport (valid at least 6 months)', requirement: 'required', active: true, submissionMode: 'both', fileFormats: 'PDF/JPG/PNG', maxSizeMb: 10 }]
+  _id: OID, country: ID_COUNTRY, visaType: ID_TYPE, applicantType: 'individual', isDefault: false,
+  items: [{ _id: OID, label: 'Passport (valid at least 6 months)', requirement: 'required', active: true, submissionMode: 'both', fileFormats: 'PDF/JPG/PNG', maxSizeMb: 10 }]
 };
-const CHECKLIST_EXAMPLE = { countryId: 'vcn', visaTypeId: 'vt_cn_tourist', applicantType: 'individual' };
 
+const VISA_STATUS = obj({
+  _id: str(ID_STATUS), key: str('under_review'), displayName: str('Under Review'), customerMessage: str('Your application is being reviewed by our team.'),
+  internalDescription: str('A staff member is checking the application and documents.'), category: str('in_progress', { enum: ['in_progress', 'action_required', 'success', 'failed', 'cancelled'] }),
+  active: bool(true), displayOrder: INT(2), isSystem: bool(true)
+});
+const VISA_STATUS_EXAMPLE = {
+  _id: ID_STATUS, key: 'under_review', displayName: 'Under Review', customerMessage: 'Your application is being reviewed by our team.',
+  internalDescription: 'A staff member is checking the application and documents.', category: 'in_progress', active: true, displayOrder: 2, isSystem: true, createdAt: NOW, updatedAt: NOW
+};
+
+const VISA_ACCOUNT = obj({
+  totalAmount: NUM(12000), discountAmount: NUM(1000), netAmount: NUM(11000), advancePaid: NUM(4000), dueAmount: NUM(7000),
+  paymentStatus: str('Partial', { enum: ['Paid', 'Partial', 'Unpaid'] }), paymentMethod: str('Cash'), totalOverrideReason: str(''), costPrice: NUM(7000), profit: NUM(4000), netAmountBase: NUM(11000)
+});
+const VISA_PAYMENT = obj({
+  _id: str(ID_PAYMENT), amount: NUM(4000), method: str('Cash'), date: str(NOW), note: str('Advance at application'), enteredByName: str('Admin Person'),
+  voided: bool(false), voidReason: str('')
+});
+const VISA_DOCUMENT = obj({
+  _id: str(ID_DOC), type: str('Passport Copy'), originalName: str('passport.pdf'), mimeType: str('application/pdf'), size: INT(204800),
+  status: str('pending', { enum: ['pending', 'verified', 'rejected'] }), reviewNote: str(''), uploadedByName: str('Admin Person'), uploadedAt: str(NOW)
+});
+const VISA_TIMELINE_ENTRY = obj({
+  _id: str(OID), at: str(NOW), event: str('Application Created'), message: str('Application created successfully.'),
+  visibility: str('both', { enum: ['internal', 'customer', 'both'] }), by: str('Admin Person')
+});
 const VISA_APPLICATION = obj({
-  id: str('va_101'), number: str('VISA-2026-000101'), countryId: str('vcn'), visaTypeId: str('vt_cn_tourist'), country: str('China'), visaType: str('Tourist Visa'),
-  channel: str('b2c', { enum: ['b2c', 'b2b'] }),
-  applicant: obj({ fullName: str('Rahim Ahmed'), dob: str('1992-04-18'), gender: str('male'), nationality: str('Bangladeshi'), mobile: str('+880 1712 556 340'), email: str('rahim.ahmed@gmail.com'), city: str('Dhaka'), applicantType: str('individual') }),
-  passport: obj({ number: str('BR0912345'), expiry: str('2030-06-15'), issueDate: str('2020-06-16'), issuingCountry: str('Bangladesh'), type: str('ordinary') }),
-  status: str('under_review'), assignedStaff: str('Priya Nair'), submittedAt: str('2026-09-28'), updatedAt: str('2026-10-04'),
-  price: obj({ currency: str('BDT'), b2c: INT(12000), b2b: INT(10000) }),
-  documents: arrayOf(obj({})), timeline: arrayOf(obj({}))
+  _id: str(ID_APP), number: str('VISA-2026-000001'), channel: str('b2c', { enum: ['b2c', 'b2b'] }), partner: str(OID), partnerName: str(''),
+  country: str(ID_COUNTRY), countryName: str('China'), visaType: str(ID_TYPE), visaTypeName: str('Tourist Visa'),
+  applicant: obj({ fullName: str('Rahim Ahmed'), mobile: str('+8801712556340'), email: str('rahim@example.com'), nationality: str('Bangladeshi'), applicantType: str('individual') }),
+  passport: obj({ number: str('BR0912345'), numberKey: str('BR0912345'), expiry: str('2030-06-15'), issueDate: str('2020-06-16'), issuingCountry: str('Bangladesh'), type: str('ordinary') }),
+  status: str('under_review'), assignedStaff: obj({ _id: str(ID_STAFF), name: str('Priya Nair') }),
+  price: obj({ currency: str('BDT'), rateToBase: NUM(1), b2c: NUM(12000), b2b: NUM(10000), fees: obj({ embassy: NUM(8500), service: NUM(3000), vat: NUM(500) }) }),
+  account: VISA_ACCOUNT, payments: arrayOf(VISA_PAYMENT), documents: arrayOf(VISA_DOCUMENT), timeline: arrayOf(VISA_TIMELINE_ENTRY),
+  internalNotes: arrayOf(obj({})), customerNotes: arrayOf(obj({})),
+  passportSubmissionMethod: str('office', { enum: ['online', 'office', 'pickup'] }), passportStatus: str('not_received'), createdAt: str(NOW), updatedAt: str(NOW)
 });
 const VISA_APPLICATION_EXAMPLE = {
-  id: 'va_101', number: 'VISA-2026-000101', countryId: 'vcn', visaTypeId: 'vt_cn_tourist', country: 'China', visaType: 'Tourist Visa', channel: 'b2c',
-  applicant: { fullName: 'Rahim Ahmed', dob: '1992-04-18', gender: 'male', nationality: 'Bangladeshi', mobile: '+880 1712 556 340', email: 'rahim.ahmed@gmail.com', city: 'Dhaka', applicantType: 'individual' },
-  passport: { number: 'BR0912345', expiry: '2030-06-15', issueDate: '2020-06-16', issuingCountry: 'Bangladesh', type: 'ordinary' },
-  status: 'under_review', assignedStaff: 'Priya Nair', submittedAt: '2026-09-28', updatedAt: '2026-10-04', price: { currency: 'BDT', b2c: 12000, b2b: 10000 }, documents: [], timeline: []
+  _id: ID_APP, number: 'VISA-2026-000001', channel: 'b2c', partnerName: '', country: ID_COUNTRY, countryName: 'China', visaType: ID_TYPE, visaTypeName: 'Tourist Visa',
+  applicant: { fullName: 'Rahim Ahmed', mobile: '+8801712556340', email: 'rahim@example.com', nationality: 'Bangladeshi', applicantType: 'individual' },
+  passport: { number: 'BR0912345', numberKey: 'BR0912345', expiry: '2030-06-15', issueDate: '2020-06-16', issuingCountry: 'Bangladesh', type: 'ordinary' },
+  status: 'under_review', assignedStaff: { _id: ID_STAFF, name: 'Priya Nair' },
+  price: { currency: 'BDT', rateToBase: 1, b2c: 12000, b2b: 10000, fees: { embassy: 8500, service: 3000, vat: 500 } },
+  account: { totalAmount: 12000, discountAmount: 1000, netAmount: 11000, advancePaid: 4000, dueAmount: 7000, paymentStatus: 'Partial', paymentMethod: 'Cash', totalOverrideReason: '', costPrice: 7000, profit: 4000, netAmountBase: 11000 },
+  payments: [{ _id: ID_PAYMENT, amount: 4000, method: 'Cash', date: NOW, note: 'Advance at application', enteredByName: 'Admin Person', voided: false, voidReason: '' }],
+  documents: [{ _id: ID_DOC, type: 'Passport Copy', originalName: 'passport.pdf', mimeType: 'application/pdf', size: 204800, status: 'pending', reviewNote: '', uploadedByName: 'Admin Person', uploadedAt: NOW }],
+  timeline: [{ _id: OID, at: NOW, event: 'Application Created', message: 'Application created successfully.', visibility: 'both', by: 'Admin Person' }],
+  internalNotes: [], customerNotes: [], passportSubmissionMethod: 'office', passportStatus: 'not_received', createdAt: NOW, updatedAt: NOW
+};
+const VISA_LIST_ROW_EXAMPLE = (() => {
+  const { payments, timeline, internalNotes, customerNotes, ...row } = VISA_APPLICATION_EXAMPLE;
+  return { ...row, documentCount: 1 };
+})();
+
+const CURRENCIES_EXAMPLE = {
+  base: 'BDT',
+  items: [
+    { code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', rateToBase: 1, source: 'base' },
+    { code: 'USD', name: 'US Dollar', symbol: '$', rateToBase: 122, source: 'manual', updatedAt: NOW }
+  ]
+};
+const CURRENCIES = obj({
+  base: str('BDT'),
+  items: arrayOf(obj({ code: str('USD'), name: str('US Dollar'), symbol: str('$'), rateToBase: NUM(122), source: str('manual', { enum: ['base', 'manual', 'api'] }), updatedAt: str(NOW) }))
+});
+const SETTINGS_EXAMPLE = {
+  'visa.documents': { maxSizeMb: 10, allowedTypes: ['pdf', 'jpg', 'png', 'webp'], maxFilesPerItem: 5 },
+  'visa.retention': { days: 730 },
+  'visa.duplicateWindowDays': { days: 90 },
+  currencies: CURRENCIES_EXAMPLE
 };
 
-// The visa routes do not validate their input yet. These schemas only describe what the dashboard sends, for the docs.
-const VISA_ID_PARAM = z.object({ id: z.string('Id is required.') });
-const VISA_CHECKLIST_PARAMS = z.object({ countryId: z.string(), visaTypeId: z.string(), applicantType: z.string() });
-const VISA_SEARCH_QUERY = z.object({ search: z.string().optional() });
-const VISA_TYPES_QUERY = z.object({ countryId: z.string().optional() });
-const VISA_APPLICATIONS_QUERY = z.object({ status: z.string().optional(), search: z.string().optional() });
-const VISA_COUNTRY_BODY = z.object({ name: z.string(), code: z.string().optional(), flag: z.string().optional(), description: z.string().optional(), status: z.string().optional() });
-const VISA_TYPE_BODY = z.object({ countryId: z.string(), name: z.string(), processingTime: z.string().optional(), entries: z.string().optional(), currency: z.string().optional(), b2cPrice: z.number().optional(), b2bNetPrice: z.number().optional() });
-const VISA_CHECKLIST_BODY = z.object({ items: z.array(z.object({ id: z.string().optional(), label: z.string(), requirement: z.string().optional(), active: z.boolean().optional() })) });
+// Request schemas come straight from the validation files, so the documentation cannot drift from the real rules.
+const visaCatalog = require('../../validations/visaCatalog.validation');
+const visaApp = require('../../validations/visaApplication.validation');
+const settingV = require('../../validations/setting.validation');
+const ACCESS = { view: 'ADMIN, or STAFF with VISA_VIEW', edit: 'ADMIN, or STAFF with VISA_EDIT', update: 'ADMIN, or STAFF with VISA_UPDATE' };
+
+const V = (method, path, id, summary, description, access, rest) => ({ method, path, tag: 'Visa', id, summary, description, access, needsAuth: true, ...rest });
+const list = (message, schema, example) => ok(200, message, arrayOf(schema), [example], { paginated: true });
+const APP_PARAM = { id: ID_APP };
+const DOC_PARAM = { id: ID_APP, docId: ID_DOC };
 
 // shared success shapes
 const SESSION = ref('Session');
@@ -826,93 +905,212 @@ const endpoints = [
     errors: { 401: true, 403: true }
   },
 
-  // =============================================================== VISA (internal, demo data)
-  {
-    method: 'get', path: '/api/visa/dashboard', tag: 'Visa (demo data)', id: 'getVisaDashboard',
-    summary: 'Visa module counters',
-    description: 'Application counts by status and channel, per-country figures and the recent applications. Computed from the in-memory demo data, so a server restart resets it.',
-    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true,
-    success: ok(200, 'Visa dashboard overview fetched.', obj({
-      total: INT(1), submitted: INT(0), underReview: INT(1), actionRequired: INT(0), processing: INT(0), submittedToEmbassy: INT(0), approved: INT(0), completed: INT(0),
-      rejected: INT(0), b2c: INT(1), b2b: INT(0), unassigned: INT(0), decisionRate: INT(85), countries: arrayOf(obj({})), recent: arrayOf(VISA_APPLICATION)
-    }), {
-      total: 1, submitted: 0, underReview: 1, actionRequired: 0, processing: 0, submittedToEmbassy: 0, approved: 0, completed: 0, rejected: 0,
-      b2c: 1, b2b: 0, unassigned: 0, decisionRate: 85, countries: [{ country: 'China', flag: '🇨🇳', applications: 1, approved: 1, approvalRate: 100 }], recent: [VISA_APPLICATION_EXAMPLE]
+  // =============================================================== VISA (internal)
+  V('get', '/api/visa/dashboard', 'getVisaDashboard', 'Visa module counters',
+    'Application counts by status and channel, the approval rate, per-country figures and the 10 newest applications, all counted from the database. `approvedTotal` counts approved, passport ready and completed files. `unassigned` ignores finished applications.',
+    ACCESS.view, {
+      success: ok(200, 'Visa dashboard overview fetched.', obj({
+        total: INT(1), submitted: INT(0), underReview: INT(1), actionRequired: INT(0), documentsCompleted: INT(0), processing: INT(0), submittedToEmbassy: INT(0), approved: INT(0),
+        passportReady: INT(0), completed: INT(0), rejected: INT(0), cancelled: INT(0), b2c: INT(1), b2b: INT(0), unassigned: INT(0), approvedTotal: INT(0), decisionRate: INT(0),
+        countries: arrayOf(obj({ countryId: str(ID_COUNTRY), country: str('China'), flag: str('🇨🇳'), applications: INT(1), approved: INT(0), approvalRate: INT(0) })), recent: arrayOf(VISA_APPLICATION)
+      }), {
+        total: 1, submitted: 0, underReview: 1, actionRequired: 0, documentsCompleted: 0, processing: 0, submittedToEmbassy: 0, approved: 0, passportReady: 0, completed: 0, rejected: 0, cancelled: 0,
+        b2c: 1, b2b: 0, unassigned: 0, approvedTotal: 0, decisionRate: 0, countries: [{ countryId: ID_COUNTRY, country: 'China', flag: '🇨🇳', applications: 1, approved: 0, approvalRate: 0 }], recent: [VISA_LIST_ROW_EXAMPLE]
+      }),
+      errors: { 401: true, 403: true }
     }),
-    errors: { 401: true, 403: true }
-  },
-  {
-    method: 'get', path: '/api/visa/countries', tag: 'Visa (demo data)', id: 'listVisaCountries',
-    summary: 'Visa countries',
-    description: 'Countries we process visas for. `search` matches the name or the code. Demo data held in memory.',
-    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, query: VISA_SEARCH_QUERY, queryExample: { search: 'china' },
-    success: ok(200, 'Visa countries fetched.', itemsOf(VISA_COUNTRY), { items: [VISA_COUNTRY_EXAMPLE], total: 1 }),
-    errors: { 401: true, 403: true }
-  },
-  {
-    method: 'post', path: '/api/visa/countries', tag: 'Visa (demo data)', id: 'createVisaCountry',
-    summary: 'Add a visa country',
-    description: 'Adds a country to the in-memory demo list. The server does not validate this body yet, so send at least a `name`. Lost on restart.',
-    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, body: VISA_COUNTRY_BODY, bodyExample: { name: 'Japan', code: 'JP', description: 'Tourist visa processing.' },
-    success: ok(201, 'Country created successfully.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'patch', path: '/api/visa/countries/{id}', tag: 'Visa (demo data)', id: 'updateVisaCountry',
-    summary: 'Change a visa country',
-    description: 'Merges the body into the country. Answers `404` when the id is unknown. The body is not validated yet.',
-    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: VISA_ID_PARAM, paramExamples: { id: 'vcn' }, body: VISA_COUNTRY_BODY.partial(), bodyExample: { status: 'paused' },
-    success: ok(200, 'Country updated successfully.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true, 404: true }
-  },
-  {
-    method: 'delete', path: '/api/visa/countries/{id}', tag: 'Visa (demo data)', id: 'deleteVisaCountry',
-    summary: 'Remove a visa country',
-    description: 'Removes the country from the demo list. Answers `200` even when the id did not exist.',
-    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: VISA_ID_PARAM, paramExamples: { id: 'vcn' },
-    success: ok(200, 'Country deleted successfully.'), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'get', path: '/api/visa/types', tag: 'Visa (demo data)', id: 'listVisaTypes',
-    summary: 'Visa types',
-    description: 'Visa types with their fees. Filter by `countryId`. Demo data held in memory.',
-    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, query: VISA_TYPES_QUERY, queryExample: { countryId: 'vcn' },
-    success: ok(200, 'Visa types fetched.', itemsOf(VISA_TYPE), { items: [VISA_TYPE_EXAMPLE], total: 1 }), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'post', path: '/api/visa/types', tag: 'Visa (demo data)', id: 'createVisaType',
-    summary: 'Add a visa type',
-    description: 'Adds a visa type to the in-memory demo list. The body is not validated yet. Lost on restart.',
-    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, body: VISA_TYPE_BODY, bodyExample: { countryId: 'vcn', name: 'Business Visa', processingTime: '7 working days' },
-    success: ok(201, 'Visa type created successfully.', VISA_TYPE, VISA_TYPE_EXAMPLE), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'get', path: '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', tag: 'Visa (demo data)', id: 'getVisaChecklist',
-    summary: 'Document checklist',
-    description: 'The documents an applicant must give for one country, visa type and applicant type (for example `individual`). When nothing was saved, a default checklist is returned with `isDefault: true`.',
-    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, params: VISA_CHECKLIST_PARAMS, paramExamples: CHECKLIST_EXAMPLE,
-    success: ok(200, 'Checklist fetched.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'put', path: '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', tag: 'Visa (demo data)', id: 'saveVisaChecklist',
-    summary: 'Save a document checklist',
-    description: 'Replaces the checklist for that country, visa type and applicant type with `items`. The body is not validated yet.',
-    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: VISA_CHECKLIST_PARAMS, paramExamples: CHECKLIST_EXAMPLE, body: VISA_CHECKLIST_BODY,
-    bodyExample: { items: [{ id: 'vci_1', label: 'Passport (valid at least 6 months)', requirement: 'required', active: true }] },
-    success: ok(200, 'Checklist saved.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'get', path: '/api/visa/applications', tag: 'Visa (demo data)', id: 'listVisaApplications',
-    summary: 'Visa applications',
-    description: 'Filter by `status` or search the number, the applicant name and the country. Demo data held in memory.',
-    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, query: VISA_APPLICATIONS_QUERY, queryExample: { status: 'under_review' },
-    success: ok(200, 'Visa applications fetched.', itemsOf(VISA_APPLICATION), { items: [VISA_APPLICATION_EXAMPLE], total: 1 }), errors: { 401: true, 403: true }
-  },
-  {
-    method: 'get', path: '/api/visa/applications/{id}', tag: 'Visa (demo data)', id: 'getVisaApplication',
-    summary: 'One visa application',
-    description: 'The application with that id. An unknown id returns the first demo application instead of `404`.',
-    access: 'ADMIN, or STAFF with VISA_VIEW', needsAuth: true, params: VISA_ID_PARAM, paramExamples: { id: 'va_101' },
-    success: ok(200, 'Visa application fetched.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true }
-  },
+  V('get', '/api/visa/staff', 'listVisaStaff', 'Staff for the "assign to" list',
+    'Active admins and staff, with only their id, name and role. This is what the application screens use to pick who handles a file, so it needs only `VISA_VIEW`, not the user list permission.',
+    ACCESS.view, {
+      query: visaApp.staffLookup, queryExample: { search: 'priya' },
+      success: ok(200, 'Staff fetched.', arrayOf(obj({ _id: str(ID_STAFF), name: str('Priya Nair'), role: str('STAFF') })), [{ _id: ID_STAFF, name: 'Priya Nair', role: 'STAFF' }]),
+      errors: { 401: true, 403: true, 422: true }
+    }),
+
+  // ---- countries
+  V('get', '/api/visa/countries', 'listVisaCountries', 'Visa countries',
+    'Countries we process visas for, in display order. `search` matches the name or the code. A list answers with `pagination` as well as `meta`.',
+    ACCESS.view, { query: visaCatalog.listCountries, queryExample: { search: 'china', status: 'active' }, success: list('Visa countries fetched.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
+  V('post', '/api/visa/countries', 'createVisaCountry', 'Add a visa country',
+    'The name must be new (any letter case). `richChecklist` is rich text and is cleaned on save: only headings, paragraphs, lists, bold, italic, quotes and links survive.',
+    ACCESS.edit, {
+      body: visaCatalog.createCountry, bodyExample: { name: 'Japan', code: 'JP', flag: '🇯🇵', description: 'Tourist visa processing.', processingMode: 'Embassy', physicalPassportRequired: true },
+      success: ok(201, 'Country created.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true, 409: ['COUNTRY_EXISTS'], 422: true }
+    }),
+  V('get', '/api/visa/countries/{id}', 'getVisaCountry', 'One visa country', 'The country with that id. An unknown id answers `404`.',
+    ACCESS.view, { params: visaCatalog.idParam, paramExamples: { id: ID_COUNTRY }, success: ok(200, 'Visa country fetched.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND'], 422: true } }),
+  V('patch', '/api/visa/countries/{id}', 'updateVisaCountry', 'Change a visa country', 'Send only what changes. Pausing a country hides it from new applications and keeps the old ones.',
+    ACCESS.edit, {
+      params: visaCatalog.idParam, paramExamples: { id: ID_COUNTRY }, body: visaCatalog.updateCountry, bodyExample: { status: 'paused' },
+      success: ok(200, 'Country updated.', VISA_COUNTRY, VISA_COUNTRY_EXAMPLE), errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND'], 409: ['COUNTRY_EXISTS'], 422: true }
+    }),
+  V('delete', '/api/visa/countries/{id}', 'deleteVisaCountry', 'Delete a visa country',
+    'Deletes the country with its visa types and checklists. A country that has applications is refused with `COUNTRY_IN_USE`: pause it instead.',
+    ACCESS.edit, { params: visaCatalog.idParam, paramExamples: { id: ID_COUNTRY }, success: ok(200, 'Country deleted.'), errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND'], 409: ['COUNTRY_IN_USE'], 422: true } }),
+
+  // ---- visa types
+  V('get', '/api/visa/types', 'listVisaTypes', 'Visa types', 'Visa types with their prices and fees. Filter by `countryId` or `status`, or search the name.',
+    ACCESS.view, { query: visaCatalog.listTypes, queryExample: { countryId: ID_COUNTRY }, success: list('Visa types fetched.', VISA_TYPE, VISA_TYPE_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
+  V('post', '/api/visa/types', 'createVisaType', 'Add a visa type',
+    'Prices are in `currency`, which must be enabled in the currency settings (BDT and USD are by default). The name must be new inside the country.',
+    ACCESS.edit, {
+      body: visaCatalog.createType, bodyExample: { countryId: ID_COUNTRY, name: 'Business Visa', entries: 'multiple', currency: 'BDT', b2cPrice: 18000, b2bNetPrice: 15000, fees: { embassy: 12000, service: 5000, vat: 1000 }, passportRequirement: 'physical_required', pickupAvailable: true },
+      success: ok(201, 'Visa type created.', VISA_TYPE, VISA_TYPE_EXAMPLE), errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND'], 409: ['VISA_TYPE_EXISTS'], 422: ['VALIDATION_ERROR', 'CURRENCY_NOT_ENABLED'] }
+    }),
+  V('get', '/api/visa/types/{id}', 'getVisaType', 'One visa type', 'The visa type with that id. An unknown id answers `404`.',
+    ACCESS.view, { params: visaCatalog.idParam, paramExamples: { id: ID_TYPE }, success: ok(200, 'Visa type fetched.', VISA_TYPE, VISA_TYPE_EXAMPLE), errors: { 401: true, 403: true, 404: ['VISA_TYPE_NOT_FOUND'], 422: true } }),
+  V('patch', '/api/visa/types/{id}', 'updateVisaType', 'Change a visa type',
+    'Send only what changes. A price change never alters an existing application: each one keeps the price it was created with.',
+    ACCESS.edit, {
+      params: visaCatalog.idParam, paramExamples: { id: ID_TYPE }, body: visaCatalog.updateType, bodyExample: { b2cPrice: 13000 },
+      success: ok(200, 'Visa type updated.', VISA_TYPE, VISA_TYPE_EXAMPLE), errors: { 401: true, 403: true, 404: ['VISA_TYPE_NOT_FOUND'], 409: ['VISA_TYPE_EXISTS', 'VISA_TYPE_IN_USE'], 422: ['VALIDATION_ERROR', 'CURRENCY_NOT_ENABLED'] }
+    }),
+  V('delete', '/api/visa/types/{id}', 'deleteVisaType', 'Delete a visa type', 'Deletes the type and its checklists. A type that has applications is refused with `VISA_TYPE_IN_USE`: pause it instead.',
+    ACCESS.edit, { params: visaCatalog.idParam, paramExamples: { id: ID_TYPE }, success: ok(200, 'Visa type deleted.'), errors: { 401: true, 403: true, 404: ['VISA_TYPE_NOT_FOUND'], 409: ['VISA_TYPE_IN_USE'], 422: true } }),
+
+  // ---- checklists
+  V('get', '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', 'getVisaChecklist', 'Document checklist',
+    'The documents an applicant must give for one country, visa type and applicant type (`individual`, `business`, `student`, `employee` or `sponsored`). When nothing was saved, a default list is returned with `isDefault: true`.',
+    ACCESS.view, {
+      params: visaCatalog.checklistParam, paramExamples: { countryId: ID_COUNTRY, visaTypeId: ID_TYPE, applicantType: 'individual' },
+      success: ok(200, 'Checklist fetched.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true, 404: ['VISA_TYPE_NOT_FOUND'], 422: true }
+    }),
+  V('put', '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', 'saveVisaChecklist', 'Save a document checklist',
+    'Replaces the whole list with `items`. Each item gets an `_id` that an upload can refer to with `checklistItemId`, so its size limit applies.',
+    ACCESS.edit, {
+      params: visaCatalog.checklistParam, paramExamples: { countryId: ID_COUNTRY, visaTypeId: ID_TYPE, applicantType: 'individual' }, body: visaCatalog.saveChecklist,
+      bodyExample: { items: [{ label: 'Passport (valid at least 6 months)', requirement: 'required', submissionMode: 'both', maxSizeMb: 10 }] },
+      success: ok(200, 'Checklist saved.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true, 404: ['VISA_TYPE_NOT_FOUND'], 422: true }
+    }),
+
+  // ---- statuses
+  V('get', '/api/visa/statuses', 'listVisaStatuses', 'Visa statuses',
+    'The 11 system statuses (created on first use) and the ones staff added, in display order. The allowed moves between statuses are in `config/visaStatuses.json`.',
+    ACCESS.view, { query: visaCatalog.listStatuses, queryExample: { active: 'true' }, success: list('Visa statuses fetched.', VISA_STATUS, VISA_STATUS_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
+  V('post', '/api/visa/statuses', 'createVisaStatus', 'Add a status',
+    'Adds a custom status inside a category. The `key` is made from the name when it is not sent. A custom status in the `failed` or `cancelled` category ends an application like a system one does.',
+    ACCESS.edit, {
+      body: visaCatalog.createStatus, bodyExample: { displayName: 'Waiting for Embassy Slot', category: 'in_progress', customerMessage: 'We are waiting for an appointment.' },
+      success: ok(201, 'Status created.', VISA_STATUS, { ...VISA_STATUS_EXAMPLE, key: 'waiting_for_embassy_slot', displayName: 'Waiting for Embassy Slot', isSystem: false }), errors: { 401: true, 403: true, 409: ['STATUS_EXISTS'], 422: true }
+    }),
+  V('patch', '/api/visa/statuses/{id}', 'updateVisaStatus', 'Change a status',
+    'A system status keeps its key, category and place in the flow, and cannot be turned off (`STATUS_LOCKED`). Its wording and order can change.',
+    ACCESS.edit, {
+      params: visaCatalog.idParam, paramExamples: { id: ID_STATUS }, body: visaCatalog.updateStatus, bodyExample: { customerMessage: 'Your visa is being reviewed.' },
+      success: ok(200, 'Status updated.', VISA_STATUS, VISA_STATUS_EXAMPLE), errors: { 401: true, 403: true, 404: ['STATUS_NOT_FOUND'], 409: ['STATUS_LOCKED'], 422: true }
+    }),
+  V('delete', '/api/visa/statuses/{id}', 'deleteVisaStatus', 'Delete a status', 'Only a custom status that no application is in can be deleted (`STATUS_LOCKED`, `STATUS_IN_USE`).',
+    ACCESS.edit, { params: visaCatalog.idParam, paramExamples: { id: ID_STATUS }, success: ok(200, 'Status deleted.'), errors: { 401: true, 403: true, 404: ['STATUS_NOT_FOUND'], 409: ['STATUS_LOCKED', 'STATUS_IN_USE'], 422: true } }),
+
+  // ---- applications
+  V('get', '/api/visa/applications', 'listVisaApplications', 'Visa applications',
+    'Newest first. `search` matches the number, the applicant name, phone and email, the passport number (spaces and case ignored), the country and the partner. `staff` is a user id or `unassigned`. A row leaves out the timeline, notes, payments and vendor lines: fetch one application for those.',
+    ACCESS.view, {
+      query: visaApp.listApplications, queryExample: { status: 'under_review', channel: 'b2c', search: 'rahim', page: '1', limit: '20' },
+      success: list('Visa applications fetched.', VISA_APPLICATION, VISA_LIST_ROW_EXAMPLE), errors: { 401: true, 403: true, 422: true }
+    }),
+  V('post', '/api/visa/applications', 'createVisaApplication', 'Create a visa application',
+    'Staff and admins create the file. The server numbers it (`VISA-<year>-<6 digits>`, restarting every year), copies the price and the exchange rate from the visa type, and calculates net, advance, due and the payment status. ' +
+    'A `totalAmount` different from the price list needs `totalOverrideReason`. An `advancePaid` becomes the first payment entry. ' +
+    'Duplicates: the same passport, country and visa type with an open application is refused (`DUPLICATE_OPEN_APPLICATION`). The same passport and country inside the last 90 days (a setting) needs `confirmDuplicate`, a note that stays on the file (`DUPLICATE_RECENT_APPLICATION`). A rejected application never blocks a new one.',
+    ACCESS.edit, {
+      body: visaApp.createApplication,
+      bodyExample: { name: 'Rahim Ahmed', phone: '+8801712556340', email: 'rahim@example.com', passportNumber: 'BR0912345', countryId: ID_COUNTRY, visaTypeId: ID_TYPE, discountAmount: 1000, advancePaid: 4000, paymentMethod: 'Cash', vendorList: [{ name: 'Visa Vendor', service: 'visa', price: 7000 }] },
+      success: ok(201, 'Visa application created.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND', 'VISA_TYPE_NOT_FOUND', 'PARTNER_NOT_FOUND'], 409: ['DUPLICATE_OPEN_APPLICATION', 'DUPLICATE_RECENT_APPLICATION'], 422: ['VALIDATION_ERROR', 'OVERRIDE_REASON_REQUIRED', 'DISCOUNT_TOO_HIGH', 'PAYMENTS_EXCEED_NET', 'CATALOG_PAUSED', 'PARTNER_REQUIRED', 'PARTNER_NOT_APPROVED', 'INVALID_STAFF', 'CURRENCY_NOT_ENABLED'] }
+    }),
+  V('get', '/api/visa/applications/{id}', 'getVisaApplication', 'One visa application',
+    'The whole file: applicant, passport, price, money, payments, documents (without storage paths), the timeline (newest first), notes and passport handling. An unknown id answers `404`.',
+    ACCESS.view, { params: visaApp.idParam, paramExamples: APP_PARAM, success: ok(200, 'Visa application fetched.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 422: true } }),
+  V('patch', '/api/visa/applications/{id}', 'updateVisaApplication', 'Edit a visa application',
+    'Applicant and passport details, vendor lines, the total, the discount and the assigned staff member (`null` takes it away). Status, country, visa type and payments have their own routes and are ignored here. ' +
+    'Changing the total or the discount recalculates the money, and is refused when the payments already received would be more than the amount to pay.',
+    ACCESS.edit, {
+      params: visaApp.idParam, paramExamples: APP_PARAM, body: visaApp.updateApplication, bodyExample: { assignedStaff: ID_STAFF, discountAmount: 2000 },
+      success: ok(200, 'Visa application updated.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 409: ['DUPLICATE_OPEN_APPLICATION'], 422: ['VALIDATION_ERROR', 'OVERRIDE_REASON_REQUIRED', 'DISCOUNT_TOO_HIGH', 'PAYMENTS_EXCEED_NET', 'INVALID_STAFF'] }
+    }),
+  V('patch', '/api/visa/applications/{id}/status', 'changeVisaApplicationStatus', 'Change the status',
+    'The one place where a status changes. It checks the allowed moves, the wording each move needs (`customerMessage` for `action_required`, `customerReason` for `rejected`, `internalReason` for `cancelled` and for reopening), writes the timeline with the signed-in person, an audit entry, and raises an event. ' +
+    'A finished application (completed, rejected, cancelled) can only be reopened, to `under_review`, by an admin. Every change needs `VISA_UPDATE`; the check sits behind one function so a stricter key can be added later.',
+    ACCESS.update, {
+      params: visaApp.idParam, paramExamples: APP_PARAM, body: visaApp.changeStatus, bodyExample: { status: 'action_required', customerMessage: 'Please send a clearer bank statement.' },
+      success: ok(200, 'Status changed.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 409: ['INVALID_STATUS_CHANGE'], 422: ['VALIDATION_ERROR', 'UNKNOWN_STATUS', 'STATUS_TEXT_REQUIRED'] }
+    }),
+  V('post', '/api/visa/applications/{id}/notes', 'addVisaApplicationNote', 'Add a note',
+    'An `internal` note stays inside. A `customer` note is meant for the applicant and its timeline entry is marked for them.',
+    ACCESS.edit, {
+      params: visaApp.idParam, paramExamples: APP_PARAM, body: visaApp.addNote, bodyExample: { type: 'internal', text: 'Call him tomorrow morning.' },
+      success: ok(201, 'Note added.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 422: true }
+    }),
+
+  // ---- payments
+  V('post', '/api/visa/applications/{id}/payments', 'addVisaPayment', 'Record a payment',
+    'Payments are entered by hand. The server adds the amount to the advance received and recalculates the amount due and the payment status (`Paid`, `Partial`, `Unpaid`). A payment above the amount due is refused.',
+    ACCESS.edit, {
+      params: visaApp.idParam, paramExamples: APP_PARAM, body: visaApp.addPayment, bodyExample: { amount: 3000, method: 'bKash / Nagad', note: 'trx 8F2K91' },
+      success: ok(201, 'Payment recorded.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 422: ['VALIDATION_ERROR', 'PAYMENT_EXCEEDS_DUE'] }
+    }),
+  V('post', '/api/visa/applications/{id}/payments/{paymentId}/void', 'voidVisaPayment', 'Void a payment',
+    'A wrong entry is never deleted: it is voided with a reason, so the history stays. The totals are recalculated without it. Needs `VISA_PAYMENT_VOID`, which an admin can give to staff.',
+    'ADMIN, or STAFF with VISA_PAYMENT_VOID', {
+      params: visaApp.paymentParam, paramExamples: { id: ID_APP, paymentId: ID_PAYMENT }, body: visaApp.voidPayment, bodyExample: { reason: 'Typed the wrong amount.' },
+      success: ok(200, 'Payment voided.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND', 'PAYMENT_NOT_FOUND'], 409: ['PAYMENT_ALREADY_VOIDED'], 422: true }
+    }),
+
+  // ---- documents
+  V('post', '/api/visa/applications/{id}/documents', 'uploadVisaDocument', 'Upload a document',
+    'Form-data with a `file` and a `type` (the checklist item name). The real file type is read from the file\'s own bytes, so a renamed file is refused. Limits come from the settings (10 MB, PDF, JPG, PNG or WEBP, 5 files per item by default). ' +
+    'Name a checklist line with `checklistItemId` to apply its own, lower size limit. The file is stored outside any public folder under a random name.',
+    ACCESS.edit, {
+      params: visaApp.idParam, paramExamples: APP_PARAM,
+      multipart: { zod: visaApp.uploadDocument, files: { file: { description: 'The document. PDF, JPEG, PNG or WEBP.' } }, required: ['file'], example: { type: 'Passport Copy' } },
+      success: ok(201, 'Document uploaded.', VISA_DOCUMENT, VISA_APPLICATION_EXAMPLE.documents[0]),
+      errors: { 400: ['FILE_REQUIRED', 'FILE_TYPE_NOT_ALLOWED', 'FILE_TYPE_MISMATCH'], 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 409: ['TOO_MANY_FILES'], 413: ['FILE_TOO_LARGE'], 422: ['VALIDATION_ERROR', 'CHECKLIST_ITEM_NOT_FOUND'] }
+    }),
+  V('get', '/api/visa/applications/{id}/documents/{docId}/file', 'downloadVisaDocument', 'Download a document',
+    'Streams the stored file `inline`, with `X-Content-Type-Options: nosniff`, a sandboxing `Content-Security-Policy` and `Cache-Control: private, no-store`. Needs both `VISA_VIEW` and `DOCUMENT_VIEW`.',
+    'ADMIN, or STAFF with VISA_VIEW and DOCUMENT_VIEW', { params: visaApp.documentParam, paramExamples: DOC_PARAM, binary: true, errors: { 401: true, 403: true, 404: ['DOCUMENT_NOT_FOUND', 'FILE_MISSING'], 422: true } }),
+  V('patch', '/api/visa/applications/{id}/documents/{docId}', 'reviewVisaDocument', 'Verify or reject a document',
+    'Sets the document to `verified`, `rejected` or back to `pending`. A rejection needs a `reviewNote` written for the applicant. The decision goes on the timeline.',
+    'ADMIN, or STAFF with DOCUMENT_VERIFY', {
+      params: visaApp.documentParam, paramExamples: DOC_PARAM, body: visaApp.reviewDocument, bodyExample: { status: 'rejected', reviewNote: 'The photo is blurry. Please upload a clearer one.' },
+      success: ok(200, 'Document reviewed.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND', 'DOCUMENT_NOT_FOUND'], 422: true }
+    }),
+  V('delete', '/api/visa/applications/{id}/documents/{docId}', 'deleteVisaDocument', 'Delete a document', 'Removes the record and the stored file.',
+    ACCESS.edit, { params: visaApp.documentParam, paramExamples: DOC_PARAM, success: ok(200, 'Document deleted.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND', 'DOCUMENT_NOT_FOUND'], 422: true } }),
+
+  // ---- passport
+  V('patch', '/api/visa/applications/{id}/passport', 'updateVisaPassport', 'Update passport handling',
+    'One call for every passport step, applied in this order: the submission method (`online`, `office` or `pickup`, limited by what the visa type allows), the pickup request, the pickup staff member (`null` removes them), then the passport status with its `details`. ' +
+    'Online files need no physical passport. Every step goes on the timeline.',
+    'ADMIN, or STAFF with PASSPORT_UPDATE', {
+      params: visaApp.idParam, paramExamples: APP_PARAM, body: visaApp.updatePassport, bodyExample: { passportStatus: 'received_at_office', details: { receivedDate: '2026-10-01', receivedBy: 'Ahmed Karim', remarks: 'Two blank pages.' } },
+      success: ok(200, 'Passport updated.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE), errors: { 401: true, 403: true, 404: ['APPLICATION_NOT_FOUND'], 409: ['INVALID_PASSPORT_CHANGE'], 422: ['VALIDATION_ERROR', 'INVALID_STAFF'] }
+    }),
+
+  // =============================================================== SETTINGS (internal)
+  { method: 'get', path: '/api/settings', tag: 'Settings', id: 'listSettings', summary: 'All settings',
+    description: 'Every setting with its saved value, or its default until one is saved: `visa.documents` (upload limits), `visa.retention` (days to keep documents), `visa.duplicateWindowDays` and `currencies`.',
+    access: 'ADMIN, or STAFF with SETTINGS_VIEW', needsAuth: true, success: ok(200, 'Settings fetched.', obj({}), SETTINGS_EXAMPLE), errors: { 401: true, 403: true } },
+  { method: 'put', path: '/api/settings/{key}', tag: 'Settings', id: 'saveSetting', summary: 'Change a setting',
+    description: 'Saves the value of one setting (not `currencies`, which has its own routes). The value is checked against the rules of that setting.',
+    access: 'ADMIN', needsAuth: true, params: settingV.keyParam, paramExamples: { key: 'visa.documents' }, body: settingV.saveSetting,
+    bodyExample: { value: { maxSizeMb: 10, allowedTypes: ['pdf', 'jpg', 'png', 'webp'], maxFilesPerItem: 5 } },
+    success: ok(200, 'Setting saved.', obj({ key: str('visa.documents'), value: obj({}) }), { key: 'visa.documents', value: SETTINGS_EXAMPLE['visa.documents'] }), errors: { 401: true, 403: true, 404: ['SETTING_NOT_FOUND'], 422: true } },
+  { method: 'get', path: '/api/settings/currencies', tag: 'Settings', id: 'listCurrencies', summary: 'Currencies and rates',
+    description: 'The currencies a price can use and how many BDT one unit is worth. BDT is the base and always 1. `source` says where a rate came from: `manual`, `api` or `base`.',
+    access: 'ADMIN or STAFF', needsAuth: true, success: ok(200, 'Currencies fetched.', CURRENCIES, CURRENCIES_EXAMPLE), errors: { 401: true, 403: true } },
+  { method: 'put', path: '/api/settings/currencies', tag: 'Settings', id: 'saveCurrencies', summary: 'Save the currencies',
+    description: 'Replaces the list. A rate that differs from the saved one becomes `manual`. BDT must stay in the list.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, body: settingV.saveCurrencies,
+    bodyExample: { items: [{ code: 'BDT', name: 'Bangladeshi Taka', symbol: '৳', rateToBase: 1 }, { code: 'USD', name: 'US Dollar', symbol: '$', rateToBase: 125.5 }] },
+    success: ok(200, 'Currencies saved.', CURRENCIES, CURRENCIES_EXAMPLE), errors: { 401: true, 403: true, 422: true } },
+  { method: 'post', path: '/api/settings/currencies/{code}/refresh', tag: 'Settings', id: 'refreshCurrencyRate', summary: 'Fill the rate from the exchange rate service',
+    description: 'Fetches today\'s rate from the free open.er-api.com service and saves it with `source: "api"`. Staff can still type over it. When the service is down the old rate stays and the answer is `502`.',
+    access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: settingV.currencyParam, paramExamples: { code: 'USD' },
+    success: ok(200, 'Exchange rate refreshed.', CURRENCIES, CURRENCIES_EXAMPLE), errors: { 400: true, 401: true, 403: true, 404: ['CURRENCY_NOT_ENABLED'], 422: true, 502: ['RATE_SERVICE_UNAVAILABLE'] } },
 
   // =============================================================== SYSTEM
   {

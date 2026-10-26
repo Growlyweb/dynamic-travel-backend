@@ -49,7 +49,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
 
     expect(undocumented).toEqual([]);
     expect(phantom).toEqual([]);
-    expect(real.size).toBe(90);
+    expect(real.size).toBe(115);
   });
 
   it('gives every operation a summary, a tag, an id, a success response and explicit access', () => {
@@ -103,8 +103,8 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
         expect({ p, names: documented.map((x) => x.name).sort() }).toEqual({ p, names: inUrl });
         documented.forEach((x) => {
           expect(x.required).toBe(true);
-          // The visa demo module still uses short text ids ("vcn", "va_101"); every other id is a MongoDB ObjectId.
-          if (p.startsWith('/api/visa/')) expect(x.example).toBeTruthy();
+          // Every id is an ObjectId. The other path parameters are words: an applicant type, a setting key, a currency code.
+          if (['applicantType', 'key', 'code'].includes(x.name)) expect(x.example).toBeTruthy();
           else expect(x.example).toMatch(/^[0-9a-f]{24}$/);
         });
       });
