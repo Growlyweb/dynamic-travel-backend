@@ -68,6 +68,7 @@ const invalid = (message, field) => ({ codes: ['VALIDATION_ERROR'], message, fie
 
 // ---- dashboard numbers, visa module and settings (internal users)
 const INT = (example) => ({ type: 'integer', example });
+const exRole = (over = {}) => ({ id: '6ac0a5f0eebc510147c67300', name: 'Accountant', description: 'Keeps the books and the vendor accounts.', permissions: ['REPORTS_VIEW', 'ACCOUNTS_EDIT', 'VENDOR_VIEW', 'VENDOR_MANAGE'], templateKey: 'accountant', system: false, userCount: 2, createdAt: NOW, updatedAt: NOW, ...over });
 const NUM = (example) => ({ type: 'number', example });
 const TREND_POINT = obj({ label: str('Jan'), value: INT(60) }, ['label', 'value']);
 
@@ -383,9 +384,9 @@ const endpoints = [
   {
     method: 'get', path: '/api/auth/me', tag: 'Auth: sign in and session', id: 'getMe',
     summary: 'Who am I',
-    description: 'Returns the signed-in account with its role and permissions, plus the partner record for agencies. Use it to guard screens and menus. Never includes a password hash.',
+    description: 'Returns the signed-in account, the `access` it has (its roles, the permissions that result from them, and whether it is an admin who passes every check), plus the partner record for agencies. Use `access` to guard screens and menus. Never includes a password hash.',
     access: 'Signed in (any role)', needsAuth: true,
-    success: ok(200, 'Current user profile.', obj({ user: ref('User'), partner: ref('Partner') }, ['user']), { user: exUser() }),
+    success: ok(200, 'Current user profile.', obj({ user: ref('User'), access: obj({ roles: arrayOf(obj({ id: str('6ac0a5f0eebc510147c67300'), name: str('Accountant'), system: bool(false) })), permissions: arrayOf(str('ACCOUNTS_EDIT')), isAdmin: bool(false) }), partner: ref('Partner') }, ['user']), { user: exUser(), access: { roles: [{ id: '6ac0a5f0eebc510147c67300', name: 'Accountant', system: false }], permissions: ['REPORTS_VIEW', 'ACCOUNTS_EDIT'], isAdmin: false } }),
     errors: { 401: true, 403: ['ACCOUNT_NOT_ACTIVE'] }
   },
 
@@ -481,12 +482,62 @@ const endpoints = [
   // =============================================================== ADMIN: USERS
   {
     method: 'get', path: '/api/admin/rbac', tag: 'Admin: users', id: 'getRolesAndPermissions',
-    summary: 'Roles and permissions catalog', description: 'The roles and permissions defined in `config/rbac.json`, with each role\'s flags. Use it to fill role and permission pickers so screens never drift from the rules.',
+    summary: 'Roles and permissions catalog', description: 'The permissions defined in `config/rbac.json`, plus the role templates (what is ticked by default and what is suggested), the permissions that need another permission, the sensitive ones, and how to group them on screen. Use it to fill role and permission pickers so screens never drift from the rules.',
     access: 'ADMIN', needsAuth: true,
     success: ok(200, 'Roles and permissions fetched.', ref('RbacCatalog'), {
       roles: [{ code: 'STAFF', label: 'Staff', description: 'Internal team member.', selfRegister: false, invitable: true, bypassPermissions: false, assignablePermissions: true }],
-      permissions: [{ code: 'VISA_VIEW', description: 'See visa applications' }]
+      permissions: [{ code: 'VISA_VIEW', description: 'See visa applications' }],
+      templates: [{ key: 'accountant', label: 'Accountant', description: 'Keeps the books and the vendor accounts.', defaults: ['REPORTS_VIEW', 'ACCOUNTS_EDIT'], optional: ['ACCOUNTS_VOID'] }],
+      dependencies: { ACCOUNTS_EDIT: ['REPORTS_VIEW'] },
+      sensitive: { ACCOUNTS_VOID: 'Voids receipts and payments and cancels sales, which changes the books.' },
+      groups: [{ key: 'accounts', label: 'Accounts', permissions: ['REPORTS_VIEW', 'ACCOUNTS_EDIT', 'ACCOUNTS_VOID'] }]
     }), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'get', path: '/api/admin/roles', tag: 'Admin: users', id: 'listRoles',
+    summary: 'List roles', description: 'Every role with how many people hold it. The built-in "No access yet" role comes first.',
+    access: 'ADMIN', needsAuth: true,
+    success: ok(200, 'Roles fetched.', arrayOf(ref('Role')), [exRole()]), errors: { 401: true, 403: true }
+  },
+  {
+    method: 'post', path: '/api/admin/roles', tag: 'Admin: users', id: 'createRole',
+    summary: 'Create a role',
+    description: 'Send a `templateKey` to start from its default permissions, or send `permissions` yourself (they win over the template). A permission that needs another one (for example an edit permission needs its view permission) gets it added, so the answer can hold more than you sent. Names are unique without regard to case.',
+    access: 'ADMIN', needsAuth: true, body: user.createRole, bodyExample: { name: 'Senior accountant', templateKey: 'accountant', permissions: ['REPORTS_VIEW', 'ACCOUNTS_EDIT', 'ACCOUNTS_VOID', 'VENDOR_VIEW', 'VENDOR_MANAGE'] },
+    success: ok(201, 'Role created.', ref('Role'), exRole({ name: 'Senior accountant', userCount: 0 })), errors: { 401: true, 403: true, 409: ['ROLE_NAME_TAKEN'], 422: true }
+  },
+  {
+    method: 'get', path: '/api/admin/roles/{id}', tag: 'Admin: users', id: 'getRole',
+    summary: 'Get a role', description: 'One role with its permissions and how many people hold it.',
+    access: 'ADMIN', needsAuth: true, params: user.idParam,
+    success: ok(200, 'Role fetched.', ref('Role'), exRole()), errors: { 401: true, 403: true, 404: ['ROLE_NOT_FOUND'], 422: true }
+  },
+  {
+    method: 'patch', path: '/api/admin/roles/{id}', tag: 'Admin: users', id: 'updateRole',
+    summary: 'Change a role',
+    description: 'Change the name, the description or the permissions. It works on the next request of everyone who holds the role. The built-in role cannot be changed (`ROLE_LOCKED`). The audit log keeps the permissions before and after.',
+    access: 'ADMIN', needsAuth: true, params: user.idParam, body: user.updateRoleDefinition, bodyExample: { permissions: ['REPORTS_VIEW', 'ACCOUNTS_EDIT', 'ACCOUNTS_VOID'] },
+    success: ok(200, 'Role updated.', ref('Role'), exRole({ permissions: ['REPORTS_VIEW', 'ACCOUNTS_EDIT', 'ACCOUNTS_VOID'] })), errors: { 401: true, 403: true, 404: ['ROLE_NOT_FOUND'], 409: ['ROLE_LOCKED', 'ROLE_NAME_TAKEN'], 422: true }
+  },
+  {
+    method: 'delete', path: '/api/admin/roles/{id}', tag: 'Admin: users', id: 'deleteRole',
+    summary: 'Delete a role', description: 'Only a role that nobody holds. Otherwise `ROLE_IN_USE` says how many people to move first. The built-in role cannot be deleted.',
+    access: 'ADMIN', needsAuth: true, params: user.idParam,
+    success: ok(200, 'Role deleted.'), errors: { 401: true, 403: true, 404: ['ROLE_NOT_FOUND'], 409: ['ROLE_LOCKED', 'ROLE_IN_USE'], 422: true }
+  },
+  {
+    method: 'patch', path: '/api/admin/users/{id}/roles', tag: 'Admin: users', id: 'updateUserRoles',
+    summary: 'Set the roles of a staff member',
+    description: 'Replaces the roles of a STAFF account with the ones you send (at least one). The person may do what all their roles allow together. You cannot change your own roles. The change, with the permissions it added and removed, is written to the audit log.',
+    access: 'ADMIN', needsAuth: true, params: user.idParam, body: user.assignRoles, bodyExample: { roleIds: ['6ac0a5f0eebc510147c67300'] },
+    success: ok(200, 'Roles updated.', ref('User'), exUser({ role: 'STAFF', roles: [{ _id: '6ac0a5f0eebc510147c67300', name: 'Accountant', system: false }] })), errors: { 401: true, 403: true, 404: true, 400: ['ROLE_NOT_FOUND'], 409: ['SELF_CHANGE', 'PERMISSIONS_NOT_ASSIGNABLE'], 422: true }
+  },
+  {
+    method: 'post', path: '/api/admin/users/{id}/permissions-to-role', tag: 'Admin: users', id: 'convertPermissionsToRole',
+    summary: 'Turn the old individual permissions into a role',
+    description: 'For accounts made before roles existed. Makes a role from the person\'s own permission list, gives it to them and empties the old list.',
+    access: 'ADMIN', needsAuth: true, params: user.idParam, body: user.convertPermissions, bodyExample: { name: 'Front desk' },
+    success: ok(201, 'The individual permissions are now a role.', obj({ user: ref('User'), role: ref('Role') }), { user: exUser({ role: 'STAFF' }), role: exRole({ name: 'Front desk' }) }), errors: { 401: true, 403: true, 404: true, 409: ['SELF_CHANGE', 'NOTHING_TO_CONVERT', 'ROLE_NAME_TAKEN'], 422: true }
   },
   {
     method: 'get', path: '/api/admin/profile', tag: 'Admin: users', id: 'getAdminProfile',

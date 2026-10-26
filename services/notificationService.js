@@ -38,7 +38,7 @@ const visaStatusCode = ({ email, name }, code) =>
   });
 
 const staffInvite = (user, token) => {
-  const link = `${env.appUrl}/setup-account?token=${token}`;
+  const link = `${env.adminAppUrl}/dashboard/setup-account?token=${token}`;
   return mailer.send({
     to: user.email,
     toName: user.name,

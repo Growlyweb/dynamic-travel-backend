@@ -37,7 +37,7 @@ const toSchema = (zodSchema) => {
 
 const PARAM_DOCS = {
   page: 'Page number, starting at 1. Default 1.',
-  limit: 'Items per page. Default 10, maximum 100.',
+  limit: 'Items per page. Default 10, maximum 500.',
   search: 'Free text. Matched literally (special characters are escaped), case-insensitive.',
   role: 'Only accounts with this role.',
   status: 'Only accounts with this status.',
@@ -125,6 +125,7 @@ const exUser = (over = {}) => ({
   phone: '+8801712345678',
   role: 'B2C',
   permissions: [],
+  roles: [],
   status: 'ACTIVE',
   emailVerified: true,
   phoneVerified: false,
@@ -316,7 +317,8 @@ const schemas = {
       email: str('rahim@example.com', { description: 'Absent for a phone-only Firebase account.' }),
       phone: str('+8801712345678'),
       role: { type: 'string', enum: ROLES_ENUM, example: 'B2C' },
-      permissions: { type: 'array', items: str('VISA_VIEW'), description: 'Only STAFF accounts carry permissions.' },
+      permissions: { type: 'array', items: str('VISA_VIEW'), description: 'The old per-person list. New access comes from `roles`. Only STAFF accounts carry permissions.' },
+      roles: { type: 'array', items: obj({ _id: str('6ac0a5f0eebc510147c67300'), name: str('Accountant'), system: bool(false) }), description: 'The roles of a STAFF account. What the person may do is these roles together with the old list.' },
       status: { type: 'string', enum: STATUS_ENUM, example: 'ACTIVE' },
       emailVerified: bool(true),
       phoneVerified: bool(false),
@@ -550,8 +552,26 @@ const schemas = {
         assignablePermissions: bool(true)
       })
     ),
-    permissions: arrayOf(obj({ code: str('VISA_VIEW'), description: str('See visa applications') }))
-  })
+    permissions: arrayOf(obj({ code: str('VISA_VIEW'), description: str('See visa applications') })),
+    templates: arrayOf(obj({ key: str('accountant'), label: str('Accountant'), description: str('Keeps the books and the vendor accounts.'), defaults: arrayOf(str('ACCOUNTS_EDIT')), optional: arrayOf(str('ACCOUNTS_VOID')) })),
+    dependencies: { type: 'object', additionalProperties: arrayOf(str('VISA_VIEW')), description: 'A permission and what it needs. Saving a role adds the needed ones.', example: { VISA_EDIT: ['VISA_VIEW'] } },
+    sensitive: { type: 'object', additionalProperties: str(), description: 'Permissions that deserve a warning, with the reason.', example: { ACCOUNTS_VOID: 'Voids receipts and payments and cancels sales, which changes the books.' } },
+    groups: arrayOf(obj({ key: str('visa'), label: str('Visa'), permissions: arrayOf(str('VISA_VIEW')) }))
+  }),
+  Role: obj(
+    {
+      id: str('6ac0a5f0eebc510147c67300'),
+      name: str('Accountant'),
+      description: str('Keeps the books and the vendor accounts.'),
+      permissions: arrayOf(str('ACCOUNTS_EDIT')),
+      templateKey: str('accountant', { description: 'The template it was started from. Null for a role made from nothing.' }),
+      system: { type: 'boolean', example: false, description: 'A built-in role. It cannot be changed or deleted.' },
+      userCount: { type: 'integer', example: 2 },
+      createdAt: str(NOW, { format: 'date-time' }),
+      updatedAt: str(NOW, { format: 'date-time' })
+    },
+    ['id', 'name', 'permissions', 'system']
+  )
 };
 
 const errorExample = (message, code, errors) => ({ success: false, message, ...(code ? { code } : {}), ...(errors ? { errors } : {}) });

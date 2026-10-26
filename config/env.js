@@ -44,8 +44,8 @@ const requireSecret = (name, testFallback) => {
   return value;
 };
 
-const clientUrls = list(process.env.CLIENT_URL, ['http://localhost:5173']);
-const adminUrls = list(process.env.ADMIN_URL, ['http://localhost:5174']);
+const clientUrls = list(process.env.CLIENT_URL, ['http://localhost:5174']);
+const adminUrls = list(process.env.ADMIN_URL, ['http://localhost:5173']);
 
 const mailConfig = {
   serviceId: process.env.EMAILJS_SERVICE_ID || '',
@@ -108,7 +108,9 @@ const env = {
   clientUrls,
   adminUrls,
   corsOrigins: [...clientUrls, ...adminUrls],
-  // Base URL the frontend uses in emailed links (staff account setup).
+  // Where emailed staff links open: the admin dashboard, never the public website.
+  adminAppUrl: (process.env.ADMIN_APP_URL || adminUrls[0]).replace(/\/$/, ''),
+  // The public website, used in links sent to customers.
   appUrl: (process.env.APP_URL || clientUrls[0]).replace(/\/$/, ''),
   // The link an applicant gets in a visa message ({{trackingUrl}}). The application number is added at the end.
   visaTrackingUrl: (process.env.VISA_TRACKING_URL || `${(process.env.APP_URL || clientUrls[0]).replace(/\/$/, '')}/visa-status`).replace(/\/$/, ''),
