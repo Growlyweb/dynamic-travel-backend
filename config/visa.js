@@ -28,6 +28,12 @@ const PASSPORT_STATUSES = Object.freeze([
   'not_required'
 ]);
 
+// The words a message template can use. The server fills them in from the application.
+const MESSAGE_VARIABLES = Object.freeze(['applicantName', 'applicationNumber', 'country', 'visaType', 'status', 'trackingUrl']);
+const MESSAGE_CHANNELS = Object.freeze(['sms', 'email']);
+const MESSAGE_STATUSES = Object.freeze(['pending', 'sent', 'failed']);
+const QUOTATION_STATUSES = Object.freeze(['draft', 'sent', 'accepted', 'rejected']);
+
 // What each action needs besides the new status. The message goes to the applicant, the reason stays inside.
 const REQUIRED_TEXT = Object.freeze({
   action_required: 'customerMessage',
@@ -77,5 +83,9 @@ module.exports = {
   PAYMENT_METHODS,
   PASSPORT_SUBMISSION_METHODS,
   PASSPORT_STATUSES,
+  MESSAGE_VARIABLES,
+  MESSAGE_CHANNELS,
+  MESSAGE_STATUSES,
+  QUOTATION_STATUSES,
   REQUIRED_TEXT
 };

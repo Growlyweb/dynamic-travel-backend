@@ -110,6 +110,8 @@ const env = {
   corsOrigins: [...clientUrls, ...adminUrls],
   // Base URL the frontend uses in emailed links (staff account setup).
   appUrl: (process.env.APP_URL || clientUrls[0]).replace(/\/$/, ''),
+  // The link an applicant gets in a visa message ({{trackingUrl}}). The application number is added at the end.
+  visaTrackingUrl: (process.env.VISA_TRACKING_URL || `${(process.env.APP_URL || clientUrls[0]).replace(/\/$/, '')}/visa-status`).replace(/\/$/, ''),
 
   cookie: {
     // Use 'none' only when the frontend and API sit on different sites; it requires HTTPS.
