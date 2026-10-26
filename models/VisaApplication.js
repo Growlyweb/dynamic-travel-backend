@@ -182,7 +182,9 @@ const visaApplicationSchema = new mongoose.Schema(
     // Why a second application for the same passport and country was allowed (see the duplicate rule).
     duplicateNote: { type: String, trim: true, maxlength: 300, default: '' },
     createdBy: { type: ObjectId, ref: 'User' },
-    statusChangedAt: { type: Date, default: Date.now }
+    statusChangedAt: { type: Date, default: Date.now },
+    // Every status the file has been in and when. The public status check uses it to date each stage.
+    statusHistory: { type: [new mongoose.Schema({ status: String, at: { type: Date, default: Date.now } }, { _id: false })], default: [] }
   },
   { timestamps: true, toJSON: { transform: (doc, ret) => { delete ret.__v; return ret; } } }
 );

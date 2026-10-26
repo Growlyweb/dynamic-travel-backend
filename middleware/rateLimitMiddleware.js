@@ -93,7 +93,24 @@ const refreshLimiter = makeLimiter({
   message: 'Too many token refresh requests. Please try again later.'
 });
 
+// Public visa status check. Asking for a code: 3 per 15 minutes per IP + email. Checking a code: 10 per 15 minutes per IP + email
+// (each code also locks after 5 wrong tries).
+const visaStatusCodeLimiter = makeLimiter({
+  windowMs: MINUTES_15,
+  limit: 3,
+  byEmail: true,
+  message: 'Too many requests. Please wait 15 minutes and try again.'
+});
+const visaStatusVerifyLimiter = makeLimiter({
+  windowMs: MINUTES_15,
+  limit: 10,
+  byEmail: true,
+  message: 'Too many attempts. Please wait 15 minutes and try again.'
+});
+
 module.exports = {
+  visaStatusCodeLimiter,
+  visaStatusVerifyLimiter,
   apiLimiter,
   loginLimiter,
   firebaseLimiter,

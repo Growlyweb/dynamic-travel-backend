@@ -88,6 +88,7 @@ const changeStatus = async (user, id, body, context = {}) => {
 
   application.status = to.key;
   application.statusChangedAt = now;
+  application.statusHistory.push({ status: to.key, at: now });
   application.actionRequired = to.key === 'action_required' ? { message: customerMessage, requestedAt: now, requestedBy: actor.name } : null;
   if (to.key === 'rejected') application.rejection = { internalReason, customerReason, decidedAt: now };
   if (reopening) application.rejection = null;
