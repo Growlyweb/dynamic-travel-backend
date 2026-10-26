@@ -153,11 +153,23 @@ const syncPayment = async (applicationId, paymentId) => {
   );
 };
 
+// Events of one application run one after the other. A payment that is posted while the sale is still being posted would be
+// refused as "more than the due", and the receipt would be lost.
+const queues = new Map();
+const inOrder = (applicationId, task) => {
+  const key = String(applicationId);
+  const run = (queues.get(key) || Promise.resolve()).catch(() => {}).then(task);
+  queues.set(key, run);
+  const clear = () => queues.get(key) === run && queues.delete(key);
+  run.then(clear, clear);
+  return run;
+};
+
 const register = () => {
-  events.on(events.EVENTS.VISA_APPLICATION_CREATED, ({ applicationId }) => syncApplication(applicationId));
-  events.on(events.EVENTS.VISA_APPLICATION_UPDATED, ({ applicationId }) => syncApplication(applicationId));
-  events.on(events.EVENTS.VISA_PAYMENT_RECORDED, ({ applicationId, paymentId }) => syncPayment(applicationId, paymentId));
-  events.on(events.EVENTS.VISA_PAYMENT_VOIDED, ({ applicationId, paymentId }) => syncPayment(applicationId, paymentId));
+  events.on(events.EVENTS.VISA_APPLICATION_CREATED, ({ applicationId }) => inOrder(applicationId, () => syncApplication(applicationId)));
+  events.on(events.EVENTS.VISA_APPLICATION_UPDATED, ({ applicationId }) => inOrder(applicationId, () => syncApplication(applicationId)));
+  events.on(events.EVENTS.VISA_PAYMENT_RECORDED, ({ applicationId, paymentId }) => inOrder(applicationId, () => syncPayment(applicationId, paymentId)));
+  events.on(events.EVENTS.VISA_PAYMENT_VOIDED, ({ applicationId, paymentId }) => inOrder(applicationId, () => syncPayment(applicationId, paymentId)));
 };
 
 module.exports = { register, syncApplication, syncPayment };

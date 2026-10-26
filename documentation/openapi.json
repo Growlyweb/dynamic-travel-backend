@@ -328,6 +328,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "PENDING",
                       "emailVerified": false,
                       "phoneVerified": false,
@@ -540,6 +541,7 @@
                       "phone": "+8801811111111",
                       "role": "B2B",
                       "permissions": [],
+                      "roles": [],
                       "status": "PENDING",
                       "emailVerified": false,
                       "phoneVerified": false,
@@ -750,6 +752,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -1120,6 +1123,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -1280,6 +1284,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -1466,6 +1471,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -1592,7 +1598,7 @@
         ],
         "summary": "Who am I",
         "operationId": "getMe",
-        "description": "Returns the signed-in account with its role and permissions, plus the partner record for agencies. Use it to guard screens and menus. Never includes a password hash.\n\n**Access:** Signed in (any role).",
+        "description": "Returns the signed-in account, the `access` it has (its roles, the permissions that result from them, and whether it is an admin who passes every check), plus the partner record for agencies. Use `access` to guard screens and menus. Never includes a password hash.\n\n**Access:** Signed in (any role).",
         "security": [
           {
             "bearerAuth": []
@@ -1620,6 +1626,42 @@
                         "user": {
                           "$ref": "#/components/schemas/User"
                         },
+                        "access": {
+                          "type": "object",
+                          "properties": {
+                            "roles": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string",
+                                    "example": "6ac0a5f0eebc510147c67300"
+                                  },
+                                  "name": {
+                                    "type": "string",
+                                    "example": "Accountant"
+                                  },
+                                  "system": {
+                                    "type": "boolean",
+                                    "example": false
+                                  }
+                                }
+                              }
+                            },
+                            "permissions": {
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "example": "ACCOUNTS_EDIT"
+                              }
+                            },
+                            "isAdmin": {
+                              "type": "boolean",
+                              "example": false
+                            }
+                          }
+                        },
                         "partner": {
                           "$ref": "#/components/schemas/Partner"
                         }
@@ -1645,6 +1687,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -1652,6 +1695,20 @@
                       "lastLoginAt": "2026-10-03T06:51:28.261Z",
                       "createdAt": "2026-10-03T06:51:28.261Z",
                       "updatedAt": "2026-10-03T06:51:28.261Z"
+                    },
+                    "access": {
+                      "roles": [
+                        {
+                          "id": "6ac0a5f0eebc510147c67300",
+                          "name": "Accountant",
+                          "system": false
+                        }
+                      ],
+                      "permissions": [
+                        "REPORTS_VIEW",
+                        "ACCOUNTS_EDIT"
+                      ],
+                      "isAdmin": false
                     }
                   }
                 }
@@ -2353,6 +2410,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -2453,6 +2511,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -2866,6 +2925,7 @@
                       "phone": "+8801712345678",
                       "role": "B2B",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -3002,6 +3062,7 @@
                       "phone": "+8801712345678",
                       "role": "B2B",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -3101,7 +3162,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -3450,6 +3511,7 @@
                         "B2B_VIEW",
                         "DOCUMENT_VERIFY"
                       ],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -3549,6 +3611,7 @@
                       "phone": "+8801712345678",
                       "role": "STAFF",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -3649,6 +3712,7 @@
                       "phone": "+8801712345678",
                       "role": "ADMIN",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -3749,6 +3813,7 @@
                       "phone": "+8801712345678",
                       "role": "ADMIN",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -3802,7 +3867,7 @@
         ],
         "summary": "Roles and permissions catalog",
         "operationId": "getRolesAndPermissions",
-        "description": "The roles and permissions defined in `config/rbac.json`, with each role's flags. Use it to fill role and permission pickers so screens never drift from the rules.\n\n**Access:** ADMIN.",
+        "description": "The permissions defined in `config/rbac.json`, plus the role templates (what is ticked by default and what is suggested), the permissions that need another permission, the sensitive ones, and how to group them on screen. Use it to fill role and permission pickers so screens never drift from the rules.\n\n**Access:** ADMIN.",
         "security": [
           {
             "bearerAuth": []
@@ -3853,6 +3918,39 @@
                         "code": "VISA_VIEW",
                         "description": "See visa applications"
                       }
+                    ],
+                    "templates": [
+                      {
+                        "key": "accountant",
+                        "label": "Accountant",
+                        "description": "Keeps the books and the vendor accounts.",
+                        "defaults": [
+                          "REPORTS_VIEW",
+                          "ACCOUNTS_EDIT"
+                        ],
+                        "optional": [
+                          "ACCOUNTS_VOID"
+                        ]
+                      }
+                    ],
+                    "dependencies": {
+                      "ACCOUNTS_EDIT": [
+                        "REPORTS_VIEW"
+                      ]
+                    },
+                    "sensitive": {
+                      "ACCOUNTS_VOID": "Voids receipts and payments and cancels sales, which changes the books."
+                    },
+                    "groups": [
+                      {
+                        "key": "accounts",
+                        "label": "Accounts",
+                        "permissions": [
+                          "REPORTS_VIEW",
+                          "ACCOUNTS_EDIT",
+                          "ACCOUNTS_VOID"
+                        ]
+                      }
                     ]
                   }
                 }
@@ -3864,6 +3962,718 @@
           },
           "403": {
             "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      }
+    },
+    "/api/admin/roles": {
+      "get": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "List roles",
+        "operationId": "listRoles",
+        "description": "Every role with how many people hold it. The built-in \"No access yet\" role comes first.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Roles fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Roles fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Role"
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Roles fetched.",
+                  "data": [
+                    {
+                      "id": "6ac0a5f0eebc510147c67300",
+                      "name": "Accountant",
+                      "description": "Keeps the books and the vendor accounts.",
+                      "permissions": [
+                        "REPORTS_VIEW",
+                        "ACCOUNTS_EDIT",
+                        "VENDOR_VIEW",
+                        "VENDOR_MANAGE"
+                      ],
+                      "templateKey": "accountant",
+                      "system": false,
+                      "userCount": 2,
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Create a role",
+        "operationId": "createRole",
+        "description": "Send a `templateKey` to start from its default permissions, or send `permissions` yourself (they win over the template). A permission that needs another one (for example an edit permission needs its view permission) gets it added, so the answer can hold more than you sent. Names are unique without regard to case.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "templateKey": {
+                    "type": "string",
+                    "enum": [
+                      "accountant",
+                      "visa_officer",
+                      "operations_manager",
+                      "viewer",
+                      "no_access"
+                    ]
+                  },
+                  "permissions": {
+                    "maxItems": 34,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "VISA_VIEW",
+                        "VISA_EDIT",
+                        "VISA_UPDATE",
+                        "VISA_PAYMENT_VOID",
+                        "TOURS_VIEW",
+                        "TOURS_EDIT",
+                        "TOUR_MANAGE",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "B2C_VIEW",
+                        "MEMBERSHIPS_VIEW",
+                        "MEMBERSHIPS_EDIT",
+                        "DOCUMENTS_VIEW",
+                        "DOCUMENTS_MANAGE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "REPORTS_VIEW",
+                        "ACCOUNTS_EDIT",
+                        "ACCOUNTS_VOID",
+                        "ACCOUNTS_LOCK",
+                        "ACCOUNTS_JOURNAL",
+                        "VENDOR_VIEW",
+                        "VENDOR_MANAGE",
+                        "REPORT_VIEW",
+                        "USERS_VIEW",
+                        "USERS_EDIT",
+                        "USER_VIEW",
+                        "USER_MANAGE",
+                        "STAFF_CREATE",
+                        "PASSPORT_VIEW",
+                        "PASSPORT_UPDATE",
+                        "MEMBERSHIP_MANAGE",
+                        "FLIGHT_INQUIRY_MANAGE",
+                        "SETTINGS_VIEW"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "Senior accountant",
+                "templateKey": "accountant",
+                "permissions": [
+                  "REPORTS_VIEW",
+                  "ACCOUNTS_EDIT",
+                  "ACCOUNTS_VOID",
+                  "VENDOR_VIEW",
+                  "VENDOR_MANAGE"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Role created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Role created."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Role"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Role created.",
+                  "data": {
+                    "id": "6ac0a5f0eebc510147c67300",
+                    "name": "Senior accountant",
+                    "description": "Keeps the books and the vendor accounts.",
+                    "permissions": [
+                      "REPORTS_VIEW",
+                      "ACCOUNTS_EDIT",
+                      "VENDOR_VIEW",
+                      "VENDOR_MANAGE"
+                    ],
+                    "templateKey": "accountant",
+                    "system": false,
+                    "userCount": 0,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `ROLE_NAME_TAKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "ROLE_NAME_TAKEN",
+                  "code": "ROLE_NAME_TAKEN"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/roles/{id}": {
+      "get": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Get a role",
+        "operationId": "getRole",
+        "description": "One role with its permissions and how many people hold it.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Role fetched."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Role"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Role fetched.",
+                  "data": {
+                    "id": "6ac0a5f0eebc510147c67300",
+                    "name": "Accountant",
+                    "description": "Keeps the books and the vendor accounts.",
+                    "permissions": [
+                      "REPORTS_VIEW",
+                      "ACCOUNTS_EDIT",
+                      "VENDOR_VIEW",
+                      "VENDOR_MANAGE"
+                    ],
+                    "templateKey": "accountant",
+                    "system": false,
+                    "userCount": 2,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `ROLE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "ROLE_NOT_FOUND",
+                  "code": "ROLE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Change a role",
+        "operationId": "updateRole",
+        "description": "Change the name, the description or the permissions. It works on the next request of everyone who holds the role. The built-in role cannot be changed (`ROLE_LOCKED`). The audit log keeps the permissions before and after.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 300
+                  },
+                  "templateKey": {
+                    "nullable": true,
+                    "type": "string",
+                    "enum": [
+                      "accountant",
+                      "visa_officer",
+                      "operations_manager",
+                      "viewer",
+                      "no_access"
+                    ]
+                  },
+                  "permissions": {
+                    "maxItems": 34,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "VISA_VIEW",
+                        "VISA_EDIT",
+                        "VISA_UPDATE",
+                        "VISA_PAYMENT_VOID",
+                        "TOURS_VIEW",
+                        "TOURS_EDIT",
+                        "TOUR_MANAGE",
+                        "B2B_VIEW",
+                        "B2B_MANAGE",
+                        "B2C_VIEW",
+                        "MEMBERSHIPS_VIEW",
+                        "MEMBERSHIPS_EDIT",
+                        "DOCUMENTS_VIEW",
+                        "DOCUMENTS_MANAGE",
+                        "DOCUMENT_VIEW",
+                        "DOCUMENT_VERIFY",
+                        "REPORTS_VIEW",
+                        "ACCOUNTS_EDIT",
+                        "ACCOUNTS_VOID",
+                        "ACCOUNTS_LOCK",
+                        "ACCOUNTS_JOURNAL",
+                        "VENDOR_VIEW",
+                        "VENDOR_MANAGE",
+                        "REPORT_VIEW",
+                        "USERS_VIEW",
+                        "USERS_EDIT",
+                        "USER_VIEW",
+                        "USER_MANAGE",
+                        "STAFF_CREATE",
+                        "PASSPORT_VIEW",
+                        "PASSPORT_UPDATE",
+                        "MEMBERSHIP_MANAGE",
+                        "FLIGHT_INQUIRY_MANAGE",
+                        "SETTINGS_VIEW"
+                      ]
+                    }
+                  }
+                }
+              },
+              "example": {
+                "permissions": [
+                  "REPORTS_VIEW",
+                  "ACCOUNTS_EDIT",
+                  "ACCOUNTS_VOID"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Role updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Role updated."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/Role"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Role updated.",
+                  "data": {
+                    "id": "6ac0a5f0eebc510147c67300",
+                    "name": "Accountant",
+                    "description": "Keeps the books and the vendor accounts.",
+                    "permissions": [
+                      "REPORTS_VIEW",
+                      "ACCOUNTS_EDIT",
+                      "ACCOUNTS_VOID"
+                    ],
+                    "templateKey": "accountant",
+                    "system": false,
+                    "userCount": 2,
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `ROLE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "ROLE_NOT_FOUND",
+                  "code": "ROLE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `ROLE_LOCKED`, `ROLE_NAME_TAKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The role of B2B and B2C accounts cannot be changed.",
+                  "code": "ROLE_LOCKED"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Delete a role",
+        "operationId": "deleteRole",
+        "description": "Only a role that nobody holds. Otherwise `ROLE_IN_USE` says how many people to move first. The built-in role cannot be deleted.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Role deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Role deleted."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Role deleted."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `ROLE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "ROLE_NOT_FOUND",
+                  "code": "ROLE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `ROLE_LOCKED`, `ROLE_IN_USE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The role of B2B and B2C accounts cannot be changed.",
+                  "code": "ROLE_LOCKED"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
           }
         }
       }
@@ -3913,7 +4723,7 @@
                     "example": "Str0ng!Pass"
                   },
                   "permissions": {
-                    "maxItems": 32,
+                    "maxItems": 34,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -3937,6 +4747,8 @@
                         "REPORTS_VIEW",
                         "ACCOUNTS_EDIT",
                         "ACCOUNTS_VOID",
+                        "ACCOUNTS_LOCK",
+                        "ACCOUNTS_JOURNAL",
                         "VENDOR_VIEW",
                         "VENDOR_MANAGE",
                         "REPORT_VIEW",
@@ -3951,6 +4763,15 @@
                         "FLIGHT_INQUIRY_MANAGE",
                         "SETTINGS_VIEW"
                       ]
+                    }
+                  },
+                  "roleIds": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{24}$"
                     }
                   }
                 },
@@ -4020,6 +4841,7 @@
                         "DOCUMENT_VIEW",
                         "DOCUMENT_VERIFY"
                       ],
+                      "roles": [],
                       "status": "PENDING",
                       "emailVerified": false,
                       "phoneVerified": false,
@@ -4095,7 +4917,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -4193,6 +5015,7 @@
                       "phone": "+8801712345678",
                       "role": "B2C",
                       "permissions": [],
+                      "roles": [],
                       "status": "ACTIVE",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -4298,7 +5121,7 @@
                     ]
                   },
                   "permissions": {
-                    "maxItems": 32,
+                    "maxItems": 34,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -4322,6 +5145,8 @@
                         "REPORTS_VIEW",
                         "ACCOUNTS_EDIT",
                         "ACCOUNTS_VOID",
+                        "ACCOUNTS_LOCK",
+                        "ACCOUNTS_JOURNAL",
                         "VENDOR_VIEW",
                         "VENDOR_MANAGE",
                         "REPORT_VIEW",
@@ -4336,6 +5161,15 @@
                         "FLIGHT_INQUIRY_MANAGE",
                         "SETTINGS_VIEW"
                       ]
+                    }
+                  },
+                  "roleIds": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{24}$"
                     }
                   }
                 },
@@ -4398,6 +5232,7 @@
                       "phone": "+8801712345678",
                       "role": "ADMIN",
                       "permissions": [],
+                      "roles": [],
                       "status": "PENDING",
                       "emailVerified": false,
                       "phoneVerified": false,
@@ -4505,6 +5340,7 @@
                     "phone": "+8801712345678",
                     "role": "B2C",
                     "permissions": [],
+                    "roles": [],
                     "status": "ACTIVE",
                     "emailVerified": true,
                     "phoneVerified": false,
@@ -4635,6 +5471,7 @@
                     "phone": "+8801788888888",
                     "role": "B2C",
                     "permissions": [],
+                    "roles": [],
                     "status": "ACTIVE",
                     "emailVerified": true,
                     "phoneVerified": false,
@@ -4818,7 +5655,7 @@
                 "type": "object",
                 "properties": {
                   "permissions": {
-                    "maxItems": 32,
+                    "maxItems": 34,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -4842,6 +5679,8 @@
                         "REPORTS_VIEW",
                         "ACCOUNTS_EDIT",
                         "ACCOUNTS_VOID",
+                        "ACCOUNTS_LOCK",
+                        "ACCOUNTS_JOURNAL",
                         "VENDOR_VIEW",
                         "VENDOR_MANAGE",
                         "REPORT_VIEW",
@@ -4910,6 +5749,7 @@
                       "B2B_VIEW",
                       "DOCUMENT_VIEW"
                     ],
+                    "roles": [],
                     "status": "ACTIVE",
                     "emailVerified": true,
                     "phoneVerified": false,
@@ -4961,6 +5801,181 @@
                     {
                       "field": "body.permissions",
                       "message": "The value of permissions is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/permissions-to-role": {
+      "post": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Turn the old individual permissions into a role",
+        "operationId": "convertPermissionsToRole",
+        "description": "For accounts made before roles existed. Makes a role from the person's own permission list, gives it to them and empties the old list.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 60
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 300
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "example": {
+                "name": "Front desk"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "The individual permissions are now a role.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "The individual permissions are now a role."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "$ref": "#/components/schemas/User"
+                        },
+                        "role": {
+                          "$ref": "#/components/schemas/Role"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "The individual permissions are now a role.",
+                  "data": {
+                    "user": {
+                      "_id": "6ac0a5f0eebc510147c6722a",
+                      "name": "Rahim Uddin",
+                      "email": "rahim@example.com",
+                      "phone": "+8801712345678",
+                      "role": "STAFF",
+                      "permissions": [],
+                      "roles": [],
+                      "status": "ACTIVE",
+                      "emailVerified": true,
+                      "phoneVerified": false,
+                      "authProvider": "local",
+                      "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    },
+                    "role": {
+                      "id": "6ac0a5f0eebc510147c67300",
+                      "name": "Front desk",
+                      "description": "Keeps the books and the vendor accounts.",
+                      "permissions": [
+                        "REPORTS_VIEW",
+                        "ACCOUNTS_EDIT",
+                        "VENDOR_VIEW",
+                        "VENDOR_MANAGE"
+                      ],
+                      "templateKey": "accountant",
+                      "system": false,
+                      "userCount": 2,
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `NOTHING_TO_CONVERT`, `ROLE_NAME_TAKEN`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "You cannot change your own status.",
+                  "code": "SELF_CHANGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of name is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.name",
+                      "message": "The value of name is not valid."
                     }
                   ]
                 }
@@ -5041,6 +6056,7 @@
                       "phone": "+8801712345678",
                       "role": "STAFF",
                       "permissions": [],
+                      "roles": [],
                       "status": "PENDING",
                       "emailVerified": true,
                       "phoneVerified": false,
@@ -5132,7 +6148,7 @@
                     ]
                   },
                   "permissions": {
-                    "maxItems": 32,
+                    "maxItems": 34,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -5156,6 +6172,8 @@
                         "REPORTS_VIEW",
                         "ACCOUNTS_EDIT",
                         "ACCOUNTS_VOID",
+                        "ACCOUNTS_LOCK",
+                        "ACCOUNTS_JOURNAL",
                         "VENDOR_VIEW",
                         "VENDOR_MANAGE",
                         "REPORT_VIEW",
@@ -5223,6 +6241,7 @@
                     "permissions": [
                       "REPORT_VIEW"
                     ],
+                    "roles": [],
                     "status": "ACTIVE",
                     "emailVerified": true,
                     "phoneVerified": false,
@@ -5274,6 +6293,178 @@
                     {
                       "field": "body.role",
                       "message": "The value of role is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/admin/users/{id}/roles": {
+      "patch": {
+        "tags": [
+          "Admin: users"
+        ],
+        "summary": "Set the roles of a staff member",
+        "operationId": "updateUserRoles",
+        "description": "Replaces the roles of a STAFF account with the ones you send (at least one). The person may do what all their roles allow together. You cannot change your own roles. The change, with the permissions it added and removed, is written to the audit log.\n\n**Access:** ADMIN.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "64b7f0f0f0f0f0f0f0f0f0f0"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "roleIds": {
+                    "minItems": 1,
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[0-9a-fA-F]{24}$"
+                    }
+                  }
+                },
+                "required": [
+                  "roleIds"
+                ]
+              },
+              "example": {
+                "roleIds": [
+                  "6ac0a5f0eebc510147c67300"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Roles updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Roles updated."
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/User"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Roles updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c6722a",
+                    "name": "Rahim Uddin",
+                    "email": "rahim@example.com",
+                    "phone": "+8801712345678",
+                    "role": "STAFF",
+                    "permissions": [],
+                    "roles": [
+                      {
+                        "_id": "6ac0a5f0eebc510147c67300",
+                        "name": "Accountant",
+                        "system": false
+                      }
+                    ],
+                    "status": "ACTIVE",
+                    "emailVerified": true,
+                    "phoneVerified": false,
+                    "authProvider": "local",
+                    "lastLoginAt": "2026-10-03T06:51:28.261Z",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request. Possible error codes: `ROLE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "ROLE_NOT_FOUND",
+                  "code": "ROLE_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `SELF_CHANGE`, `PERMISSIONS_NOT_ASSIGNABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "You cannot change your own status.",
+                  "code": "SELF_CHANGE"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of roleIds is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.roleIds",
+                      "message": "The value of roleIds is not valid."
                     }
                   ]
                 }
@@ -5376,6 +6567,7 @@
                     "phone": "+8801712345678",
                     "role": "B2C",
                     "permissions": [],
+                    "roles": [],
                     "status": "SUSPENDED",
                     "emailVerified": true,
                     "phoneVerified": false,
@@ -5465,7 +6657,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -6223,7 +7415,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -6506,7 +7698,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -6978,7 +8170,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -8193,7 +9385,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -11042,7 +12234,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -19108,7 +20300,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -20910,7 +22102,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -21755,7 +22947,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -23338,7 +24530,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -23408,6 +24600,30 @@
                           "isSystem": {
                             "type": "boolean",
                             "example": true
+                          },
+                          "transitions": {
+                            "type": "array",
+                            "nullable": true,
+                            "items": {
+                              "type": "string",
+                              "example": "processing"
+                            },
+                            "description": "The statuses this one can move to. Null for a status staff added (it can be entered from any open status)."
+                          },
+                          "final": {
+                            "type": "boolean",
+                            "example": false
+                          },
+                          "reopenTarget": {
+                            "type": "boolean",
+                            "example": false,
+                            "description": "A finished application can only be reopened to this status."
+                          },
+                          "requiredText": {
+                            "type": "string",
+                            "nullable": true,
+                            "example": "customerMessage",
+                            "description": "The text a move to this status needs: customerMessage, customerReason or internalReason."
                           }
                         }
                       }
@@ -23440,7 +24656,17 @@
                       "displayOrder": 2,
                       "isSystem": true,
                       "createdAt": "2026-10-03T06:51:28.261Z",
-                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                      "updatedAt": "2026-10-03T06:51:28.261Z",
+                      "transitions": [
+                        "action_required",
+                        "documents_completed",
+                        "processing",
+                        "rejected",
+                        "cancelled"
+                      ],
+                      "final": false,
+                      "reopenTarget": false,
+                      "requiredText": null
                     }
                   ],
                   "meta": {
@@ -23617,6 +24843,30 @@
                         "isSystem": {
                           "type": "boolean",
                           "example": true
+                        },
+                        "transitions": {
+                          "type": "array",
+                          "nullable": true,
+                          "items": {
+                            "type": "string",
+                            "example": "processing"
+                          },
+                          "description": "The statuses this one can move to. Null for a status staff added (it can be entered from any open status)."
+                        },
+                        "final": {
+                          "type": "boolean",
+                          "example": false
+                        },
+                        "reopenTarget": {
+                          "type": "boolean",
+                          "example": false,
+                          "description": "A finished application can only be reopened to this status."
+                        },
+                        "requiredText": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "customerMessage",
+                          "description": "The text a move to this status needs: customerMessage, customerReason or internalReason."
                         }
                       }
                     }
@@ -23640,7 +24890,17 @@
                     "displayOrder": 2,
                     "isSystem": false,
                     "createdAt": "2026-10-03T06:51:28.261Z",
-                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "transitions": [
+                      "action_required",
+                      "documents_completed",
+                      "processing",
+                      "rejected",
+                      "cancelled"
+                    ],
+                    "final": false,
+                    "reopenTarget": false,
+                    "requiredText": null
                   }
                 }
               }
@@ -23824,6 +25084,30 @@
                         "isSystem": {
                           "type": "boolean",
                           "example": true
+                        },
+                        "transitions": {
+                          "type": "array",
+                          "nullable": true,
+                          "items": {
+                            "type": "string",
+                            "example": "processing"
+                          },
+                          "description": "The statuses this one can move to. Null for a status staff added (it can be entered from any open status)."
+                        },
+                        "final": {
+                          "type": "boolean",
+                          "example": false
+                        },
+                        "reopenTarget": {
+                          "type": "boolean",
+                          "example": false,
+                          "description": "A finished application can only be reopened to this status."
+                        },
+                        "requiredText": {
+                          "type": "string",
+                          "nullable": true,
+                          "example": "customerMessage",
+                          "description": "The text a move to this status needs: customerMessage, customerReason or internalReason."
                         }
                       }
                     }
@@ -23847,7 +25131,17 @@
                     "displayOrder": 2,
                     "isSystem": true,
                     "createdAt": "2026-10-03T06:51:28.261Z",
-                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                    "updatedAt": "2026-10-03T06:51:28.261Z",
+                    "transitions": [
+                      "action_required",
+                      "documents_completed",
+                      "processing",
+                      "rejected",
+                      "cancelled"
+                    ],
+                    "final": false,
+                    "reopenTarget": false,
+                    "requiredText": null
                   }
                 }
               }
@@ -24081,7 +25375,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -24796,7 +26090,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -26792,49 +28086,32 @@
         }
       }
     },
-    "/api/visa/public/status/code": {
-      "post": {
+    "/api/visa/public/status/link/{ref}": {
+      "get": {
         "tags": [
           "Visa: public status"
         ],
-        "summary": "Ask for a status code",
-        "operationId": "requestVisaStatusCode",
-        "description": "The applicant enters the application number and the email address used on the application. A six digit code is emailed to that address (valid 10 minutes, works once). **The answer is always the same**, whether or not the application exists, so nobody can find out which numbers are real. Rate limit: 3 requests per 15 minutes per IP + email.\n\n**Access:** Public.",
+        "summary": "Is this a real status link",
+        "operationId": "checkVisaStatusLink",
+        "description": "The storefront page opens `/visa-status/<application number>`. `valid` says whether that number exists. Rate limit: 30 requests per 15 minutes per IP.\n\n**Access:** Public.",
         "security": [],
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "type": "object",
-                "properties": {
-                  "reference": {
-                    "type": "string",
-                    "minLength": 5,
-                    "maxLength": 40
-                  },
-                  "email": {
-                    "type": "string",
-                    "maxLength": 254,
-                    "format": "email",
-                    "example": "rahim@example.com"
-                  }
-                },
-                "required": [
-                  "reference",
-                  "email"
-                ]
-              },
-              "example": {
-                "reference": "VISA-2026-000001",
-                "email": "rahim@example.com"
-              }
-            }
+        "parameters": [
+          {
+            "name": "ref",
+            "in": "path",
+            "required": true,
+            "description": "ref",
+            "schema": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 40
+            },
+            "example": "VISA-2026-000001"
           }
-        },
+        ],
         "responses": {
           "200": {
-            "description": "If the details match an application, a code has been sent to its email address.",
+            "description": "Link checked.",
             "content": {
               "application/json": {
                 "schema": {
@@ -26846,15 +28123,125 @@
                     },
                     "message": {
                       "type": "string",
-                      "example": "If the details match an application, a code has been sent to its email address."
+                      "example": "Link checked."
                     },
                     "data": {
                       "type": "object",
                       "properties": {
-                        "sent": {
+                        "valid": {
                           "type": "boolean",
                           "example": true
-                        },
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Link checked.",
+                  "data": {
+                    "valid": true
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of ref is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.ref",
+                      "message": "The value of ref is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/TooManyRequests"
+          }
+        }
+      }
+    },
+    "/api/visa/public/status/otp": {
+      "post": {
+        "tags": [
+          "Visa: public status"
+        ],
+        "summary": "Ask for a status code",
+        "operationId": "requestVisaStatusCode",
+        "description": "The applicant enters the passport number and the phone number. Both must match the application, otherwise `NOT_FOUND`. A six digit code is emailed to the address on the application (valid 10 minutes, works once). There is no SMS provider yet, so an application with no email answers `SERVICE_UNAVAILABLE`. A link locked after five wrong codes answers `TOO_MANY_ATTEMPTS` with `retryAfter` seconds. Rate limit: 5 requests per 15 minutes per IP + application.\n\n**Access:** Public.",
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ref": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 40
+                  },
+                  "passportNo": {
+                    "type": "string",
+                    "minLength": 5,
+                    "maxLength": 20
+                  },
+                  "phone": {
+                    "type": "string",
+                    "minLength": 7,
+                    "maxLength": 20
+                  }
+                },
+                "required": [
+                  "ref",
+                  "passportNo",
+                  "phone"
+                ]
+              },
+              "example": {
+                "ref": "VISA-2026-000001",
+                "passportNo": "BR1234567",
+                "phone": "+8801712345671"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A code has been sent.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "A code has been sent."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
                         "resendInSeconds": {
                           "type": "integer",
                           "example": 60
@@ -26869,11 +28256,25 @@
                 },
                 "example": {
                   "success": true,
-                  "message": "If the details match an application, a code has been sent to its email address.",
+                  "message": "A code has been sent.",
                   "data": {
-                    "sent": true,
                     "resendInSeconds": 60
                   }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "NOT_FOUND",
+                  "code": "NOT_FOUND"
                 }
               }
             }
@@ -26887,12 +28288,12 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "The value of reference is not valid.",
+                  "message": "The value of ref is not valid.",
                   "code": "VALIDATION_ERROR",
                   "errors": [
                     {
-                      "field": "body.reference",
-                      "message": "The value of reference is not valid."
+                      "field": "body.ref",
+                      "message": "The value of ref is not valid."
                     }
                   ]
                 }
@@ -26900,7 +28301,34 @@
             }
           },
           "429": {
-            "$ref": "#/components/responses/TooManyRequests"
+            "description": "Rate limited. Possible error codes: `TOO_MANY_ATTEMPTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "TOO_MANY_ATTEMPTS",
+                  "code": "TOO_MANY_ATTEMPTS"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Service unavailable. Possible error codes: `SERVICE_UNAVAILABLE`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "SERVICE_UNAVAILABLE",
+                  "code": "SERVICE_UNAVAILABLE"
+                }
+              }
+            }
           }
         }
       }
@@ -26912,7 +28340,7 @@
         ],
         "summary": "Check the code and see the status",
         "operationId": "verifyVisaStatusCode",
-        "description": "Returns the status in the simple stages of the storefront page, the timeline entries meant for the applicant, documents with the note meant for them, and a short token (`accessToken`, 15 minutes) for refreshing. It never contains money, staff names, internal notes, contact data or passport numbers. The code locks after 5 wrong tries. Every failure answers `INVALID_CODE`. Rate limit: 10 requests per 15 minutes per IP + email.\n\n**Access:** Public.",
+        "description": "Returns the status in the shape of the storefront page: the status key, the applicant with the passport and phone masked, the country, visa type, entry type, application number, dates and the time each stage was reached. It never contains money, staff names or internal notes. Five wrong codes lock the link for 15 minutes. Rate limit: 10 requests per 15 minutes per IP + application.\n\n**Access:** Public.",
         "security": [],
         "requestBody": {
           "required": true,
@@ -26921,32 +28349,38 @@
               "schema": {
                 "type": "object",
                 "properties": {
-                  "reference": {
+                  "ref": {
                     "type": "string",
                     "minLength": 5,
                     "maxLength": 40
                   },
-                  "email": {
+                  "passportNo": {
                     "type": "string",
-                    "maxLength": 254,
-                    "format": "email",
-                    "example": "rahim@example.com"
+                    "minLength": 5,
+                    "maxLength": 20
                   },
-                  "code": {
+                  "phone": {
+                    "type": "string",
+                    "minLength": 7,
+                    "maxLength": 20
+                  },
+                  "otp": {
                     "type": "string",
                     "pattern": "^\\d{6}$"
                   }
                 },
                 "required": [
-                  "reference",
-                  "email",
-                  "code"
+                  "ref",
+                  "passportNo",
+                  "phone",
+                  "otp"
                 ]
               },
               "example": {
-                "reference": "VISA-2026-000001",
-                "email": "rahim@example.com",
-                "code": "123456"
+                "ref": "VISA-2026-000001",
+                "passportNo": "BR1234567",
+                "phone": "+8801712345671",
+                "otp": "123456"
               }
             }
           }
@@ -26970,10 +28404,6 @@
                     "data": {
                       "type": "object",
                       "properties": {
-                        "applicationNo": {
-                          "type": "string",
-                          "example": "VISA-2026-000001"
-                        },
                         "status": {
                           "type": "string",
                           "example": "processing",
@@ -26988,26 +28418,32 @@
                             "cancelled"
                           ]
                         },
-                        "statusLabel": {
-                          "type": "string",
-                          "example": "Under Review"
-                        },
-                        "message": {
-                          "type": "string",
-                          "example": "Your application is being reviewed by our team."
-                        },
                         "applicant": {
                           "type": "object",
                           "properties": {
                             "fullName": {
                               "type": "string",
                               "example": "Rahim Ahmed"
+                            },
+                            "passportNo": {
+                              "type": "string",
+                              "example": "BR****67",
+                              "description": "Masked."
+                            },
+                            "phone": {
+                              "type": "string",
+                              "example": "+880*******71",
+                              "description": "Masked."
                             }
                           }
                         },
                         "country": {
                           "type": "object",
                           "properties": {
+                            "code": {
+                              "type": "string",
+                              "example": "cn"
+                            },
                             "name": {
                               "type": "string",
                               "example": "China"
@@ -27020,74 +28456,27 @@
                         },
                         "entryType": {
                           "type": "string",
-                          "example": "single"
+                          "example": "Single Entry"
+                        },
+                        "applicationNo": {
+                          "type": "string",
+                          "example": "VISA-2026-000001"
                         },
                         "submittedAt": {
                           "type": "string",
                           "example": "2026-10-03T06:51:28.261Z"
                         },
+                        "processingTime": {
+                          "type": "string",
+                          "example": "7-10 working days"
+                        },
                         "events": {
                           "type": "object",
-                          "properties": {}
-                        },
-                        "stages": {
-                          "type": "array",
-                          "items": {
+                          "additionalProperties": {
                             "type": "string",
-                            "example": "submitted"
-                          }
-                        },
-                        "actionRequired": {
-                          "type": "object",
-                          "nullable": true
-                        },
-                        "rejectionReason": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "documents": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "example": "Passport"
-                              },
-                              "status": {
-                                "type": "string",
-                                "example": "verified"
-                              },
-                              "reviewNote": {
-                                "type": "string",
-                                "example": ""
-                              }
-                            }
-                          }
-                        },
-                        "passport": {
-                          "type": "object",
-                          "nullable": true
-                        },
-                        "timeline": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "at": {
-                                "type": "string",
-                                "example": "2026-10-03T06:51:28.261Z"
-                              },
-                              "event": {
-                                "type": "string",
-                                "example": "Under Review"
-                              },
-                              "message": {
-                                "type": "string",
-                                "example": "Your application is being reviewed by our team."
-                              }
-                            }
-                          }
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "description": "When each stage was reached, keyed by stage. A stop (docs_required, rejected, cancelled) is keyed by its own name."
                         }
                       }
                     }
@@ -27101,56 +28490,32 @@
                   "success": true,
                   "message": "Visa status fetched.",
                   "data": {
-                    "applicationNo": "VISA-2026-000001",
                     "status": "processing",
-                    "statusLabel": "Under Review",
-                    "message": "Your application is being reviewed by our team.",
                     "applicant": {
-                      "fullName": "Rahim Ahmed"
+                      "fullName": "Rahim Ahmed",
+                      "passportNo": "BR****67",
+                      "phone": "+880*******71"
                     },
                     "country": {
+                      "code": "cn",
                       "name": "China"
                     },
                     "visaType": "Tourist Visa",
-                    "entryType": "single",
+                    "entryType": "Single Entry",
+                    "applicationNo": "VISA-2026-000001",
                     "submittedAt": "2026-10-03T06:51:28.261Z",
+                    "processingTime": "7-10 working days",
                     "events": {
                       "submitted": "2026-10-03T06:51:28.261Z",
                       "processing": "2026-10-03T06:51:28.261Z"
-                    },
-                    "stages": [
-                      "submitted",
-                      "processing",
-                      "approved",
-                      "ready",
-                      "collected"
-                    ],
-                    "actionRequired": null,
-                    "rejectionReason": null,
-                    "documents": [
-                      {
-                        "type": "Passport",
-                        "status": "verified",
-                        "reviewNote": ""
-                      }
-                    ],
-                    "passport": null,
-                    "timeline": [
-                      {
-                        "at": "2026-10-03T06:51:28.261Z",
-                        "event": "Under Review",
-                        "message": "Your application is being reviewed by our team."
-                      }
-                    ],
-                    "accessToken": "eyJhbGciOi...",
-                    "expiresInSeconds": 900
+                    }
                   }
                 }
               }
             }
           },
           "400": {
-            "description": "Bad request. Possible error codes: `INVALID_CODE`.",
+            "description": "Bad request. Possible error codes: `INVALID_OTP`, `OTP_EXPIRED`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -27158,8 +28523,23 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "Invalid or expired code.",
-                  "code": "INVALID_CODE"
+                  "message": "INVALID_OTP",
+                  "code": "INVALID_OTP"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "NOT_FOUND",
+                  "code": "NOT_FOUND"
                 }
               }
             }
@@ -27173,12 +28553,12 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "The value of reference is not valid.",
+                  "message": "The value of ref is not valid.",
                   "code": "VALIDATION_ERROR",
                   "errors": [
                     {
-                      "field": "body.reference",
-                      "message": "The value of reference is not valid."
+                      "field": "body.ref",
+                      "message": "The value of ref is not valid."
                     }
                   ]
                 }
@@ -27186,232 +28566,7 @@
             }
           },
           "429": {
-            "$ref": "#/components/responses/TooManyRequests"
-          }
-        }
-      }
-    },
-    "/api/visa/public/status/{reference}": {
-      "get": {
-        "tags": [
-          "Visa: public status"
-        ],
-        "summary": "Refresh the status with the token",
-        "operationId": "getVisaStatus",
-        "description": "The same view as the check, without a new code. Send the token from the check in the header `X-Status-Token`. It opens that one application only and is not accepted on any other route.\n\n**Access:** Public, with the status token.",
-        "security": [],
-        "parameters": [
-          {
-            "name": "reference",
-            "in": "path",
-            "required": true,
-            "description": "reference",
-            "schema": {
-              "type": "string",
-              "minLength": 5,
-              "maxLength": 40
-            },
-            "example": "VISA-2026-000001"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "Visa status fetched.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
-                      "type": "string",
-                      "example": "Visa status fetched."
-                    },
-                    "data": {
-                      "type": "object",
-                      "properties": {
-                        "applicationNo": {
-                          "type": "string",
-                          "example": "VISA-2026-000001"
-                        },
-                        "status": {
-                          "type": "string",
-                          "example": "processing",
-                          "enum": [
-                            "submitted",
-                            "processing",
-                            "approved",
-                            "ready",
-                            "collected",
-                            "docs_required",
-                            "rejected",
-                            "cancelled"
-                          ]
-                        },
-                        "statusLabel": {
-                          "type": "string",
-                          "example": "Under Review"
-                        },
-                        "message": {
-                          "type": "string",
-                          "example": "Your application is being reviewed by our team."
-                        },
-                        "applicant": {
-                          "type": "object",
-                          "properties": {
-                            "fullName": {
-                              "type": "string",
-                              "example": "Rahim Ahmed"
-                            }
-                          }
-                        },
-                        "country": {
-                          "type": "object",
-                          "properties": {
-                            "name": {
-                              "type": "string",
-                              "example": "China"
-                            }
-                          }
-                        },
-                        "visaType": {
-                          "type": "string",
-                          "example": "Tourist Visa"
-                        },
-                        "entryType": {
-                          "type": "string",
-                          "example": "single"
-                        },
-                        "submittedAt": {
-                          "type": "string",
-                          "example": "2026-10-03T06:51:28.261Z"
-                        },
-                        "events": {
-                          "type": "object",
-                          "properties": {}
-                        },
-                        "stages": {
-                          "type": "array",
-                          "items": {
-                            "type": "string",
-                            "example": "submitted"
-                          }
-                        },
-                        "actionRequired": {
-                          "type": "object",
-                          "nullable": true
-                        },
-                        "rejectionReason": {
-                          "type": "string",
-                          "nullable": true
-                        },
-                        "documents": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "type": {
-                                "type": "string",
-                                "example": "Passport"
-                              },
-                              "status": {
-                                "type": "string",
-                                "example": "verified"
-                              },
-                              "reviewNote": {
-                                "type": "string",
-                                "example": ""
-                              }
-                            }
-                          }
-                        },
-                        "passport": {
-                          "type": "object",
-                          "nullable": true
-                        },
-                        "timeline": {
-                          "type": "array",
-                          "items": {
-                            "type": "object",
-                            "properties": {
-                              "at": {
-                                "type": "string",
-                                "example": "2026-10-03T06:51:28.261Z"
-                              },
-                              "event": {
-                                "type": "string",
-                                "example": "Under Review"
-                              },
-                              "message": {
-                                "type": "string",
-                                "example": "Your application is being reviewed by our team."
-                              }
-                            }
-                          }
-                        }
-                      }
-                    }
-                  },
-                  "required": [
-                    "success",
-                    "message"
-                  ]
-                },
-                "example": {
-                  "success": true,
-                  "message": "Visa status fetched.",
-                  "data": {
-                    "applicationNo": "VISA-2026-000001",
-                    "status": "processing",
-                    "statusLabel": "Under Review",
-                    "message": "Your application is being reviewed by our team.",
-                    "applicant": {
-                      "fullName": "Rahim Ahmed"
-                    },
-                    "country": {
-                      "name": "China"
-                    },
-                    "visaType": "Tourist Visa",
-                    "entryType": "single",
-                    "submittedAt": "2026-10-03T06:51:28.261Z",
-                    "events": {
-                      "submitted": "2026-10-03T06:51:28.261Z",
-                      "processing": "2026-10-03T06:51:28.261Z"
-                    },
-                    "stages": [
-                      "submitted",
-                      "processing",
-                      "approved",
-                      "ready",
-                      "collected"
-                    ],
-                    "actionRequired": null,
-                    "rejectionReason": null,
-                    "documents": [
-                      {
-                        "type": "Passport",
-                        "status": "verified",
-                        "reviewNote": ""
-                      }
-                    ],
-                    "passport": null,
-                    "timeline": [
-                      {
-                        "at": "2026-10-03T06:51:28.261Z",
-                        "event": "Under Review",
-                        "message": "Your application is being reviewed by our team."
-                      }
-                    ]
-                  }
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Not signed in. Possible error codes: `TOKEN_INVALID`.",
+            "description": "Rate limited. Possible error codes: `TOO_MANY_ATTEMPTS`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -27419,29 +28574,8 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "Invalid or expired token.",
-                  "code": "TOKEN_INVALID"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "The input failed validation. `errors` lists each bad field.",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                },
-                "example": {
-                  "success": false,
-                  "message": "The value of reference is not valid.",
-                  "code": "VALIDATION_ERROR",
-                  "errors": [
-                    {
-                      "field": "params.reference",
-                      "message": "The value of reference is not valid."
-                    }
-                  ]
+                  "message": "TOO_MANY_ATTEMPTS",
+                  "code": "TOO_MANY_ATTEMPTS"
                 }
               }
             }
@@ -28086,7 +29220,7 @@
         ],
         "summary": "Client dues",
         "operationId": "listDues",
-        "description": "Sale files that still owe money, oldest first. `daysOverdue` counts from the due date of the file (7 days for visas, 15 for tours, 3 for air and transport). `meta.totals` adds up every match.\n\n**Access:** ADMIN, or STAFF with REPORTS_VIEW.",
+        "description": "Sale files that still owe money, oldest first. `daysOverdue` counts from the due date of the file (7 days for visas, 15 for tours, 3 for air and transport). `meta.totals` adds up every match. Filter by `type` (B2B or B2C) or search the invoice, client and category.\n\n**Access:** ADMIN, or STAFF with REPORTS_VIEW.",
         "security": [
           {
             "bearerAuth": []
@@ -28108,12 +29242,36 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
             },
             "example": "50"
+          },
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "description": "type",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "B2B",
+                "B2C"
+              ]
+            },
+            "example": "B2B"
           }
         ],
         "responses": {
@@ -29641,7 +30799,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -30597,7 +31755,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -32811,7 +33969,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -33290,7 +34448,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -33993,7 +35151,7 @@
             "name": "limit",
             "in": "query",
             "required": false,
-            "description": "Items per page. Default 10, maximum 100.",
+            "description": "Items per page. Default 10, maximum 500.",
             "schema": {
               "type": "string",
               "pattern": "^\\d+$"
@@ -35064,7 +36222,28 @@
               "type": "string",
               "example": "VISA_VIEW"
             },
-            "description": "Only STAFF accounts carry permissions."
+            "description": "The old per-person list. New access comes from `roles`. Only STAFF accounts carry permissions."
+          },
+          "roles": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "_id": {
+                  "type": "string",
+                  "example": "6ac0a5f0eebc510147c67300"
+                },
+                "name": {
+                  "type": "string",
+                  "example": "Accountant"
+                },
+                "system": {
+                  "type": "boolean",
+                  "example": false
+                }
+              }
+            },
+            "description": "The roles of a STAFF account. What the person may do is these roles together with the old list."
           },
           "status": {
             "type": "string",
@@ -36195,8 +37374,145 @@
                 }
               }
             }
+          },
+          "templates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "example": "accountant"
+                },
+                "label": {
+                  "type": "string",
+                  "example": "Accountant"
+                },
+                "description": {
+                  "type": "string",
+                  "example": "Keeps the books and the vendor accounts."
+                },
+                "defaults": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "example": "ACCOUNTS_EDIT"
+                  }
+                },
+                "optional": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "example": "ACCOUNTS_VOID"
+                  }
+                }
+              }
+            }
+          },
+          "dependencies": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "example": "VISA_VIEW"
+              }
+            },
+            "description": "A permission and what it needs. Saving a role adds the needed ones.",
+            "example": {
+              "VISA_EDIT": [
+                "VISA_VIEW"
+              ]
+            }
+          },
+          "sensitive": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Permissions that deserve a warning, with the reason.",
+            "example": {
+              "ACCOUNTS_VOID": "Voids receipts and payments and cancels sales, which changes the books."
+            }
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "key": {
+                  "type": "string",
+                  "example": "visa"
+                },
+                "label": {
+                  "type": "string",
+                  "example": "Visa"
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "example": "VISA_VIEW"
+                  }
+                }
+              }
+            }
           }
         }
+      },
+      "Role": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "example": "6ac0a5f0eebc510147c67300"
+          },
+          "name": {
+            "type": "string",
+            "example": "Accountant"
+          },
+          "description": {
+            "type": "string",
+            "example": "Keeps the books and the vendor accounts."
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "example": "ACCOUNTS_EDIT"
+            }
+          },
+          "templateKey": {
+            "type": "string",
+            "example": "accountant",
+            "description": "The template it was started from. Null for a role made from nothing."
+          },
+          "system": {
+            "type": "boolean",
+            "example": false,
+            "description": "A built-in role. It cannot be changed or deleted."
+          },
+          "userCount": {
+            "type": "integer",
+            "example": 2
+          },
+          "createdAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "example": "2026-10-03T06:51:28.261Z",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "permissions",
+          "system"
+        ]
       }
     },
     "responses": {

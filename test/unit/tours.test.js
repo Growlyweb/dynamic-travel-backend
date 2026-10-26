@@ -282,7 +282,7 @@ describe('finding tours', () => {
     expect(first.body.data).toHaveLength(2);
     expect(second.body.data).toHaveLength(1);
     expect(first.body.meta).toEqual({ total: 3, page: 1, limit: 2, totalPages: 2 });
-    expect((await request(app).get('/api/tours?limit=5000')).body.meta.limit).toBe(100);
+    expect((await request(app).get('/api/tours?limit=5000')).body.meta.limit).toBe(500);
     expect((await request(app).get('/api/tours')).body.meta.limit).toBe(10);
   });
 
@@ -451,14 +451,14 @@ describe('pagination', () => {
     expect((await page('?search=nothing')).pagination).toEqual({ total: 0, page: 1, limit: 10, totalPages: 1 });
   });
 
-  it('the page size defaults to 10, is capped at 100, and 0 falls back to the default', async () => {
-    await insert(120);
+  it('the page size defaults to 10, is capped at 500, and 0 falls back to the default', async () => {
+    await insert(520);
 
     expect((await page('')).pagination.limit).toBe(10);
     expect((await page('?limit=0')).pagination.limit).toBe(10);
     const big = await page('?limit=1000');
-    expect(big.pagination).toMatchObject({ limit: 100, totalPages: 2 });
-    expect(big.data).toHaveLength(100);
+    expect(big.pagination).toMatchObject({ limit: 500, totalPages: 2 });
+    expect(big.data).toHaveLength(500);
     expect((await page('?page=0')).pagination.page).toBe(1);
   });
 

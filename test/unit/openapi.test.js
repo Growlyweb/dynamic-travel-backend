@@ -104,7 +104,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
         documented.forEach((x) => {
           expect(x.required).toBe(true);
           // Every id is an ObjectId. The other path parameters are words: an applicant type, a setting key, a currency code.
-          if (['applicantType', 'key', 'code', 'reference'].includes(x.name)) expect(x.example).toBeTruthy();
+          if (['applicantType', 'key', 'code', 'reference', 'ref'].includes(x.name)) expect(x.example).toBeTruthy();
           else expect(x.example).toMatch(/^[0-9a-f]{24}$/);
         });
       });

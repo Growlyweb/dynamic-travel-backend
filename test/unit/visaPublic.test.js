@@ -200,7 +200,7 @@ describe('the status view', () => {
     expect(JSON.stringify(rejected)).not.toContain('Forged statement');
 
     const three = await create(admin, catalog);
-    await patch(admin, `/api/visa/applications/${three._id}/status`, { status: 'cancelled' });
+    await patch(admin, `/api/visa/applications/${three._id}/status`, { status: 'cancelled', internalReason: 'The applicant withdrew.' });
     const cancelled = await view(three);
     expect(cancelled.status).toBe('cancelled');
     expect(cancelled.events.cancelled).toBeTruthy();
