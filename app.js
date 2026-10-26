@@ -27,9 +27,14 @@ const dashboardRoutes = require('./routes/dashboardRoutes');
 const visaRoutes = require('./routes/visaRoutes');
 const settingRoutes = require('./routes/settingRoutes');
 const visaMessageService = require('./services/visaMessageService');
+const accountingVisaLink = require('./services/accounting/visaLink');
+const accountRoutes = require('./routes/accountRoutes');
+const vendorRoutes = require('./routes/vendorRoutes');
 
 // Visa messages are made when an application is created or changes status.
 visaMessageService.register();
+// The books follow the visa module: a new application, a payment and a void post their journals.
+accountingVisaLink.register();
 
 const app = express();
 
@@ -100,6 +105,10 @@ app.use('/api/auth', authRoutes);
 // Admin dashboard numbers and the visa module. Internal users only: the guards are inside each router.
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/visa', visaRoutes);
+
+// Accounting: the simple Accounts screens and the vendors behind them. Internal users only.
+app.use('/api/accounts', accountRoutes);
+app.use('/api/vendors', vendorRoutes);
 
 // Platform settings: currencies and their rates, document limits, retention. Internal users only.
 app.use('/api/settings', settingRoutes);

@@ -6,6 +6,7 @@ const app = require('./app');
 const logger = require('./utils/logger');
 const membershipJob = require('./services/membershipJob');
 const visaCatalogService = require('./services/visaCatalogService');
+const { ensureChart } = require('./services/accounting/chart');
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
 
@@ -17,6 +18,8 @@ const start = async () => {
 
   // The 11 visa statuses are part of how the system works, so they exist from the first start. Edited ones are kept.
   await visaCatalogService.ensureSystemStatuses();
+  // The chart of accounts and the five built-in sale categories.
+  await ensureChart();
 
   const server = app.listen(env.port, () => {
     logger.info(`Server running in ${env.nodeEnv} mode on port ${env.port}`);
