@@ -34,6 +34,8 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Phone OTP | Open on purpose (see `ToDo.md`) |
 | Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
 | Membership plans, memberships and reports | Done (see "Membership" below). Prices are the spec's placeholders. |
+| Visa: catalog, applications, payments, documents, passport handling | Done (see "Visa module" below). SMS and quotations are not built yet. |
+| Settings: currencies and exchange rates, document limits, retention | Done (see "Settings" below) |
 | Automated tests | 468 unit and integration (Jest), 130 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
 | Interactive API documentation (Swagger UI) | Done: http://localhost:5000/docs, with "Try it out" on every route |
@@ -47,6 +49,10 @@ npm run setup            # creates .env if missing, and fills the three secrets 
 npm run seed             # creates the first ADMIN from ADMIN_SEED_* (needs MongoDB running)
 npm run seed:tours       # creates the 8 starting tour categories and the Cox's Bazar sample tour (safe to run again)
 npm run seed:membership  # creates the 4 starting membership plans, with placeholder prices (safe to run again)
+npm run seed:all         # every module's starting data (the 11 visa statuses always; demo countries, visa types and sample applications outside production)
+npm run seed:visa        # only the visa module
+npm run seed:clear       # empties what the seeders fill (refuses to run in production without --allow-production)
+npm run seed:reset       # clear, then seed
 npm run seed:data        # DEVELOPMENT ONLY: demo admin, staff, customers and agencies with known passwords (refuses to run in production)
 npm run dev              # http://localhost:5000 (interactive API docs at http://localhost:5000/docs)
 npm run console          # browser test page at http://localhost:5173 (needs the API running)
@@ -252,6 +258,10 @@ Dependencies point downward only: routes -> controllers -> services -> models.
 | `OtpToken` | Hashed one-time codes and link tokens. Single use, TTL expiry, attempt counter. |
 | `RefreshSession` | One row per device. Enables logout, rotation and theft detection. |
 | `AuditLog` | Append-only record of security events. |
+| `Counter` | One row per numbering sequence (`VISA:2026`), bumped atomically, so file numbers never repeat. |
+| `Setting` | Platform settings: currencies, document limits, retention, duplicate window. Defaults live in `services/settingService.js`. |
+| `VisaCountry`, `VisaType`, `VisaChecklist`, `VisaStatusConfig` | The visa catalog. |
+| `VisaApplication` | One visa file with its money, payments, documents, timeline, notes and passport handling embedded. |
 
 ## Registration and sign-in
 
@@ -346,6 +356,25 @@ Run `npm run seed:membership` once to load the four starting plans. **Their pric
 - **For the booking module:** `getActiveMembership(userId)` and `membershipDiscount(membership, type, amount)` in `services/membershipService.js` are built and tested. Nothing applies a discount yet.
 - Every change writes the audit log (`MEMBERSHIP_PLAN_*`, `MEMBERSHIP_*`) with field names or ids, never prices or transaction ids.
 
+## Visa module
+
+Everything lives under `/api/visa` and is for internal users: an admin, or staff with the permission each route names (see the endpoint table). The dashboard talks to it.
+
+- **Catalog.** Countries, visa types with prices and fees, document checklists per country, visa type and applicant type, and statuses. The 11 system statuses and the allowed moves between them are in `config/visaStatuses.json`. A country or visa type that has applications is paused, not deleted.
+- **Applications.** Staff create them. The server numbers each one (`VISA-2026-000001`, restarting every year), copies the price and the exchange rate from the visa type so later price changes never alter an old file, and calculates net, advance, due and the payment status. The browser never sends those.
+- **Duplicates.** Same passport, country and visa type with an open application is refused. The same passport and country inside `visa.duplicateWindowDays` (90) needs a confirmation note. A rejected application never blocks a new one.
+- **Status changes.** One service function (`services/visaStatusService.js`) checks the move and the wording it needs, writes the timeline with the person who did it, writes the audit log and raises an event. Every change needs `VISA_UPDATE` for now. Only an admin can reopen a finished application.
+- **Payments.** Entered by hand. Each entry recalculates the totals. A wrong entry is voided with a reason, never deleted, and voiding needs `VISA_PAYMENT_VOID`, which an admin can give to staff.
+- **Documents.** Uploads are held in memory, the real type is read from the file's own bytes, then the file is stored outside any public folder under a random name (`services/storageService.js`, local disk driver). Downloads need `VISA_VIEW` and `DOCUMENT_VIEW`.
+- **Passports.** Submission method (online, office, pickup), pickup request and staff, and the passport status steps, limited by what the visa type allows.
+- **Events.** `utils/events.js` raises `visa.application.created`, `visa.status.changed`, `visa.payment.recorded` and `visa.payment.voided`. Messages, notifications and accounting will listen to them later.
+
+Not built yet: SMS templates and the message log, quotations, the customer and partner side, and the public status check. Staff send SMS by hand for now.
+
+## Settings
+
+`/api/settings` (internal users). Currencies carry how many BDT one unit is worth, with its source (`manual`, `api` or `base`). `POST /api/settings/currencies/:code/refresh` fills the default rate from the free open.er-api.com service, and staff can type over it. Document limits (`visa.documents`), retention (`visa.retention`, days) and the duplicate window are settings an admin can change, because the client still has to confirm them.
+
 ## Rules worth knowing
 
 **OTPs and links**
@@ -399,6 +428,7 @@ All are read in `config/env.js`.
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
+| `STORAGE_DRIVER` | Where uploaded files are kept. Only `local` exists (the folder in `PRIVATE_STORAGE_DIR`). A cloud driver can be added without changing the visa code. | `local` |
 | `NODE_ENV`, `PORT` | Mode and port | `development`, `5000` |
 | `MONGODB_URI` | Database (required in production) | local MongoDB |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `TOKEN_HASH_SECRET` | Three different secrets | none, required |
@@ -492,6 +522,26 @@ Production never returns stack traces or internal messages.
 | POST | `/api/tours/custom-requests` | B2C only |
 | GET | `/api/tours/custom-requests`, `/api/tours/custom-requests/:id` | B2C (own), ADMIN / `TOUR_MANAGE` staff (all) |
 | PATCH | `/api/tours/custom-requests/:id/status` | ADMIN / `TOUR_MANAGE` staff (any allowed move), B2C (cancel own `NEW` request) |
+
+### Visa (`/api/visa`) and settings (`/api/settings`)
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET | `/api/visa/dashboard`, `/api/visa/staff` | ADMIN, or STAFF with `VISA_VIEW` |
+| GET | `/api/visa/countries`, `/types`, `/statuses`, `/checklists/:countryId/:visaTypeId/:applicantType`, and `/countries/:id`, `/types/:id` | ADMIN, or STAFF with `VISA_VIEW` |
+| POST, PATCH, DELETE, PUT | the same catalog paths | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/visa/applications`, `/api/visa/applications/:id` | ADMIN, or STAFF with `VISA_VIEW` |
+| POST, PATCH | `/api/visa/applications`, `/api/visa/applications/:id`, `/:id/notes`, `/:id/payments` | ADMIN, or STAFF with `VISA_EDIT` |
+| PATCH | `/api/visa/applications/:id/status` | ADMIN, or STAFF with `VISA_UPDATE` |
+| POST | `/api/visa/applications/:id/payments/:paymentId/void` | ADMIN, or STAFF with `VISA_PAYMENT_VOID` |
+| POST, DELETE | `/api/visa/applications/:id/documents`, `/:id/documents/:docId` | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/visa/applications/:id/documents/:docId/file` | ADMIN, or STAFF with `VISA_VIEW` and `DOCUMENT_VIEW` |
+| PATCH | `/api/visa/applications/:id/documents/:docId` | ADMIN, or STAFF with `DOCUMENT_VERIFY` |
+| PATCH | `/api/visa/applications/:id/passport` | ADMIN, or STAFF with `PASSPORT_UPDATE` |
+| GET | `/api/settings/currencies` | ADMIN or STAFF |
+| PUT, POST | `/api/settings/currencies`, `/api/settings/currencies/:code/refresh` | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/settings` | ADMIN, or STAFF with `SETTINGS_VIEW` |
+| PUT | `/api/settings/:key` | ADMIN |
 
 ### Membership (`/api`)
 
