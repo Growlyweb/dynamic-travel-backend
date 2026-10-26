@@ -1,5 +1,6 @@
 // Loads roles and permissions from config/rbac.json and checks the file is well formed.
-// Edit the JSON to add a permission or change what a role may do, then restart the server.
+// Edit the JSON to add a permission, then restart the server. The roles an admin hands to staff are data, made in the
+// dashboard (Role model), starting from the templates in config/roleTemplates.json.
 //
 // The code relies on four role codes existing (ADMIN, STAFF, B2B, B2C): routes, registration and
 // the seed script refer to them by name. Everything else (labels, who can be invited, who bypasses
@@ -69,7 +70,8 @@ const build = (config) => {
 
     // ADMIN-like roles pass every permission check.
     bypassesPermissions: (role) => Boolean(config.roles[role] && config.roles[role].bypassPermissions),
-    // STAFF-like roles carry a permission list that an admin edits.
+    // STAFF-like roles get their permissions from the roles an admin gives them (see services/roleService.js and
+    // config/roleTemplates.json), plus the old per-person list on accounts made before roles existed.
     canHavePermissions: (role) => Boolean(config.roles[role] && config.roles[role].assignablePermissions),
 
     // Plain shape for the admin UI (GET /api/admin/rbac).
