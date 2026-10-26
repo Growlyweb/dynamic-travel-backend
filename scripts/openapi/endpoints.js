@@ -122,11 +122,14 @@ const VISA_CHECKLIST_EXAMPLE = {
 const VISA_STATUS = obj({
   _id: str(ID_STATUS), key: str('under_review'), displayName: str('Under Review'), customerMessage: str('Your application is being reviewed by our team.'),
   internalDescription: str('A staff member is checking the application and documents.'), category: str('in_progress', { enum: ['in_progress', 'action_required', 'success', 'failed', 'cancelled'] }),
-  active: bool(true), displayOrder: INT(2), isSystem: bool(true)
+  active: bool(true), displayOrder: INT(2), isSystem: bool(true),
+  transitions: { type: 'array', nullable: true, items: str('processing'), description: 'The statuses this one can move to. Null for a status staff added (it can be entered from any open status).' },
+  final: bool(false), reopenTarget: { type: 'boolean', example: false, description: 'A finished application can only be reopened to this status.' }, requiredText: { type: 'string', nullable: true, example: 'customerMessage', description: 'The text a move to this status needs: customerMessage, customerReason or internalReason.' }
 });
 const VISA_STATUS_EXAMPLE = {
   _id: ID_STATUS, key: 'under_review', displayName: 'Under Review', customerMessage: 'Your application is being reviewed by our team.',
-  internalDescription: 'A staff member is checking the application and documents.', category: 'in_progress', active: true, displayOrder: 2, isSystem: true, createdAt: NOW, updatedAt: NOW
+  internalDescription: 'A staff member is checking the application and documents.', category: 'in_progress', active: true, displayOrder: 2, isSystem: true, createdAt: NOW, updatedAt: NOW,
+  transitions: ['action_required', 'documents_completed', 'processing', 'rejected', 'cancelled'], final: false, reopenTarget: false, requiredText: null
 };
 
 const VISA_ACCOUNT = obj({

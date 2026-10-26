@@ -4,7 +4,7 @@ const VisaType = require('../models/VisaType');
 const VisaChecklist = require('../models/VisaChecklist');
 const VisaStatusConfig = require('../models/VisaStatusConfig');
 const VisaApplication = require('../models/VisaApplication');
-const { SYSTEM_STATUSES } = require('../config/visa');
+const { SYSTEM_STATUSES, systemStatus, isSystemFinal, REQUIRED_TEXT, REOPEN_TO } = require('../config/visa');
 const { AUDIT_ACTIONS } = require('../config/constants');
 const ApiError = require('../utils/ApiError');
 const escapeRegex = require('../utils/escapeRegex');
@@ -222,7 +222,15 @@ const listStatuses = async (query) => {
   await ensureSystemStatuses();
   const filter = {};
   if (query.active !== undefined) filter.active = query.active === 'true';
-  return paged(VisaStatusConfig, filter, { displayOrder: 1, displayName: 1 }, { limit: 100, ...query });
+  const { items, meta } = await paged(VisaStatusConfig, filter, { displayOrder: 1, displayName: 1 }, { limit: 100, ...query });
+  // What the dashboard needs to offer only the moves the server accepts: where a system status can go, and what it asks for.
+  return {
+    items: items.map((status) => {
+      const system = systemStatus(status.key);
+      return { ...status.toJSON(), transitions: system ? system.transitions : null, final: system ? isSystemFinal(status.key) : ['failed', 'cancelled'].includes(status.category), requiredText: REQUIRED_TEXT[status.key] || null, reopenTarget: status.key === REOPEN_TO };
+    }),
+    meta
+  };
 };
 
 const getStatus = async (id) => {
