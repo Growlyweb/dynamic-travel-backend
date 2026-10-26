@@ -25,6 +25,7 @@ const b2bRoutes = require('./routes/b2b');
 const b2cRoutes = require('./routes/b2c');
 const dashboardRoutes = require('./routes/dashboardRoutes');
 const visaRoutes = require('./routes/visaRoutes');
+const settingRoutes = require('./routes/settingRoutes');
 
 const app = express();
 
@@ -95,6 +96,9 @@ app.use('/api/auth', authRoutes);
 // Admin dashboard numbers and the visa module. Internal users only: the guards are inside each router.
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/visa', visaRoutes);
+
+// Platform settings: currencies and their rates, document limits, retention. Internal users only.
+app.use('/api/settings', settingRoutes);
 
 // Authenticated, ownership-checked file access
 app.use('/api/documents', documentRoutes);
