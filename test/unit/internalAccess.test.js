@@ -37,6 +37,19 @@ const VISA_READS = [
   ['get', `/api/visa/quotations/${ID}`]
 ];
 
+const ACCOUNTS_READS = [
+  ['get', '/api/accounts/home'],
+  ['get', '/api/accounts/sales'],
+  ['get', '/api/accounts/dues'],
+  ['get', '/api/accounts/receipts'],
+  ['get', '/api/accounts/payables'],
+  ['get', '/api/accounts/partners'],
+  ['get', '/api/accounts/parties?type=B2C'],
+  ['get', '/api/vendors'],
+  ['get', '/api/vendors/bills'],
+  ['get', '/api/vendors/payments']
+];
+
 const VISA_WRITES = [
   ['post', '/api/visa/countries'],
   ['patch', `/api/visa/countries/${ID}`],
@@ -146,5 +159,33 @@ describe('who may use them', () => {
 
     expect(new Set(await statuses(DASHBOARD, bearer(admin)))).toEqual(new Set([200]));
     letThrough(await statuses(VISA_ALL, bearer(admin)));
+  });
+});
+
+describe('the accounts and vendors routes', () => {
+  it.each(ACCOUNTS_READS)('%s %s answers 401 without a token', async (method, path) => {
+    expect((await call(method, path)).status).toBe(401);
+  });
+
+  it('keeps customers, agencies and staff without the permissions out, and lets an admin through', async () => {
+    const b2c = await createUser({ role: ROLES.B2C });
+    const { user: b2b } = await createB2B();
+    const nobody = await createUser({ role: ROLES.STAFF });
+    const admin = await createUser({ role: ROLES.ADMIN });
+
+    for (const user of [b2c, b2b, nobody]) expect(new Set(await statuses(ACCOUNTS_READS, bearer(user)))).toEqual(new Set([403]));
+    letThrough(await statuses(ACCOUNTS_READS, bearer(admin)));
+  });
+
+  it('lets REPORTS_VIEW read the accounts and VENDOR_VIEW read the vendors, nothing more', async () => {
+    const accountant = await createUser({ role: ROLES.STAFF, permissions: [PERMISSIONS.REPORTS_VIEW] });
+    const buyer = await createUser({ role: ROLES.STAFF, permissions: [PERMISSIONS.VENDOR_VIEW] });
+    const accounts = ACCOUNTS_READS.filter(([, path]) => path.startsWith('/api/accounts'));
+    const vendors = ACCOUNTS_READS.filter(([, path]) => path.startsWith('/api/vendors'));
+
+    letThrough(await statuses(accounts, bearer(accountant)));
+    expect(new Set(await statuses(vendors, bearer(accountant)))).toEqual(new Set([403]));
+    letThrough(await statuses(vendors, bearer(buyer)));
+    expect(new Set(await statuses(accounts, bearer(buyer)))).toEqual(new Set([403]));
   });
 });

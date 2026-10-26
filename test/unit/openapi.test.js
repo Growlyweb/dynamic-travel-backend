@@ -49,7 +49,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
 
     expect(undocumented).toEqual([]);
     expect(phantom).toEqual([]);
-    expect(real.size).toBe(130);
+    expect(real.size).toBe(171);
   });
 
   it('gives every operation a summary, a tag, an id, a success response and explicit access', () => {
@@ -104,7 +104,7 @@ describe('OpenAPI document (documentation/openapi.json)', () => {
         documented.forEach((x) => {
           expect(x.required).toBe(true);
           // Every id is an ObjectId. The other path parameters are words: an applicant type, a setting key, a currency code.
-          if (['applicantType', 'key', 'code'].includes(x.name)) expect(x.example).toBeTruthy();
+          if (['applicantType', 'key', 'code', 'reference'].includes(x.name)) expect(x.example).toBeTruthy();
           else expect(x.example).toMatch(/^[0-9a-f]{24}$/);
         });
       });

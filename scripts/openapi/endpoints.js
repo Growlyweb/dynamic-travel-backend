@@ -31,7 +31,10 @@ const TAGS = [
   { name: 'Membership reports', description: 'ADMIN, or STAFF with MEMBERSHIP_MANAGE. Dashboard numbers and sales by period.' },
   { name: 'Dashboard', description: 'ADMIN, or STAFF. Numbers for the admin dashboard. Some figures are placeholders until the visa, tour booking and revenue modules exist.' },
   { name: 'Visa', description: 'ADMIN, or STAFF with the permission each route names. Countries, visa types, document checklists, statuses, applications with their money, documents and passport handling. Lists answer with `meta` and `pagination`.' },
-  { name: 'Settings', description: 'Internal users. Currencies with their exchange rates, document limits and retention. Changing most of them is for admins.' }
+  { name: 'Settings', description: 'Internal users. Currencies with their exchange rates, document limits and retention. Changing most of them is for admins.' },
+  { name: 'Visa: public status', description: 'No login. An applicant checks the status of a visa application with a code sent to the email address on it.' },
+  { name: 'Accounts', description: 'The simple Accounts screens: sales, receipts, dues, expenses, clients, monthly and yearly reports. Every number is added up from posted journals. Internal users only.' },
+  { name: 'Vendors', description: 'Suppliers, their bills, payments and advances. Every bill and payment posts a journal. Internal users only.' }
 ];
 
 // Tags whose operations keep the order they are written in (a flow: sign up, then verify, then log in). Every other
@@ -1225,6 +1228,8 @@ const endpoints = [
     description: 'Fetches today\'s rate from the free open.er-api.com service and saves it with `source: "api"`. Staff can still type over it. When the service is down the old rate stays and the answer is `502`.',
     access: 'ADMIN, or STAFF with VISA_EDIT', needsAuth: true, params: settingV.currencyParam, paramExamples: { code: 'USD' },
     success: ok(200, 'Exchange rate refreshed.', CURRENCIES, CURRENCIES_EXAMPLE), errors: { 400: true, 401: true, 403: true, 404: ['CURRENCY_NOT_ENABLED'], 422: true, 502: ['RATE_SERVICE_UNAVAILABLE'] } },
+
+  ...require('./accountingEndpoints')({ ok, obj, str, bool, arrayOf, INT, NUM, NOW }),
 
   // =============================================================== SYSTEM
   {

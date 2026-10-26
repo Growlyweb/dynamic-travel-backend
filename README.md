@@ -34,7 +34,8 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Phone OTP | Open on purpose (see `ToDo.md`) |
 | Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
 | Membership plans, memberships and reports | Done (see "Membership" below). Prices are the spec's placeholders. |
-| Visa: catalog, applications, payments, documents, passport handling, messages, quotations | Done (see "Visa module" below). The customer and partner side and the public status check are not built yet. |
+| Visa: catalog, applications, payments, documents, passport handling, messages, quotations, public status check | Done (see "Visa module" below). Customers and partners do not apply or log in to visa yet: staff create every application. |
+| Accounting: one journal engine behind the simple Accounts screens, and vendors | Done (see "Accounting" below) |
 | Settings: currencies and exchange rates, document limits, retention | Done (see "Settings" below) |
 | Automated tests | 468 unit and integration (Jest), 130 end-to-end (Playwright) |
 | Browser test console | Done (`npm run console`) |
@@ -51,6 +52,7 @@ npm run seed:tours       # creates the 8 starting tour categories and the Cox's 
 npm run seed:membership  # creates the 4 starting membership plans, with placeholder prices (safe to run again)
 npm run seed:all         # every module's starting data (the 11 visa statuses always; demo countries, visa types and sample applications outside production)
 npm run seed:visa        # only the visa module
+npm run seed:accounting  # the chart of accounts always; sample vendors, bills, payments, sales, expenses and the books of the sample visa applications outside production
 npm run seed:clear       # empties what the seeders fill (refuses to run in production without --allow-production)
 npm run seed:reset       # clear, then seed
 npm run seed:data        # DEVELOPMENT ONLY: demo admin, staff, customers and agencies with known passwords (refuses to run in production)
@@ -264,6 +266,10 @@ Dependencies point downward only: routes -> controllers -> services -> models.
 | `VisaApplication` | One visa file with its money, payments, documents, timeline, notes and passport handling embedded. |
 | `MessageTemplate`, `VisaMessage` | Wording per status and channel, and the log of every message prepared or sent to an applicant. |
 | `VisaQuotation` | A price quote for a B2B partner with its price snapshot. |
+| `VisaStatusCode` | A one-time code for the public status check, stored hashed. |
+| `Account`, `Journal` | The chart of accounts, and the vouchers with their balanced lines (whole paisa). |
+| `Party`, `SaleFile`, `SaleCategory` | Customers, agencies and suppliers; sale files that group journals; the sale categories. |
+| `VendorBill`, `VendorPayment` | What suppliers charged and what was paid to them. |
 
 ## Registration and sign-in
 
@@ -374,7 +380,23 @@ Everything lives under `/api/visa` and is for internal users: an admin, or staff
 - **Messages.** Templates (`MessageTemplate`) belong to a status and a channel. An **email** template is sent automatically through EmailJS when an application is created (status `submitted`) or reaches its status, and the result is logged. An **sms** template prepares a message in the log (`pending`) that staff send by hand and then mark as sent, because no SMS provider is connected. Each template has an on/off switch (`active`). A template may use only {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}}, and a typo is refused when it is saved. Staff can also write a message by hand, and send a failed email again. The free EmailJS plan has a monthly limit (about 200), shared with codes and invites: switch a template off to save requests.
 - **Quotations.** Price quotes for approved B2B partners. The server numbers them (`QT-2026-0001`), copies the net price, currency and exchange rate from the visa type, and calculates `total = net price x quantity + additional fee`. A draft can change, a sent one is locked. draft, sent, accepted or rejected; a draft or sent quotation past its date is shown as `expired`. Accepting raises `visa.quotation.accepted` for the accounting module later.
 
-Not built yet: the customer and partner side (apply form, own lists, partner pickups), the public status check by email code, and the link to accounting. Set `VISA_TRACKING_URL` to change the link in messages (default: `APP_URL` + `/visa-status`).
+- **Public status check.** No login. The applicant enters the application number and the email on the application, gets a six digit code by email, and sees the status in the simple stages of the storefront page (`/api/visa/public/status/...`). The answer to "send me a code" is always the same, so nobody can tell which numbers exist. Codes are stored hashed, work once, expire after 10 minutes and lock after 5 wrong tries. The view never contains money, staff names, internal notes, contact data or passport numbers.
+- **The books.** The accounting module listens to the visa events (see "Accounting"): a new application makes a sale file with its sale, discount and vendor costs, and a payment posts a money receipt.
+
+Not built yet: the customer and partner side (apply form, own lists, partner pickups). Set `VISA_TRACKING_URL` to change the link in messages (default: `APP_URL` + `/visa-status`).
+
+## Accounting
+
+One journal (double entry) engine is the single source of truth for money. The dashboard shows only the simple "Accounts" screens, and they call `/api/accounts` and `/api/vendors`. Details of the decision: `ACCOUNTING_DECISION.md`.
+
+- **Journals.** A voucher has balanced debit and credit lines in whole paisa. It is never edited: a mistake is voided with a reason and replaced. Voided vouchers count for nothing. A line on the receivable or payable account must name its customer or supplier. A journal tied to a `source` (a visa payment, a vendor bill) posts once, so a retried event changes nothing. Numbers come from server counters (`SV-2026-0001`).
+- **Sale files** are labels that group journals (`VF-2026-0001`). Sale, cost, received, due and profit are never stored on the file: they are added up from the journals tagged with it.
+- **Profit rule.** Revenue (income accounts after the discount account 4090) on the voucher date, direct costs (5xxx) on the vendor bill date, gross profit = revenue - direct costs, net profit = gross profit - office expenses (6xxx). Cancelled sales and voided vouchers are left out everywhere. Cash is shown apart and never mixed into profit. A direct cost with no file shows as `unallocatedCost`.
+- **Dues** are aged from the due date of each file (7 days for visas, 15 for tours, 3 for air tickets and transport). A receipt, with its discount, can never be more than what is due.
+- **Cancelling a sale** voids all its vouchers. If money was received, the request must say what happens to it: `refund` or `keep` (kept as income). Only the business can decide, so there is no default.
+- **Vendors** are suppliers. A bill posts "cost / accounts payable", a payment posts "accounts payable / cash", an advance posts "advances to suppliers / cash". A payment cannot be more than what is owed (record the extra as an advance), and payments settle the oldest bill first.
+- **Visa link.** `services/accounting/visaLink.js` listens to the visa events and posts the sale file, the discount, one cost line per vendor line and each payment (turned into taka at the rate saved on the application). A cancelled or rejected application does not cancel anything in the books on its own.
+- **Permissions.** Reading needs `REPORTS_VIEW` (accounts) or `VENDOR_VIEW` (vendors). Recording needs `ACCOUNTS_EDIT` or `VENDOR_MANAGE`. Voiding and cancelling need `ACCOUNTS_VOID`. Partner capital is for admins only.
 
 ## Settings
 
@@ -551,6 +573,19 @@ Production never returns stack traces or internal messages.
 | PUT, POST | `/api/settings/currencies`, `/api/settings/currencies/:code/refresh` | ADMIN, or STAFF with `VISA_EDIT` |
 | GET | `/api/settings` | ADMIN, or STAFF with `SETTINGS_VIEW` |
 | PUT | `/api/settings/:key` | ADMIN |
+
+### Accounts (`/api/accounts`), vendors (`/api/vendors`) and the public status check
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET | `/api/accounts/home`, `/monthly`, `/yearly`, `/balances`, `/price-list`, `/payables`, `/advances`, `/partners`, `/categories`, `/categories/report`, `/sales`, `/sales/:id`, `/dues`, `/receipts`, `/receipts/:id`, `/expense-accounts`, `/parties` | ADMIN, or STAFF with `REPORTS_VIEW` |
+| POST, PATCH, DELETE | `/api/accounts/sales`, `/sales/:id`, `/sales/:id/costs`, `/receipts`, `/expenses`, `/parties`, `/categories`, `/categories/:id` | ADMIN, or STAFF with `ACCOUNTS_EDIT` |
+| POST | `/api/accounts/sales/:id/cancel`, `/api/accounts/receipts/:id/void` | ADMIN, or STAFF with `ACCOUNTS_VOID` |
+| POST | `/api/accounts/partners/transactions` | ADMIN only |
+| GET | `/api/vendors`, `/api/vendors/:id`, `/api/vendors/bills`, `/api/vendors/payments` | ADMIN, or STAFF with `VENDOR_VIEW` |
+| POST, PATCH | `/api/vendors`, `/api/vendors/:id`, `/api/vendors/bills`, `/api/vendors/payments` | ADMIN, or STAFF with `VENDOR_MANAGE` |
+| POST | `/api/vendors/bills/:id/void`, `/api/vendors/payments/:id/void` | ADMIN, or STAFF with `ACCOUNTS_VOID` |
+| POST, GET | `/api/visa/public/status/code`, `/api/visa/public/status/verify`, `/api/visa/public/status/:reference` | Public (the last needs the status token) |
 
 ### Membership (`/api`)
 
