@@ -213,7 +213,7 @@ describe('the old per-person list', () => {
 describe('the access seed', () => {
   it('creates a role for every template and a demo account for each, safe to run twice', async () => {
     const first = await run('seed', ['access'], { log: () => {} });
-    expect(first['access.seeded']).toEqual({ roles: 4, staff: 5 });
+    expect(first['access.seeded']).toEqual({ roles: 4, staff: 6 });
     expect(await run('seed', ['access'], { log: () => {} })).toMatchObject({ 'access.seeded': { roles: 0, staff: 0 } });
     expect(await Role.countDocuments()).toBe(5);
 

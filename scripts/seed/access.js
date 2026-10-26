@@ -1,6 +1,6 @@
 // Access seed. A role is made from every template (Accountant, Visa officer, ...) in every environment, so an admin
-// starts with the usual roles and can adjust them. Outside production it also creates one active staff account per
-// template with a known password, so each kind of person can be tried at once.
+// starts with the usual roles and can adjust them. Outside production it also creates a demo administrator and one
+// active staff account per template, all with a known password, so each kind of person can be tried at once.
 //
 // Safe to run again: a role or account that exists is left as it is.
 const Role = require('../../models/Role');
@@ -34,8 +34,15 @@ const seedRoles = async () => {
   return created;
 };
 
+// One administrator with a known password, so the dashboard can be tried at once.
+const DEMO_ADMIN = { name: 'Demo Admin', email: `admin${DEMO_DOMAIN}` };
+
 const seedStaff = async () => {
   let created = 0;
+  if (!(await User.exists({ email: DEMO_ADMIN.email }))) {
+    await User.create({ ...DEMO_ADMIN, passwordHash: await authService.hashPassword(DEMO_PASSWORD), role: ROLES.ADMIN, status: USER_STATUS.ACTIVE, emailVerified: true });
+    created += 1;
+  }
   for (const { template, name, email } of DEMO_STAFF) {
     if (await User.exists({ email })) continue;
     const role = await Role.findOne({ nameKey: templates.TEMPLATES[template].label.toLowerCase() });
