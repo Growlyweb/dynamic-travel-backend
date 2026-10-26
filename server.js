@@ -5,6 +5,7 @@ const connectDB = require('./config/db');
 const app = require('./app');
 const logger = require('./utils/logger');
 const membershipJob = require('./services/membershipJob');
+const visaCatalogService = require('./services/visaCatalogService');
 
 const SHUTDOWN_TIMEOUT_MS = 10000;
 
@@ -13,6 +14,9 @@ const start = async () => {
 
   // Make sure unique indexes (email, phone, licenseNo, ...) exist before taking traffic.
   await mongoose.syncIndexes();
+
+  // The 11 visa statuses are part of how the system works, so they exist from the first start. Edited ones are kept.
+  await visaCatalogService.ensureSystemStatuses();
 
   const server = app.listen(env.port, () => {
     logger.info(`Server running in ${env.nodeEnv} mode on port ${env.port}`);
