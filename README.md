@@ -34,10 +34,80 @@ The spec this follows is [`documentation/Auth_RBAC_Backend_Implementation_Guide.
 | Phone OTP | Open on purpose (see `ToDo.md`) |
 | Tour categories, tour packages, custom tour requests | Done (see "Tour packages" below) |
 | Membership plans, memberships and reports | Done (see "Membership" below). Prices are the spec's placeholders. |
-| Automated tests | 468 unit and integration (Jest), 130 end-to-end (Playwright) |
+| Visa: catalog, applications, payments, documents, passport handling, messages, quotations, public status check | Done (see "Visa module" below). Customers and partners do not apply or log in to visa yet: staff create every application. |
+| Accounting: one journal engine behind the simple Accounts screens, and vendors | Done (see "Accounting" below) |
+| Settings: currencies and exchange rates, document limits, retention | Done (see "Settings" below) |
+| Automated tests | 756 unit and integration tests (Jest, in-memory MongoDB), all passing. The 130 end-to-end tests (Playwright) have not been run against the visa and accounting routes yet. |
+| Admin dashboard numbers (`/api/dashboard/*`) | **Still demo data.** Visa and accounting data now exist to feed them. |
+| B2B portal (commissions, withdrawals, pickups), customer list, marketing, notifications, global documents | Not built. See "What is left". |
 | Browser test console | Done (`npm run console`) |
 | Interactive API documentation (Swagger UI) | Done: http://localhost:5000/docs, with "Try it out" on every route |
 | OpenAPI file for Postman | Done (`documentation/openapi.json`, `npm run openapi`) |
+
+## What is done and what is left
+
+The admin dashboard (`dynamic-travel-admin`) is the main client of this API.
+It is still on mock data, so the pages are not connected yet.
+
+**Done, and used by the dashboard once connected**
+
+| Module | Routes | Notes |
+| --- | --- | --- |
+| Auth, users, partners, audit log | `/api/auth`, `/api/admin`, `/api/staff`, `/api/b2b`, `/api/b2c` | Role areas, see "Roles and permissions" |
+| Tours, categories, custom requests | `/api/tours`, `/api/tour-categories` | No image upload yet |
+| Membership | `/api` | Plans, memberships, reports |
+| Visa | `/api/visa` | Catalog, applications, payments, documents, passports, messages, quotations, public status check |
+| Accounting | `/api/accounts` | The simple Accounts screens, on one journal engine |
+| Vendors | `/api/vendors` | Vendors, bills, payments, advances |
+| Settings | `/api/settings` | Currencies, document limits, retention |
+
+**Left**
+
+| Work | Size |
+| --- | --- |
+| Real numbers for `/api/dashboard/*` (still demo data) | Small |
+| B2C customer list and detail | Small |
+| Vendor services with prices per country | Medium |
+| Global document list and review, notifications, tour image upload | Medium |
+| Sessions list, change of email, role matrix editing, general settings | Medium |
+| B2B portal: partner applications, pickup requests, commissions, withdrawals | Large (needs business rules) |
+| Marketing: lists, campaigns, scheduler, SMS sending | Large (needs an SMS provider) |
+| Period locking and year-end close, exports | Medium |
+| Customer and partner side of visa (apply form, own lists) | Large (product decision) |
+| Document retention job, enforcing every permission key on the older modules, running the Playwright tests, a MongoDB replica set for real transactions | Medium |
+
+The full list, with what each item waits for, is in `BACKEND_STATUS.md` (in the folder above this repository).
+Every change the dashboard needs for the integration is in `ADMIN_CHANGES.md` there.
+
+## Working with the admin dashboard
+
+| Rule | What it means for the client |
+| --- | --- |
+| Answer shape | `{ success, message, data, meta, pagination }`. A list is `data` as an array. `meta` and `pagination` are the same object and may carry a summary (`summary`, `totals`). |
+| Ids | `_id` |
+| Paging | `page` and `limit` (default 10, maximum 100) |
+| Missing record | `404`, never "the first record" |
+| Errors | `{ success: false, message, code, errors }`. Branch on `code`. |
+| Money | Taka with up to two decimals in every request and answer. The books hold whole paisa. |
+| Totals | Calculated on the server (net, due, payment status, profit). The browser only sends the inputs. |
+| Dates | Plain days like `2026-10-26` in the business time zone (`APP_TIMEZONE`) |
+| Files | Uploads are `multipart/form-data`. Downloads need a signed in request, so fetch them with the token and make a blob. |
+
+### Which permission opens what
+
+An admin always passes. Staff need the key an admin gave them (`PATCH /api/admin/users/:id/permissions`).
+
+| Area | Read | Change | Special |
+| --- | --- | --- | --- |
+| Visa catalog, applications, notes, messages, quotations | `VISA_VIEW` | `VISA_EDIT` | Status change `VISA_UPDATE`. Void a payment `VISA_PAYMENT_VOID`. Review a document `DOCUMENT_VERIFY`. Download a document `DOCUMENT_VIEW`. Passport `PASSPORT_UPDATE`. |
+| Accounts | `REPORTS_VIEW` | `ACCOUNTS_EDIT` | Cancel a sale or void a receipt `ACCOUNTS_VOID`. Partner capital: admin only. |
+| Vendors | `VENDOR_VIEW` | `VENDOR_MANAGE` | Void a bill or payment `ACCOUNTS_VOID` |
+| Currency rates | any admin or staff | `VISA_EDIT` | Other settings: admin only, read `SETTINGS_VIEW` |
+| Tours | public | `TOUR_MANAGE` | |
+| Memberships | `MEMBERSHIP_MANAGE` | `MEMBERSHIP_MANAGE` | |
+
+The public status check (`/api/visa/public/status/...`) needs no login.
+Its token opens one application only and is not accepted on any other route.
 
 ## Quick start
 
@@ -47,6 +117,11 @@ npm run setup            # creates .env if missing, and fills the three secrets 
 npm run seed             # creates the first ADMIN from ADMIN_SEED_* (needs MongoDB running)
 npm run seed:tours       # creates the 8 starting tour categories and the Cox's Bazar sample tour (safe to run again)
 npm run seed:membership  # creates the 4 starting membership plans, with placeholder prices (safe to run again)
+npm run seed:all         # every module's starting data (the 11 visa statuses always; demo countries, visa types and sample applications outside production)
+npm run seed:visa        # only the visa module
+npm run seed:accounting  # the chart of accounts always; sample vendors, bills, payments, sales, expenses and the books of the sample visa applications outside production
+npm run seed:clear       # empties what the seeders fill (refuses to run in production without --allow-production)
+npm run seed:reset       # clear, then seed
 npm run seed:data        # DEVELOPMENT ONLY: demo admin, staff, customers and agencies with known passwords (refuses to run in production)
 npm run dev              # http://localhost:5000 (interactive API docs at http://localhost:5000/docs)
 npm run console          # browser test page at http://localhost:5173 (needs the API running)
@@ -235,8 +310,9 @@ Registration and profile schemas strip them.
 | `services/` | Business rules and database access | Never touch `req` or `res` |
 | `models/` | Mongoose schemas | Shape and integrity only |
 | `utils/` | Small helpers (`ApiError`, `mailer`, `crypto`, `file`, ...) | No imports from higher layers |
-| `config/` | `env.js` (the only place that reads `process.env`), `rbac.json`, `rbac.js`, `constants.js`, `db.js` | |
-| `scripts/` | One-off CLI tasks such as seeding | |
+| `config/` | `env.js` (the only place that reads `process.env`), `rbac.json`, `rbac.js`, `constants.js`, `db.js`, `visaStatuses.json` (the visa statuses and allowed moves), `visa.js`, `accounting.js` (the chart of accounts) | |
+| `services/accounting/` | The journal engine (`ledger.js`), reports, sales and receipts (`books.js`), and the link to the visa module (`visaLink.js`) | Money is whole paisa inside, taka outside |
+| `scripts/` | One-off CLI tasks. `scripts/seed/` has one seeder per module (`visa.js`, `accounting.js`) behind `npm run seed:all`, `seed:clear` and `seed:reset`. | |
 | `test/` | Everything for testing, and nothing else lives outside it: `unit/` (Jest and supertest, in-memory MongoDB, never reads your `.env`), `e2e/` (Playwright), `console/` (the one-page browser tool, `npm run console`), `playwright.config.js`, and `.output/` (git-ignored run output) | Development only |
 | `storage/private/` | Business documents, never served directly | Git-ignored |
 | `documentation/` | The spec, the requirements, `User-Stories.md`, `ToDo.md` and `openapi.json` (generated, do not edit by hand) | |
@@ -252,6 +328,16 @@ Dependencies point downward only: routes -> controllers -> services -> models.
 | `OtpToken` | Hashed one-time codes and link tokens. Single use, TTL expiry, attempt counter. |
 | `RefreshSession` | One row per device. Enables logout, rotation and theft detection. |
 | `AuditLog` | Append-only record of security events. |
+| `Counter` | One row per numbering sequence (`VISA:2026`), bumped atomically, so file numbers never repeat. |
+| `Setting` | Platform settings: currencies, document limits, retention, duplicate window. Defaults live in `services/settingService.js`. |
+| `VisaCountry`, `VisaType`, `VisaChecklist`, `VisaStatusConfig` | The visa catalog. |
+| `VisaApplication` | One visa file with its money, payments, documents, timeline, notes and passport handling embedded. |
+| `MessageTemplate`, `VisaMessage` | Wording per status and channel, and the log of every message prepared or sent to an applicant. |
+| `VisaQuotation` | A price quote for a B2B partner with its price snapshot. |
+| `VisaStatusCode` | A one-time code for the public status check, stored hashed. |
+| `Account`, `Journal` | The chart of accounts, and the vouchers with their balanced lines (whole paisa). |
+| `Party`, `SaleFile`, `SaleCategory` | Customers, agencies and suppliers; sale files that group journals; the sale categories. |
+| `VendorBill`, `VendorPayment` | What suppliers charged and what was paid to them. |
 
 ## Registration and sign-in
 
@@ -346,6 +432,44 @@ Run `npm run seed:membership` once to load the four starting plans. **Their pric
 - **For the booking module:** `getActiveMembership(userId)` and `membershipDiscount(membership, type, amount)` in `services/membershipService.js` are built and tested. Nothing applies a discount yet.
 - Every change writes the audit log (`MEMBERSHIP_PLAN_*`, `MEMBERSHIP_*`) with field names or ids, never prices or transaction ids.
 
+## Visa module
+
+Everything lives under `/api/visa` and is for internal users: an admin, or staff with the permission each route names (see the endpoint table). The dashboard talks to it.
+
+- **Catalog.** Countries, visa types with prices and fees, document checklists per country, visa type and applicant type, and statuses. The 11 system statuses and the allowed moves between them are in `config/visaStatuses.json`. A country or visa type that has applications is paused, not deleted.
+- **Applications.** Staff create them. The server numbers each one (`VISA-2026-000001`, restarting every year), copies the price and the exchange rate from the visa type so later price changes never alter an old file, and calculates net, advance, due and the payment status. The browser never sends those.
+- **Duplicates.** Same passport, country and visa type with an open application is refused. The same passport and country inside `visa.duplicateWindowDays` (90) needs a confirmation note. A rejected application never blocks a new one.
+- **Status changes.** One service function (`services/visaStatusService.js`) checks the move and the wording it needs, writes the timeline with the person who did it, writes the audit log and raises an event. Every change needs `VISA_UPDATE` for now. Only an admin can reopen a finished application.
+- **Payments.** Entered by hand. Each entry recalculates the totals. A wrong entry is voided with a reason, never deleted, and voiding needs `VISA_PAYMENT_VOID`, which an admin can give to staff.
+- **Documents.** Uploads are held in memory, the real type is read from the file's own bytes, then the file is stored outside any public folder under a random name (`services/storageService.js`, local disk driver). Downloads need `VISA_VIEW` and `DOCUMENT_VIEW`.
+- **Passports.** Submission method (online, office, pickup), pickup request and staff, and the passport status steps, limited by what the visa type allows.
+- **Events.** `utils/events.js` raises `visa.application.created`, `visa.status.changed`, `visa.payment.recorded` and `visa.payment.voided`. Messages, notifications and accounting will listen to them later.
+
+- **Messages.** Templates (`MessageTemplate`) belong to a status and a channel. An **email** template is sent automatically through EmailJS when an application is created (status `submitted`) or reaches its status, and the result is logged. An **sms** template prepares a message in the log (`pending`) that staff send by hand and then mark as sent, because no SMS provider is connected. Each template has an on/off switch (`active`). A template may use only {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}}, and a typo is refused when it is saved. Staff can also write a message by hand, and send a failed email again. The free EmailJS plan has a monthly limit (about 200), shared with codes and invites: switch a template off to save requests.
+- **Quotations.** Price quotes for approved B2B partners. The server numbers them (`QT-2026-0001`), copies the net price, currency and exchange rate from the visa type, and calculates `total = net price x quantity + additional fee`. A draft can change, a sent one is locked. draft, sent, accepted or rejected; a draft or sent quotation past its date is shown as `expired`. Accepting raises `visa.quotation.accepted` for the accounting module later.
+
+- **Public status check.** No login. It follows the storefront page `/visa-status/<application number>`: the link is checked, the person enters the passport number and the phone number (both must match the application), a six digit code is emailed to the address on the application, and the status comes back in the page's own shape (`/api/visa/public/status/...`). Codes are stored hashed, work once, expire after 10 minutes, and five wrong codes lock the link for 15 minutes. The result masks the passport and the phone and never contains money, staff names or internal notes. There is no SMS provider yet, so an application with no email cannot use the check.
+- **The books.** The accounting module listens to the visa events (see "Accounting"): a new application makes a sale file with its sale, discount and vendor costs, and a payment posts a money receipt.
+
+Not built yet: the customer and partner side (apply form, own lists, partner pickups). Set `VISA_TRACKING_URL` to change the link in messages (default: `APP_URL` + `/visa-status`).
+
+## Accounting
+
+One journal (double entry) engine is the single source of truth for money. The dashboard shows only the simple "Accounts" screens, and they call `/api/accounts` and `/api/vendors`. Details of the decision: `ACCOUNTING_DECISION.md`.
+
+- **Journals.** A voucher has balanced debit and credit lines in whole paisa. It is never edited: a mistake is voided with a reason and replaced. Voided vouchers count for nothing. A line on the receivable or payable account must name its customer or supplier. A journal tied to a `source` (a visa payment, a vendor bill) posts once, so a retried event changes nothing. Numbers come from server counters (`SV-2026-0001`).
+- **Sale files** are labels that group journals (`VF-2026-0001`). Sale, cost, received, due and profit are never stored on the file: they are added up from the journals tagged with it.
+- **Profit rule.** Revenue (income accounts after the discount account 4090) on the voucher date, direct costs (5xxx) on the vendor bill date, gross profit = revenue - direct costs, net profit = gross profit - office expenses (6xxx). Cancelled sales and voided vouchers are left out everywhere. Cash is shown apart and never mixed into profit. A direct cost with no file shows as `unallocatedCost`.
+- **Dues** are aged from the due date of each file (7 days for visas, 15 for tours, 3 for air tickets and transport). A receipt, with its discount, can never be more than what is due.
+- **Cancelling a sale** voids all its vouchers. If money was received, the request must say what happens to it: `refund` or `keep` (kept as income). Only the business can decide, so there is no default.
+- **Vendors** are suppliers. A bill posts "cost / accounts payable", a payment posts "accounts payable / cash", an advance posts "advances to suppliers / cash". A payment cannot be more than what is owed (record the extra as an advance), and payments settle the oldest bill first.
+- **Visa link.** `services/accounting/visaLink.js` listens to the visa events and posts the sale file, the discount, one cost line per vendor line and each payment (turned into taka at the rate saved on the application). A cancelled or rejected application does not cancel anything in the books on its own.
+- **Permissions.** Reading needs `REPORTS_VIEW` (accounts) or `VENDOR_VIEW` (vendors). Recording needs `ACCOUNTS_EDIT` or `VENDOR_MANAGE`. Voiding and cancelling need `ACCOUNTS_VOID`. Partner capital is for admins only.
+
+## Settings
+
+`/api/settings` (internal users). Currencies carry how many BDT one unit is worth, with its source (`manual`, `api` or `base`). `POST /api/settings/currencies/:code/refresh` fills the default rate from the free open.er-api.com service, and staff can type over it. Document limits (`visa.documents`), retention (`visa.retention`, days) and the duplicate window are settings an admin can change, because the client still has to confirm them.
+
 ## Rules worth knowing
 
 **OTPs and links**
@@ -399,6 +523,8 @@ All are read in `config/env.js`.
 
 | Variable | Purpose | Default |
 | --- | --- | --- |
+| `VISA_TRACKING_URL` | The link in visa messages (`{{trackingUrl}}`). The application number is added after it. | `APP_URL` + `/visa-status` |
+| `STORAGE_DRIVER` | Where uploaded files are kept. Only `local` exists (the folder in `PRIVATE_STORAGE_DIR`). A cloud driver can be added without changing the visa code. | `local` |
 | `NODE_ENV`, `PORT` | Mode and port | `development`, `5000` |
 | `MONGODB_URI` | Database (required in production) | local MongoDB |
 | `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, `TOKEN_HASH_SECRET` | Three different secrets | none, required |
@@ -465,7 +591,11 @@ Production never returns stack traces or internal messages.
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| GET | `/rbac` | Roles and permissions from `config/rbac.json` |
+| GET | `/rbac` | The permissions from `config/rbac.json`, plus the role templates, what needs what, the sensitive permissions and the groups (all in `config/rbac.json`) |
+| GET, POST | `/roles` | The roles (named permission sets) and with how many people each; create one from a template |
+| GET, PATCH, DELETE | `/roles/:id` | One role. The built-in "No access yet" is locked. A role in use cannot be deleted. |
+| PATCH | `/users/:id/roles` | Replace the roles of a staff member (at least one). Nobody changes their own. |
+| POST | `/users/:id/permissions-to-role` | Turn an old per-person permission list into a role |
 | GET, POST | `/users` | List (filter by `role`, `status`, `search`) and create an invitable role |
 | GET, DELETE | `/users/:id` | Read, or deactivate (soft delete) |
 | PATCH | `/users/:id` | Edit someone's `name` and `phone` |
@@ -492,6 +622,42 @@ Production never returns stack traces or internal messages.
 | POST | `/api/tours/custom-requests` | B2C only |
 | GET | `/api/tours/custom-requests`, `/api/tours/custom-requests/:id` | B2C (own), ADMIN / `TOUR_MANAGE` staff (all) |
 | PATCH | `/api/tours/custom-requests/:id/status` | ADMIN / `TOUR_MANAGE` staff (any allowed move), B2C (cancel own `NEW` request) |
+
+### Visa (`/api/visa`) and settings (`/api/settings`)
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET | `/api/visa/dashboard`, `/api/visa/staff` | ADMIN, or STAFF with `VISA_VIEW` |
+| GET | `/api/visa/countries`, `/types`, `/statuses`, `/checklists/:countryId/:visaTypeId/:applicantType`, and `/countries/:id`, `/types/:id` | ADMIN, or STAFF with `VISA_VIEW` |
+| POST, PATCH, DELETE, PUT | the same catalog paths | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/visa/applications`, `/api/visa/applications/:id` | ADMIN, or STAFF with `VISA_VIEW` |
+| POST, PATCH | `/api/visa/applications`, `/api/visa/applications/:id`, `/:id/notes`, `/:id/payments` | ADMIN, or STAFF with `VISA_EDIT` |
+| PATCH | `/api/visa/applications/:id/status` | ADMIN, or STAFF with `VISA_UPDATE` |
+| POST | `/api/visa/applications/:id/payments/:paymentId/void` | ADMIN, or STAFF with `VISA_PAYMENT_VOID` |
+| POST, DELETE | `/api/visa/applications/:id/documents`, `/:id/documents/:docId` | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/visa/templates`, `/api/visa/messages`, `/api/visa/partners`, `/api/visa/quotations`, `/api/visa/quotations/:id` | ADMIN, or STAFF with `VISA_VIEW` |
+| POST, PATCH, DELETE | `/api/visa/templates`, `/api/visa/templates/:id`, `/api/visa/quotations`, `/api/visa/quotations/:id`, `/api/visa/quotations/:id/status` | ADMIN, or STAFF with `VISA_EDIT` |
+| POST, PATCH | `/api/visa/applications/:id/messages`, `/api/visa/messages/:id`, `/api/visa/messages/:id/send` | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/visa/applications/:id/documents/:docId/file` | ADMIN, or STAFF with `VISA_VIEW` and `DOCUMENT_VIEW` |
+| PATCH | `/api/visa/applications/:id/documents/:docId` | ADMIN, or STAFF with `DOCUMENT_VERIFY` |
+| PATCH | `/api/visa/applications/:id/passport` | ADMIN, or STAFF with `PASSPORT_UPDATE` |
+| GET | `/api/settings/currencies` | ADMIN or STAFF |
+| PUT, POST | `/api/settings/currencies`, `/api/settings/currencies/:code/refresh` | ADMIN, or STAFF with `VISA_EDIT` |
+| GET | `/api/settings` | ADMIN, or STAFF with `SETTINGS_VIEW` |
+| PUT | `/api/settings/:key` | ADMIN |
+
+### Accounts (`/api/accounts`), vendors (`/api/vendors`) and the public status check
+
+| Method | Path | Access |
+| --- | --- | --- |
+| GET | `/api/accounts/home`, `/monthly`, `/yearly`, `/balances`, `/price-list`, `/payables`, `/advances`, `/partners`, `/categories`, `/categories/report`, `/sales`, `/sales/:id`, `/dues`, `/receipts`, `/receipts/:id`, `/expense-accounts`, `/parties` | ADMIN, or STAFF with `REPORTS_VIEW` |
+| POST, PATCH, DELETE | `/api/accounts/sales`, `/sales/:id`, `/sales/:id/costs`, `/receipts`, `/expenses`, `/parties`, `/categories`, `/categories/:id` | ADMIN, or STAFF with `ACCOUNTS_EDIT` |
+| POST | `/api/accounts/sales/:id/cancel`, `/api/accounts/receipts/:id/void` | ADMIN, or STAFF with `ACCOUNTS_VOID` |
+| POST | `/api/accounts/partners/transactions` | ADMIN only |
+| GET | `/api/vendors`, `/api/vendors/:id`, `/api/vendors/bills`, `/api/vendors/payments` | ADMIN, or STAFF with `VENDOR_VIEW` |
+| POST, PATCH | `/api/vendors`, `/api/vendors/:id`, `/api/vendors/bills`, `/api/vendors/payments` | ADMIN, or STAFF with `VENDOR_MANAGE` |
+| POST | `/api/vendors/bills/:id/void`, `/api/vendors/payments/:id/void` | ADMIN, or STAFF with `ACCOUNTS_VOID` |
+| GET, POST | `/api/visa/public/status/link/:ref`, `/api/visa/public/status/otp`, `/api/visa/public/status/verify` | Public |
 
 ### Membership (`/api`)
 
@@ -630,3 +796,14 @@ Route order rule: static paths (`/tree`, `/stats`) go before `/:id`, or Express 
 
 See section 3 of `documentation/ToDo.md`.
 The short version: real secrets, `TRUST_PROXY`, real origins, EmailJS and Firebase keys, change the seeded admin password, and move rate limits and uploads to shared storage if you run more than one instance.
+
+Also, for the visa and accounting modules:
+
+- Put the client's EmailJS keys in `.env`. Each automatic visa email uses one request of the monthly limit, and the free plan allows about 200 shared with codes and invites. Switch a message template off to save requests.
+- Confirm the document limits and the 2 year retention with the client, then set them in `PUT /api/settings/visa.documents` and `visa.retention`. A job that deletes old documents does not exist yet.
+- Set `VISA_TRACKING_URL` if the storefront status page is not at `APP_URL` + `/visa-status`.
+- Run `npm run seed:all` only outside production. In production only the visa statuses and the chart of accounts are created. `seed:clear` and `seed:reset` refuse to run there.
+- Uploaded files live on the local disk (`PRIVATE_STORAGE_DIR`). Back that folder up with the database, or add a cloud storage driver (`services/storageService.js`) before running more than one server.
+- A posting to the books is made safe by undoing earlier steps if a later one fails. Use a MongoDB replica set and a transaction if you want the database itself to guarantee it.
+- The exchange rate refresh calls `open.er-api.com`. If it is down the old rate stays, and staff can type a rate.
+- Nothing is deleted from the books. Mistakes are voided with a reason, and an admin decides about money on a cancelled sale (refund or keep).

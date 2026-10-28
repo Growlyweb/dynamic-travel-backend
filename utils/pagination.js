@@ -1,5 +1,6 @@
 const DEFAULT_LIMIT = 10;
-const MAX_LIMIT = 100;
+// The dashboard offers 50 to 500 rows per page.
+const MAX_LIMIT = 500;
 
 // Turns ?page=2&limit=20 into { page, limit, skip }. Limit is capped so a
 // client cannot ask for the whole collection in one request.

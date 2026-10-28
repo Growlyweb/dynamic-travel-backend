@@ -95,11 +95,12 @@ Error: \`{ "success": false, "message": "...", "code": "SOME_CODE", "errors": [{
 | 413 | File or body too large |
 | 422 | Validation failed (\`errors\` lists each field) |
 | 429 | Rate limited (see \`Retry-After\`) |
+| 502 | An outside service answered badly (for example the exchange rate service) |
 | 503 | A dependency is unavailable |
 
 ## Ids
 
-All ids are MongoDB ObjectIds (24 hex characters), except in the visa demo module (\`/api/visa\`), which still uses short text ids such as \`vcn\` and \`va_101\`. Timestamps are ISO 8601 UTC.
+All ids are MongoDB ObjectIds (24 hex characters). Timestamps are ISO 8601 UTC.
 
 ## Rate limits
 

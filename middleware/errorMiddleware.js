@@ -70,6 +70,7 @@ const errorMiddleware = async (err, req, res, next) => {
     message,
     ...(code ? { code } : {}),
     ...(errors ? { errors } : {}),
+    ...(err.retryAfter ? { retryAfter: err.retryAfter } : {}),
     ...(env.nodeEnv === 'development' && statusCode >= 500 ? { stack: err.stack } : {})
   });
 };

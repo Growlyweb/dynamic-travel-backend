@@ -37,6 +37,7 @@
     "VISA_VIEW": "View Visa Operations",
     "VISA_EDIT": "Edit & Process Visas",
     "VISA_UPDATE": "Change status of visa applications",
+    "VISA_PAYMENT_VOID": "Void a payment entry on a visa application",
     "TOURS_VIEW": "View Tour Packages",
     "TOURS_EDIT": "Create & Edit Tour Packages",
     "TOUR_MANAGE": "Manage tour packages and custom tours",
@@ -50,6 +51,12 @@
     "DOCUMENT_VIEW": "See uploaded documents",
     "DOCUMENT_VERIFY": "Verify or reject uploaded documents",
     "REPORTS_VIEW": "View Reports",
+    "ACCOUNTS_EDIT": "Record sales, receipts, expenses, costs and vendor bills",
+    "ACCOUNTS_VOID": "Void receipts and payments, and cancel sales",
+    "ACCOUNTS_LOCK": "Close and reopen accounting months (reserved: period locking is not built yet)",
+    "ACCOUNTS_JOURNAL": "Post manual vouchers (reserved: manual vouchers are not built yet)",
+    "VENDOR_VIEW": "View vendors, their bills and payments",
+    "VENDOR_MANAGE": "Create and change vendors",
     "REPORT_VIEW": "View operational reports",
     "USERS_VIEW": "View User Directory",
     "USERS_EDIT": "Manage Users & Roles",
@@ -61,5 +68,149 @@
     "MEMBERSHIP_MANAGE": "Manage membership plans, sell and change memberships, and read membership reports",
     "FLIGHT_INQUIRY_MANAGE": "Handle flight inquiries",
     "SETTINGS_VIEW": "View platform settings"
-  }
+  },
+  "templates": {
+    "accountant": {
+      "label": "Accountant",
+      "description": "Keeps the books and the vendor accounts.",
+      "defaults": ["REPORTS_VIEW", "ACCOUNTS_EDIT", "VENDOR_VIEW", "VENDOR_MANAGE"],
+      "optional": ["ACCOUNTS_VOID", "ACCOUNTS_LOCK", "ACCOUNTS_JOURNAL", "SETTINGS_VIEW"]
+    },
+    "visa_officer": {
+      "label": "Visa officer",
+      "description": "Works on visa applications, documents and passports.",
+      "defaults": [
+        "VISA_VIEW",
+        "VISA_EDIT",
+        "VISA_UPDATE",
+        "DOCUMENT_VIEW",
+        "DOCUMENT_VERIFY",
+        "PASSPORT_VIEW",
+        "PASSPORT_UPDATE"
+      ],
+      "optional": ["VISA_PAYMENT_VOID", "B2B_VIEW"]
+    },
+    "operations_manager": {
+      "label": "Operations manager",
+      "description": "Runs visas, tours, memberships and the partner list.",
+      "defaults": [
+        "VISA_VIEW",
+        "VISA_EDIT",
+        "VISA_UPDATE",
+        "TOURS_VIEW",
+        "TOUR_MANAGE",
+        "B2B_VIEW",
+        "B2C_VIEW",
+        "MEMBERSHIP_MANAGE"
+      ],
+      "optional": ["B2B_MANAGE", "REPORTS_VIEW"]
+    },
+    "viewer": {
+      "label": "Viewer",
+      "description": "Can look at everything operational and change nothing.",
+      "defaults": [
+        "VISA_VIEW",
+        "TOURS_VIEW",
+        "B2B_VIEW",
+        "B2C_VIEW",
+        "MEMBERSHIPS_VIEW",
+        "DOCUMENTS_VIEW",
+        "DOCUMENT_VIEW",
+        "PASSPORT_VIEW",
+        "REPORTS_VIEW",
+        "REPORT_VIEW",
+        "VENDOR_VIEW",
+        "SETTINGS_VIEW"
+      ],
+      "optional": []
+    },
+    "no_access": {
+      "label": "No access yet",
+      "description": "A person who is set up but has not been given any work yet.",
+      "defaults": [],
+      "optional": []
+    }
+  },
+  "dependencies": {
+    "VISA_EDIT": ["VISA_VIEW"],
+    "VISA_UPDATE": ["VISA_VIEW"],
+    "VISA_PAYMENT_VOID": ["VISA_VIEW"],
+    "TOURS_EDIT": ["TOURS_VIEW"],
+    "TOUR_MANAGE": ["TOURS_VIEW"],
+    "B2B_MANAGE": ["B2B_VIEW"],
+    "MEMBERSHIPS_EDIT": ["MEMBERSHIPS_VIEW"],
+    "DOCUMENTS_MANAGE": ["DOCUMENTS_VIEW"],
+    "DOCUMENT_VERIFY": ["DOCUMENT_VIEW"],
+    "PASSPORT_UPDATE": ["PASSPORT_VIEW"],
+    "ACCOUNTS_EDIT": ["REPORTS_VIEW"],
+    "ACCOUNTS_VOID": ["REPORTS_VIEW"],
+    "ACCOUNTS_LOCK": ["REPORTS_VIEW"],
+    "ACCOUNTS_JOURNAL": ["ACCOUNTS_EDIT"],
+    "VENDOR_MANAGE": ["VENDOR_VIEW"],
+    "USERS_EDIT": ["USERS_VIEW"],
+    "USER_MANAGE": ["USER_VIEW"],
+    "STAFF_CREATE": ["USER_VIEW"]
+  },
+  "sensitive": {
+    "VISA_PAYMENT_VOID": "Cancels money that was recorded on a visa file.",
+    "ACCOUNTS_VOID": "Voids receipts and payments and cancels sales, which changes the books.",
+    "ACCOUNTS_LOCK": "Closes and reopens accounting months.",
+    "ACCOUNTS_JOURNAL": "Posts vouchers by hand, outside the normal screens.",
+    "B2B_MANAGE": "Approves or rejects business partners and changes what they may do.",
+    "USERS_EDIT": "Changes accounts and roles.",
+    "USER_MANAGE": "Creates, suspends and changes accounts.",
+    "STAFF_CREATE": "Creates staff accounts."
+  },
+  "groups": [
+    {
+      "key": "visa",
+      "label": "Visa",
+      "permissions": ["VISA_VIEW", "VISA_EDIT", "VISA_UPDATE", "VISA_PAYMENT_VOID"]
+    },
+    {
+      "key": "documents",
+      "label": "Documents and passports",
+      "permissions": ["DOCUMENT_VIEW", "DOCUMENT_VERIFY", "DOCUMENTS_VIEW", "DOCUMENTS_MANAGE", "PASSPORT_VIEW", "PASSPORT_UPDATE"]
+    },
+    {
+      "key": "accounts",
+      "label": "Accounts",
+      "permissions": ["REPORTS_VIEW", "ACCOUNTS_EDIT", "ACCOUNTS_VOID", "ACCOUNTS_LOCK", "ACCOUNTS_JOURNAL"]
+    },
+    {
+      "key": "vendors",
+      "label": "Vendors",
+      "permissions": ["VENDOR_VIEW", "VENDOR_MANAGE"]
+    },
+    {
+      "key": "tours",
+      "label": "Tours",
+      "permissions": ["TOURS_VIEW", "TOURS_EDIT", "TOUR_MANAGE", "FLIGHT_INQUIRY_MANAGE"]
+    },
+    {
+      "key": "memberships",
+      "label": "Memberships",
+      "permissions": ["MEMBERSHIPS_VIEW", "MEMBERSHIPS_EDIT", "MEMBERSHIP_MANAGE"]
+    },
+    {
+      "key": "people",
+      "label": "Partners and customers",
+      "permissions": ["B2B_VIEW", "B2B_MANAGE", "B2C_VIEW"]
+    },
+    {
+      "key": "reports",
+      "label": "Reports",
+      "permissions": ["REPORT_VIEW"]
+    },
+    {
+      "key": "users",
+      "label": "Users",
+      "permissions": ["USERS_VIEW", "USERS_EDIT", "USER_VIEW", "USER_MANAGE", "STAFF_CREATE"]
+    },
+    {
+      "key": "settings",
+      "label": "Settings",
+      "permissions": ["SETTINGS_VIEW"]
+    }
+  ]
 }

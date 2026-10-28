@@ -8,12 +8,13 @@ const env = require('../config/env');
 // Key choices:
 //   byEmail : IP + email from the body. An attacker cannot lock a victim out from another IP,
 //             and one IP cannot hammer a single account.
+//   byRef   : IP + the application reference from the body (the public visa status check).
 //   byUser  : the signed-in user id (put the limiter AFTER authenticate). Stops a stolen access
 //             token from guessing a password at the general rate.
 //   neither : IP only.
 // Every 429 carries a Retry-After header and the RateLimit-* headers.
 
-const makeLimiter = ({ windowMs, limit, message, byEmail = false, byUser = false }) =>
+const makeLimiter = ({ windowMs, limit, message, byEmail = false, byUser = false, byRef = false }) =>
   rateLimit({
     windowMs,
     limit,
@@ -23,6 +24,7 @@ const makeLimiter = ({ windowMs, limit, message, byEmail = false, byUser = false
     keyGenerator: (req) => {
       const ip = ipKeyGenerator(req.ip);
       if (byUser && req.user) return `user:${req.user.id}`;
+      if (byRef) return `${ip}|${req.body && typeof req.body.ref === 'string' ? req.body.ref.trim().toUpperCase() : ''}`;
       if (!byEmail) return ip;
       const email = req.body && typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
       return `${ip}|${email}`;
@@ -93,7 +95,30 @@ const refreshLimiter = makeLimiter({
   message: 'Too many token refresh requests. Please try again later.'
 });
 
+// Public visa status check. Looking up a link: 30 per 15 minutes per IP. Asking for a code: 5 per 15 minutes per IP + application.
+// Checking a code: 10 per 15 minutes per IP + application (five wrong codes also lock the link for 15 minutes).
+const visaStatusLinkLimiter = makeLimiter({
+  windowMs: MINUTES_15,
+  limit: 30,
+  message: 'Too many requests. Please wait 15 minutes and try again.'
+});
+const visaStatusCodeLimiter = makeLimiter({
+  windowMs: MINUTES_15,
+  limit: 5,
+  byRef: true,
+  message: 'Too many requests. Please wait 15 minutes and try again.'
+});
+const visaStatusVerifyLimiter = makeLimiter({
+  windowMs: MINUTES_15,
+  limit: 10,
+  byRef: true,
+  message: 'Too many attempts. Please wait 15 minutes and try again.'
+});
+
 module.exports = {
+  visaStatusLinkLimiter,
+  visaStatusCodeLimiter,
+  visaStatusVerifyLimiter,
   apiLimiter,
   loginLimiter,
   firebaseLimiter,

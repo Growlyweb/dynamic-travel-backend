@@ -16,6 +16,13 @@ router.patch('/profile', validate({ body: adminUpdateUser }), profileController.
 // Roles and permissions (read from config/rbac.json)
 router.get('/rbac', adminUserController.getRbac);
 
+// Roles: named permission sets made from templates
+router.get('/roles', adminUserController.listRoles);
+router.post('/roles', validate({ body: schemas.createRole }), adminUserController.createRole);
+router.get('/roles/:id', validate({ params: schemas.idParam }), adminUserController.getRole);
+router.patch('/roles/:id', validate({ params: schemas.idParam, body: schemas.updateRoleDefinition }), adminUserController.updateRoleDefinition);
+router.delete('/roles/:id', validate({ params: schemas.idParam }), adminUserController.deleteRole);
+
 // Users
 router.get('/users', validate({ query: schemas.listUsers }), adminUserController.listUsers);
 router.post('/users', validate({ body: schemas.createUser }), adminUserController.createUser);
@@ -42,6 +49,16 @@ router.patch(
   '/users/:id/permissions',
   validate({ params: schemas.idParam, body: schemas.updatePermissions }),
   adminUserController.updatePermissions
+);
+router.patch(
+  '/users/:id/roles',
+  validate({ params: schemas.idParam, body: schemas.assignRoles }),
+  adminUserController.assignRoles
+);
+router.post(
+  '/users/:id/permissions-to-role',
+  validate({ params: schemas.idParam, body: schemas.convertPermissions }),
+  adminUserController.convertPermissions
 );
 router.post(
   '/users/:id/resend-invite',

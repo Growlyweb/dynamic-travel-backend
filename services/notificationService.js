@@ -27,8 +27,18 @@ const passwordResetOtp = (user, code) =>
     message: `Your password reset code is ${code}. It expires in ${env.otp.expiresMinutes} minutes. If you did not request this, you can ignore this email and your password will stay the same.`
   });
 
+const visaStatusCode = ({ email, name }, code) =>
+  mailer.send({
+    to: email,
+    toName: name,
+    subject: 'Your visa status code',
+    otp: code,
+    expiresAt: otpExpiry(),
+    message: `Your code to see your visa application status is ${code}. It expires in ${env.otp.expiresMinutes} minutes. If you did not ask for it, you can ignore this email.`
+  });
+
 const staffInvite = (user, token) => {
-  const link = `${env.appUrl}/setup-account?token=${token}`;
+  const link = `${env.adminAppUrl}/dashboard/setup-account?token=${token}`;
   return mailer.send({
     to: user.email,
     toName: user.name,
@@ -66,4 +76,4 @@ const trySend = async (sendFn) => {
   }
 };
 
-module.exports = { verificationOtp, passwordResetOtp, staffInvite, passwordChanged, partnerDecision, trySend };
+module.exports = { verificationOtp, passwordResetOtp, visaStatusCode, staffInvite, passwordChanged, partnerDecision, trySend };

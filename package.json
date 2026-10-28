@@ -17,7 +17,13 @@
     "test:watch": "NODE_ENV=test jest --runInBand --watch",
     "e2e": "playwright test -c test/playwright.config.js",
     "e2e:api": "playwright test -c test/playwright.config.js --project=api",
-    "e2e:ui": "playwright test -c test/playwright.config.js --project=ui"
+    "e2e:ui": "playwright test -c test/playwright.config.js --project=ui",
+    "seed:all": "node scripts/seed/index.js seed",
+    "seed:access": "node scripts/seed/index.js seed access",
+    "seed:visa": "node scripts/seed/index.js seed visa",
+    "seed:clear": "node scripts/seed/index.js clear",
+    "seed:reset": "node scripts/seed/index.js reset",
+    "seed:accounting": "node scripts/seed/index.js seed accounting"
   },
   "engines": {
     "node": ">=20"
@@ -73,6 +79,7 @@
     "node-cron": "^4.6.0",
     "pino": "^10.4.0",
     "pino-http": "^11.0.0",
+    "xss": "^1.0.17",
     "zod": "^4.6.5"
   },
   "devDependencies": {
