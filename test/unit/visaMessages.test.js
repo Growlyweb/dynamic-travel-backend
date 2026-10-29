@@ -128,6 +128,50 @@ describe('messages made when an application changes status', () => {
     expect(await messagesOf(admin, made._id)).toHaveLength(1);
   });
 
+  it('uses the wording of the file\'s service, the general wording where the service has none, and no tracking link outside visas', async () => {
+    const admin = await createAdmin();
+    const email = { channel: 'email', trigger: 'submitted' };
+    await template(admin, { ...email, name: 'Visa words', subject: 'Visa {{applicationNumber}}', message: 'Visa wording {{trackingUrl}}' });
+    await template(admin, { ...email, name: 'General', serviceType: 'all', subject: 'Request {{applicationNumber}}', message: 'General for {{visaType}} {{country}}|{{trackingUrl}}|' });
+    await template(admin, { ...email, name: 'Hotel words', serviceType: 'hotel', subject: 'Hotel {{applicationNumber}}', message: 'Hotel wording' });
+
+    const make = async (serviceType, details) => (await post(admin, '/api/visa/applications', { name: 'Mizanur Rahman', phone: '+8801712945360', email: 'mizanur@example.com', serviceType, [serviceType]: details, totalAmount: 5000 })).body.data;
+    const visa = await application(admin, await createCatalog(), { email: 'rahim@example.com' });
+    const room = await make('hotel', { name: 'Grand Hyatt Dubai', country: 'United Arab Emirates', city: 'Dubai', stay: '3 Nights' });
+    const flight = await make('ticket', { tripType: 'One Way', departure: 'Dhaka (DAC)', arrival: 'Dubai (DXB)', travelClass: 'Economy' });
+    await events.idle();
+
+    const only = async (made) => {
+      const sent = await messagesOf(admin, made._id);
+      expect(sent).toHaveLength(1);
+      return sent[0];
+    };
+    const visaMessage = await only(visa);
+    expect(visaMessage.templateName).toBe('Visa words');
+    expect(visaMessage.body).toContain(`/visa-status/${visa.number}`);
+    expect((await only(room)).templateName).toBe('Hotel words');
+    const general = await only(flight);
+    expect(general).toMatchObject({ templateName: 'General', subject: `Request ${flight.number}`, body: 'General for Ticket Dubai (DXB)||' });
+  });
+
+  it('keeps a template for one service out of the others, and filters the list by service', async () => {
+    const admin = await createAdmin();
+    expect((await template(admin, { serviceType: 'cruise' })).status).toBe(422);
+    expect((await template(admin)).body.data.serviceType).toBe('visa');
+    await template(admin, { name: 'Any', serviceType: 'all' });
+    await template(admin, { name: 'Tours', serviceType: 'tour' });
+    expect((await get(admin, '/api/visa/templates?serviceType=tour')).body.data.map((t) => t.name)).toEqual(['Tours']);
+
+    const tour = (await post(admin, '/api/visa/applications', { name: 'Imran Khan', phone: '+8801923846105', serviceType: 'tour', tour: { duration: '5 Days', destinations: [{ country: 'Malaysia' }] }, totalAmount: 9000 })).body.data;
+    const visa = await application(admin, await createCatalog());
+    await patch(admin, `/api/visa/applications/${tour._id}/status`, { status: 'under_review' });
+    await patch(admin, `/api/visa/applications/${visa._id}/status`, { status: 'under_review' });
+    await events.idle();
+    // each file gets the template of its own service; "Any" is left out because both services have one of their own
+    expect((await messagesOf(admin, tour._id)).map((m) => m.templateName)).toEqual(['Tours']);
+    expect((await messagesOf(admin, visa._id)).map((m) => m.templateName)).toEqual(['Under Review']);
+  });
+
   it('records a failed email with its reason and does not break the status change', async () => {
     const admin = await createAdmin();
     const catalog = await createCatalog();

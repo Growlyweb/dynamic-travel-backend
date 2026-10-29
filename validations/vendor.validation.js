@@ -1,5 +1,6 @@
 const { z } = require('zod');
 const { objectId, email } = require('./common');
+const { SERVICE_TYPES } = require('../config/visa');
 
 const text = (label, max) => z.string(`${label} must be text.`).trim().max(max, `${label} must be at most ${max} characters.`);
 const required = (label, max) => text(label, max).min(1, `${label} is required.`);
@@ -13,6 +14,14 @@ const method = z.enum(['city', 'brac', 'cash', 'bkash'], 'Choose cash, bank or b
 const idParam = z.object({ id: objectId });
 const voidBody = z.object({ reason: required('The reason', 300) });
 
+// The vendor's price for a service. Only a visa price has a country (blank is any country).
+const priceEntry = z.object({
+  service: z.enum(SERVICE_TYPES, `Service must be one of: ${SERVICE_TYPES.join(', ')}.`),
+  country: blank(text('Country', 80)),
+  price: amount('The price')
+});
+const priceList = z.array(priceEntry).max(100, 'At most 100 prices.');
+
 const vendorFields = {
   name: required('Name', 150),
   phone: blank(text('Phone', 40)),
@@ -25,10 +34,11 @@ const vendorFields = {
 const listVendors = z.object({ search: text('Search', 100).optional(), active: z.enum(['true', 'false']).optional(), ...paging });
 const createVendor = z.object({
   ...Object.fromEntries(Object.entries(vendorFields).map(([key, schema]) => [key, key === 'name' ? schema : schema.optional()])),
+  priceList: priceList.optional(),
   openingBalance: amount('The opening balance').optional(),
   openingBalanceType: z.enum(['due', 'advance']).optional()
 });
-const updateVendor = z.object({ ...Object.fromEntries(Object.entries(vendorFields).map(([key, schema]) => [key, schema.optional()])), active: z.boolean().optional() });
+const updateVendor = z.object({ ...Object.fromEntries(Object.entries(vendorFields).map(([key, schema]) => [key, schema.optional()])), priceList: priceList.optional(), active: z.boolean().optional() });
 
 const listBills = z.object({ vendorId: objectId.optional(), status: z.enum(['posted', 'void']).optional(), from: day('From').optional(), to: day('To').optional(), search: text('Search', 100).optional(), ...paging });
 const createBill = z.object({

@@ -24,9 +24,12 @@ const events = require('../../utils/events');
 const daysAgo = (n) => dates.addDays(dates.todayISO(), -n);
 
 const VENDORS = [
-  { name: 'Skyline Visa Services', phone: '+8801711482905', contactPerson: 'Mr. Alam', creditLimit: 500000, openingBalance: 20000, openingBalanceType: 'due' },
-  { name: 'Grand Hotels Supplier', phone: '+8801913670248', contactPerson: 'Ms. Rima', creditLimit: 300000 },
-  { name: 'Air Connect Agency', phone: '+8801819356074', contactPerson: 'Mr. Tarek', creditLimit: 800000 }
+  {
+    name: 'Skyline Visa Services', phone: '+8801711482905', contactPerson: 'Mr. Alam', creditLimit: 500000, openingBalance: 20000, openingBalanceType: 'due',
+    priceList: [{ service: 'visa', country: 'China', price: 6500 }, { service: 'visa', country: 'Thailand', price: 3800 }, { service: 'visa', country: 'Malaysia', price: 3200 }, { service: 'visa', price: 5000 }]
+  },
+  { name: 'Grand Hotels Supplier', phone: '+8801913670248', contactPerson: 'Ms. Rima', creditLimit: 300000, priceList: [{ service: 'hotel', price: 52000 }, { service: 'tour', price: 150000 }] },
+  { name: 'Air Connect Agency', phone: '+8801819356074', contactPerson: 'Mr. Tarek', creditLimit: 800000, priceList: [{ service: 'ticket', price: 66000 }] }
 ];
 
 // [vendor index, days ago, amount, account, service, invoice]

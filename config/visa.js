@@ -8,6 +8,15 @@ const CHECKLIST_REQUIREMENTS = Object.freeze(['required', 'optional', 'condition
 const SUBMISSION_MODES = Object.freeze(['digital', 'physical', 'both']);
 const PASSPORT_REQUIREMENTS = Object.freeze(['online_processing', 'physical_required']);
 const PAYMENT_METHODS = Object.freeze(['Bank Transfer', 'Cash', 'Credit / Debit Card', 'bKash / Nagad']);
+// What an application is for. Only a visa has a price list, a passport rule, a checklist and a public status page.
+const SERVICE_TYPES = Object.freeze(['visa', 'ticket', 'hotel', 'tour']);
+const SERVICE_LABELS = Object.freeze({ visa: 'Visa', ticket: 'Ticket', hotel: 'Hotel', tour: 'Tour Package' });
+// The number of a file starts with these letters: VISA-2026-000001, TKT-2026-000001.
+const SERVICE_NUMBER_PREFIXES = Object.freeze({ visa: 'VISA', ticket: 'TKT', hotel: 'HTL', tour: 'TOUR' });
+// A message template is for one service, or for every service that has no template of its own.
+const TEMPLATE_SERVICES = Object.freeze(['all', ...SERVICE_TYPES]);
+const TRIP_TYPES = Object.freeze(['One Way', 'Round Way']);
+const TICKET_CLASSES = Object.freeze(['Economy', 'Premium Economy', 'Business', 'First Class']);
 const PASSPORT_SUBMISSION_METHODS = Object.freeze(['online', 'office', 'pickup']);
 const PASSPORT_STATUSES = Object.freeze([
   'not_received',
@@ -81,6 +90,12 @@ module.exports = {
   SUBMISSION_MODES,
   PASSPORT_REQUIREMENTS,
   PAYMENT_METHODS,
+  SERVICE_TYPES,
+  SERVICE_LABELS,
+  SERVICE_NUMBER_PREFIXES,
+  TEMPLATE_SERVICES,
+  TRIP_TYPES,
+  TICKET_CLASSES,
   PASSPORT_SUBMISSION_METHODS,
   PASSPORT_STATUSES,
   MESSAGE_VARIABLES,

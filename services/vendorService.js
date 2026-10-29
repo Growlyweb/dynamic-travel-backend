@@ -50,6 +50,7 @@ const presentVendor = (party, balance = {}) => ({
   address: party.address,
   contactPerson: party.contactPerson,
   creditLimit: fromMinor(party.creditLimit),
+  priceList: (party.priceList || []).map(({ service, country, price }) => ({ service, country, price })),
   active: party.active,
   notes: party.notes,
   since: party.since,
@@ -102,11 +103,23 @@ const postOpening = (vendor, { amount, type }, actor) =>
         : [{ account: OPENING_EQUITY_ACCOUNT, debit: amount, memo: 'Opening vendor due' }, { account: AP_ACCOUNT, credit: amount, party: vendor._id, memo: 'Opening vendor due' }]
   });
 
+// One price for each service, and for each country of a visa. A price for anything but a visa has no country.
+const cleanPriceList = (list) => {
+  const seen = new Set();
+  return list.map(({ service, country = '', price }) => {
+    const entry = { service, country: service === 'visa' ? country.trim() : '', price };
+    const key = `${entry.service}|${entry.country.toLowerCase()}`;
+    if (seen.has(key)) throw fail(`The price for ${entry.service}${entry.country ? ` (${entry.country})` : ''} is listed twice.`, 'DUPLICATE_PRICE', 'priceList');
+    seen.add(key);
+    return entry;
+  });
+};
+
 const createVendor = async (actor, body) => {
   await ensureChartIfEmpty();
   if (await Party.exists({ type: 'Vendor', nameKey: keyOf(body.name) })) throw new ApiError(409, 'A vendor with this name already exists.', { code: 'VENDOR_EXISTS' });
   const vendor = await books.ensureParty({ type: 'Vendor', name: body.name, phone: body.phone || '', email: body.email || '', creditLimit: toMinor(body.creditLimit) });
-  Object.assign(vendor, { address: body.address || '', contactPerson: body.contactPerson || '', notes: body.notes || '' });
+  Object.assign(vendor, { address: body.address || '', contactPerson: body.contactPerson || '', notes: body.notes || '', priceList: cleanPriceList(body.priceList || []) });
   await vendor.save();
 
   const opening = toMinor(body.openingBalance);
@@ -133,6 +146,7 @@ const updateVendor = async (actor, id, body) => {
     if (body[field] !== undefined) vendor[field] = body[field];
   });
   if (body.creditLimit !== undefined) vendor.creditLimit = toMinor(body.creditLimit);
+  if (body.priceList !== undefined) vendor.priceList = cleanPriceList(body.priceList);
   await vendor.save();
   await audit(actor, `vendor:${vendor._id}`, { action: 'updated', fields: Object.keys(body) });
   return getVendor(vendor._id);

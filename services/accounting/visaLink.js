@@ -6,6 +6,7 @@ const Party = require('../../models/Party');
 const { VISA_METHOD_TO_METHOD } = require('../../config/accounting');
 const events = require('../../utils/events');
 const counterService = require('../counterService');
+const { describeService } = require('../visaShared');
 const books = require('./books');
 const dates = require('./dates');
 const ledger = require('./ledger');
@@ -21,9 +22,13 @@ const { toMinor } = require('./money');
 // Amounts are turned into taka at the exchange rate saved on the application. Posting is safe to repeat: the journals are
 // tied to the application, so a retried event changes nothing. A cancelled or rejected application is NOT cancelled in the
 // books on its own: what happens to money already received is a decision for a person (see cancelSale).
+//
+// The sale file takes the category of the service: a visa books to Visa, a ticket to Air Ticket, a hotel to Hotel and a
+// tour package to Tour Package, each with its own revenue and cost accounts.
 
 const SYSTEM = { id: null, name: 'System (visa)' };
 const SOURCE = 'visa-application';
+const CATEGORY_OF_SERVICE = { visa: 'Visa', ticket: 'Air Ticket', hotel: 'Hotel', tour: 'Tour Package' };
 const base = (amount, rate) => Math.round(toMinor(amount) * rate);
 
 const dayOf = dates.dayOf;
@@ -49,14 +54,14 @@ const vendorFor = async (line) => {
   return books.unassignedSupplier();
 };
 
-const desired = async (application) => {
+const desired = async (application, category) => {
   const rate = application.price.rateToBase;
   const costs = [];
   for (const line of application.vendorLines) {
     const amount = base(line.price, rate);
     if (amount <= 0) continue;
     const vendor = await vendorFor(line);
-    costs.push({ account: '5010', label: 'Cost price', amount, date: dayOf(application.createdAt), vendor: vendor._id });
+    costs.push({ account: category.costAccount, label: 'Cost price', amount, date: dayOf(application.createdAt), vendor: vendor._id });
   }
   return { sale: base(application.account.totalAmount, rate), discount: base(application.account.discountAmount, rate), costs };
 };
@@ -71,7 +76,9 @@ const findFile = (applicationId) => SaleFile.findOne({ 'source.kind': SOURCE, 's
 const syncApplication = async (applicationId) => {
   const application = await VisaApplication.findById(applicationId);
   if (!application) return null;
-  const want = await desired(application);
+  const service = describeService(application);
+  const category = await books.categoryOf(CATEGORY_OF_SERVICE[service.type]);
+  const want = await desired(application, category);
   if (want.sale <= 0) return null;
   const sig = signature(want);
   const date = dayOf(application.createdAt);
@@ -81,23 +88,23 @@ const syncApplication = async (applicationId) => {
     const party = await clientOf(application);
     try {
       file = await SaleFile.create({
-        fileNo: await counterService.nextNumber('VF', { year: date.slice(0, 4), width: 4 }),
-        type: 'Visa',
-        segment: 'visa',
-        category: 'Visa',
+        fileNo: await counterService.nextNumber(category.prefix, { year: date.slice(0, 4), width: 4 }),
+        type: category.type,
+        segment: category.segment,
+        category: category.label,
         date,
-        dueDate: dates.addDays(date, 7),
+        dueDate: dates.addDays(date, category.dueDays),
         applicant: application.applicant.fullName,
         party: party._id,
         partyName: party.name,
         partyType: party.type,
         destination: application.countryName,
-        detail: application.visaTypeName,
+        detail: service.summary.slice(0, 300),
         passportNo: application.passport.number,
         sale: want.sale,
         discount: want.discount,
         costs: want.costs,
-        notes: `Visa application ${application.number}`,
+        notes: `${service.label} application ${application.number}`,
         source: { kind: SOURCE, id: String(application._id) },
         sig,
         createdByName: SYSTEM.name
@@ -106,7 +113,6 @@ const syncApplication = async (applicationId) => {
       if (err.code !== 11000) throw err;
       return findFile(applicationId);
     }
-    const category = await books.categoryOf('Visa');
     await books.postSaleJournals(file, category, SYSTEM);
     return file;
   }
@@ -114,7 +120,6 @@ const syncApplication = async (applicationId) => {
   if (file.status === 'Cancelled' || file.sig === sig) return file;
 
   // The application changed: replace the sale, discount and cost vouchers, keep the receipts.
-  const category = await books.categoryOf('Visa');
   const old = await Journal.find({ file: file._id, status: 'posted', 'source.kind': 'sale-file', 'source.role': { $regex: `^(sale|discount|cost)#${file.revision}(:[0-9]+)?$` } });
   for (const journal of old) await ledger.voidJournal(journal, { reason: 'The visa application was changed.' });
   const party = await clientOf(application);
@@ -135,7 +140,7 @@ const syncPayment = async (applicationId, paymentId) => {
   const role = `payment:${paymentId}`;
   const existing = await Journal.findOne({ 'source.kind': SOURCE, 'source.id': String(applicationId), 'source.role': role });
   if (payment.voided) {
-    if (existing && existing.status === 'posted') await ledger.voidJournal(existing, { reason: `Visa payment voided: ${payment.voidReason}` });
+    if (existing && existing.status === 'posted') await ledger.voidJournal(existing, { reason: `${describeService(application).label} payment voided: ${payment.voidReason}` });
     return;
   }
   if (existing) return;
@@ -146,7 +151,7 @@ const syncPayment = async (applicationId, paymentId) => {
       discount: 0,
       method: VISA_METHOD_TO_METHOD[payment.method] || 'cash',
       date: dayOf(payment.date),
-      note: `Visa payment ${application.number}${payment.note ? ` - ${payment.note}` : ''}`,
+      note: `${describeService(application).label} payment ${application.number}${payment.note ? ` - ${payment.note}` : ''}`,
       source: { kind: SOURCE, id: String(applicationId), role }
     },
     SYSTEM

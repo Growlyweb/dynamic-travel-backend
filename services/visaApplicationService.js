@@ -5,7 +5,7 @@ const VisaStatusConfig = require('../models/VisaStatusConfig');
 const Partner = require('../models/Partner');
 const User = require('../models/User');
 const { ROLES, USER_STATUS, APPROVAL_STATUS, AUDIT_ACTIONS } = require('../config/constants');
-const { SYSTEM_STATUSES, isSystemFinal } = require('../config/visa');
+const { SYSTEM_STATUSES, SERVICE_TYPES, SERVICE_NUMBER_PREFIXES, isSystemFinal } = require('../config/visa');
 const ApiError = require('../utils/ApiError');
 const escapeRegex = require('../utils/escapeRegex');
 const events = require('../utils/events');
@@ -15,7 +15,7 @@ const auditService = require('./auditService');
 const counterService = require('./counterService');
 const settingService = require('./settingService');
 const money = require('./visaMoney');
-const { findApplication, actorOf, addTimeline } = require('./visaShared');
+const { findApplication, actorOf, addTimeline, VISA_FILES } = require('./visaShared');
 
 const POPULATE = { path: 'assignedStaff', select: 'name' };
 const load = (id) => VisaApplication.findById(id).populate(POPULATE);
@@ -72,24 +72,18 @@ const checkDuplicate = async ({ numberKey, country, visaType, confirmNote }) => 
   return confirmNote;
 };
 
-const create = async (user, body, context = {}) => {
+// The visa country and type the file is for. A paused one cannot take new applications.
+const catalogOf = async (body) => {
   const country = await VisaCountry.findById(body.countryId);
   if (!country) throw new ApiError(404, 'Country not found.', { code: 'COUNTRY_NOT_FOUND' });
   const type = await VisaType.findById(body.visaTypeId);
   if (!type || String(type.country) !== String(country._id)) throw new ApiError(404, 'This visa type does not belong to that country.', { code: 'VISA_TYPE_NOT_FOUND' });
   if (country.status !== 'active' || type.status !== 'active') throw new ApiError(422, 'This country or visa type is paused, so no new application can be created.', { code: 'CATALOG_PAUSED' });
+  return { country, type };
+};
 
-  const channel = body.clientType === 'b2b' ? 'b2b' : 'b2c';
-  let partner = null;
-  if (channel === 'b2b') {
-    if (!body.partnerId) throw new ApiError(422, 'Choose the B2B partner.', { code: 'PARTNER_REQUIRED', errors: [{ field: 'body.partnerId', message: 'partnerId is required.' }] });
-    partner = await Partner.findById(body.partnerId).select('companyName approvalStatus');
-    if (!partner) throw new ApiError(404, 'Partner not found.', { code: 'PARTNER_NOT_FOUND' });
-    if (partner.approvalStatus !== APPROVAL_STATUS.APPROVED) throw new ApiError(422, 'This partner is not approved.', { code: 'PARTNER_NOT_APPROVED' });
-  }
-  if (body.assignedStaff) await checkStaff(body.assignedStaff);
-
-  // Price: copied from the visa type, converted when the file is in another currency, and kept on the file.
+// Price of a visa file: copied from the visa type, converted when the file is in another currency, and kept on the file.
+const visaTerms = async (body, channel, { country, type }) => {
   const currency = body.currency || type.currency;
   const [typeRate, rate] = await Promise.all([settingService.rateFor(type.currency), settingService.rateFor(currency)]);
   const listPrice = channel === 'b2b' ? type.b2bNetPrice : type.b2cPrice;
@@ -102,10 +96,50 @@ const create = async (user, body, context = {}) => {
       errors: [{ field: 'body.totalOverrideReason', message: 'A reason is required when the total changes.' }]
     });
   }
-  if (money.toMinor(totalAmount) <= 0) throw new ApiError(422, 'The total amount must be above zero.', { code: 'INVALID_AMOUNT' });
-
   const numberKey = passportKey(body.passportNumber);
-  const duplicateNote = await checkDuplicate({ numberKey, country: country._id, visaType: type._id, confirmNote: body.confirmDuplicate });
+  return {
+    currency,
+    rate,
+    totalAmount,
+    listInCurrency,
+    overridden,
+    price: { currency, rateToBase: rate, b2c: currency === type.currency ? type.b2cPrice : money.convert(type.b2cPrice, typeRate, rate), b2b: currency === type.currency ? type.b2bNetPrice : money.convert(type.b2bNetPrice, typeRate, rate), fees: type.fees },
+    duplicateCheck: () => checkDuplicate({ numberKey, country: country._id, visaType: type._id, confirmNote: body.confirmDuplicate })
+  };
+};
+
+// A ticket, a hotel booking or a tour package has no price list: the total is what staff agreed with the client.
+const plainTerms = async (body) => {
+  const currency = body.currency || settingService.BASE_CURRENCY;
+  const rate = await settingService.rateFor(currency);
+  return { currency, rate, totalAmount: body.totalAmount, listInCurrency: body.totalAmount, overridden: false, price: { currency, rateToBase: rate, b2c: 0, b2b: 0 }, duplicateCheck: async () => '' };
+};
+
+// Where the client is going, as the short label kept on the file.
+const destinationOf = (body) => {
+  if (body.serviceType === 'ticket') return body.ticket.arrival;
+  if (body.serviceType === 'hotel') return body.hotel.country;
+  return [...new Set(body.tour.destinations.map((stop) => stop.country))].join(', ');
+};
+
+const create = async (user, body, context = {}) => {
+  const serviceType = body.serviceType || 'visa';
+  const visa = serviceType === 'visa';
+  const catalog = visa ? await catalogOf(body) : null;
+
+  const channel = body.clientType === 'b2b' ? 'b2b' : 'b2c';
+  let partner = null;
+  if (channel === 'b2b') {
+    if (!body.partnerId) throw new ApiError(422, 'Choose the B2B partner.', { code: 'PARTNER_REQUIRED', errors: [{ field: 'body.partnerId', message: 'partnerId is required.' }] });
+    partner = await Partner.findById(body.partnerId).select('companyName approvalStatus');
+    if (!partner) throw new ApiError(404, 'Partner not found.', { code: 'PARTNER_NOT_FOUND' });
+    if (partner.approvalStatus !== APPROVAL_STATUS.APPROVED) throw new ApiError(422, 'This partner is not approved.', { code: 'PARTNER_NOT_APPROVED' });
+  }
+  if (body.assignedStaff) await checkStaff(body.assignedStaff);
+
+  const { currency, rate, totalAmount, listInCurrency, overridden, price, duplicateCheck } = visa ? await visaTerms(body, channel, catalog) : await plainTerms(body);
+  if (money.toMinor(totalAmount) <= 0) throw new ApiError(422, 'The total amount must be above zero.', { code: 'INVALID_AMOUNT' });
+  const duplicateNote = await duplicateCheck();
 
   const actor = await actorOf(user);
   const advance = body.advancePaid || 0;
@@ -113,16 +147,17 @@ const create = async (user, body, context = {}) => {
   const vendorLines = vendorLinesOf(body.vendorList);
   const account = money.calculate({ total: totalAmount, discount: body.discountAmount || 0, payments, vendorCost: sumVendorLines(vendorLines), rateToBase: rate });
 
-  const passportRequired = type.passportRequirement === 'physical_required';
+  const passportRequired = visa && catalog.type.passportRequirement === 'physical_required';
+  const passportNumberText = body.passportNumber ? body.passportNumber.trim() : '';
   const application = new VisaApplication({
-    number: await counterService.nextNumber('VISA'),
+    number: await counterService.nextNumber(SERVICE_NUMBER_PREFIXES[serviceType]),
+    serviceType,
     channel,
     partner: partner ? partner._id : undefined,
     partnerName: partner ? partner.companyName : '',
-    country: country._id,
-    countryName: country.name,
-    visaType: type._id,
-    visaTypeName: type.name,
+    ...(visa
+      ? { country: catalog.country._id, countryName: catalog.country.name, visaType: catalog.type._id, visaTypeName: catalog.type.name }
+      : { countryName: destinationOf(body), [serviceType]: body[serviceType] }),
     applicant: {
       fullName: body.name,
       dob: body.dob,
@@ -134,14 +169,14 @@ const create = async (user, body, context = {}) => {
       city: body.city,
       applicantType: body.applicantType
     },
-    passport: { number: body.passportNumber.trim(), numberKey, expiry: body.passportExpiry, issueDate: body.passportIssueDate, issuingCountry: body.passportIssuingCountry },
-    service: { entries: body.entries || type.entries, duration: body.visaDuration || '' },
+    passport: { number: passportNumberText, numberKey: passportNumberText ? passportKey(passportNumberText) : '', expiry: body.passportExpiry, issueDate: body.passportIssueDate, issuingCountry: body.passportIssuingCountry },
+    service: visa ? { entries: body.entries || catalog.type.entries, duration: body.visaDuration || '' } : { entries: '', duration: '' },
     assignedStaff: body.assignedStaff,
-    price: { currency, rateToBase: rate, b2c: currency === type.currency ? type.b2cPrice : money.convert(type.b2cPrice, typeRate, rate), b2b: currency === type.currency ? type.b2bNetPrice : money.convert(type.b2bNetPrice, typeRate, rate), fees: type.fees },
+    price,
     account: { ...account, paymentMethod: advance > 0 ? payments[0].method : body.paymentMethod || '', totalOverrideReason: overridden ? body.totalOverrideReason : '' },
     payments,
     vendorLines,
-    passportRequirement: type.passportRequirement,
+    passportRequirement: visa ? catalog.type.passportRequirement : 'online_processing',
     passportSubmissionMethod: passportRequired ? 'office' : 'online',
     passportStatus: passportRequired ? 'not_received' : 'not_required',
     duplicateNote,
@@ -156,7 +191,7 @@ const create = async (user, body, context = {}) => {
   if (body.assignedStaff) addTimeline(application, { event: 'Assigned to Staff', message: 'Assigned when the application was created.', visibility: 'internal', actor });
 
   await application.save();
-  await auditService.record({ actorUserId: user.id, action: AUDIT_ACTIONS.VISA_APPLICATION_CREATED, resource: `visa-application:${application._id}`, ip: context.ip, meta: { number: application.number } });
+  await auditService.record({ actorUserId: user.id, action: AUDIT_ACTIONS.VISA_APPLICATION_CREATED, resource: `visa-application:${application._id}`, ip: context.ip, meta: { number: application.number, serviceType } });
   events.emit(events.EVENTS.VISA_APPLICATION_CREATED, { applicationId: String(application._id), number: application.number });
   if (advance > 0) events.emit(events.EVENTS.VISA_PAYMENT_RECORDED, { applicationId: String(application._id), paymentId: String(application.payments[0]._id), number: application.number, amount: advance, currency });
   return load(application._id);
@@ -167,6 +202,7 @@ const create = async (user, body, context = {}) => {
 const list = async (query) => {
   const { page, limit, skip } = paginate(query);
   const filter = {};
+  if (query.serviceType) filter.serviceType = query.serviceType === 'visa' ? VISA_FILES : query.serviceType;
   if (query.status) filter.status = query.status;
   if (query.countryId) filter.country = query.countryId;
   if (query.channel) filter.channel = query.channel;
@@ -177,7 +213,19 @@ const list = async (query) => {
   if (query.search) {
     const rx = { $regex: escapeRegex(query.search), $options: 'i' };
     const key = passportKey(query.search);
-    filter.$or = [{ number: rx }, { 'applicant.fullName': rx }, { 'applicant.mobile': rx }, { 'applicant.email': rx }, { countryName: rx }, { partnerName: rx }, ...(key ? [{ 'passport.numberKey': { $regex: escapeRegex(key) } }] : [])];
+    filter.$or = [
+      { number: rx },
+      { 'applicant.fullName': rx },
+      { 'applicant.mobile': rx },
+      { 'applicant.email': rx },
+      { countryName: rx },
+      { partnerName: rx },
+      { 'hotel.name': rx },
+      { 'ticket.departure': rx },
+      { 'ticket.arrival': rx },
+      { 'tour.packageName': rx },
+      ...(key ? [{ 'passport.numberKey': { $regex: escapeRegex(key) } }] : [])
+    ];
   }
 
   const [items, total] = await Promise.all([
@@ -210,9 +258,11 @@ const update = async (user, id, body, context = {}) => {
     changes.push(target);
   });
 
+  const visa = application.serviceType === 'visa';
+
   if (body.passportNumber !== undefined) {
     const numberKey = passportKey(body.passportNumber);
-    if (numberKey !== application.passport.numberKey) {
+    if (visa && numberKey !== application.passport.numberKey) {
       const final = await finalStatusKeys();
       const clash = await VisaApplication.exists({ _id: { $ne: application._id }, 'passport.numberKey': numberKey, country: application.country, visaType: application.visaType, status: { $nin: final } });
       if (clash) throw new ApiError(409, 'Another open application already uses this passport for this visa.', { code: 'DUPLICATE_OPEN_APPLICATION' });
@@ -224,8 +274,8 @@ const update = async (user, id, body, context = {}) => {
   if (body.passportExpiry !== undefined) application.passport.expiry = body.passportExpiry;
   if (body.passportIssueDate !== undefined) application.passport.issueDate = body.passportIssueDate;
   if (body.passportIssuingCountry !== undefined) application.passport.issuingCountry = body.passportIssuingCountry;
-  if (body.entries !== undefined) application.service.entries = body.entries;
-  if (body.visaDuration !== undefined) application.service.duration = body.visaDuration;
+  if (visa && body.entries !== undefined) application.service.entries = body.entries;
+  if (visa && body.visaDuration !== undefined) application.service.duration = body.visaDuration;
 
   if (body.assignedStaff !== undefined) {
     if (body.assignedStaff === null) {
@@ -246,14 +296,16 @@ const update = async (user, id, body, context = {}) => {
     const channelPrice = application.channel === 'b2b' ? application.price.b2b : application.price.b2c;
     if (body.totalAmount !== undefined && money.toMinor(total) !== money.toMinor(account.totalAmount)) {
       if (money.toMinor(total) <= 0) throw new ApiError(422, 'The total amount must be above zero.', { code: 'INVALID_AMOUNT' });
-      if (money.toMinor(total) !== money.toMinor(channelPrice) && !body.totalOverrideReason) {
+      // Only a visa has a price list to differ from.
+      const offList = visa && money.toMinor(total) !== money.toMinor(channelPrice);
+      if (offList && !body.totalOverrideReason) {
         throw new ApiError(422, 'The total is different from the price list. Write the reason.', {
           code: 'OVERRIDE_REASON_REQUIRED',
           errors: [{ field: 'body.totalOverrideReason', message: 'A reason is required when the total changes.' }]
         });
       }
       addTimeline(application, { event: 'Price changed', message: `Total changed from ${account.totalAmount} to ${total}.${body.totalOverrideReason ? ` Reason: ${body.totalOverrideReason}` : ''}`, visibility: 'internal', actor });
-      account.totalOverrideReason = money.toMinor(total) === money.toMinor(channelPrice) ? '' : body.totalOverrideReason;
+      account.totalOverrideReason = offList ? body.totalOverrideReason : '';
     }
     if (body.discountAmount !== undefined && money.toMinor(body.discountAmount) !== money.toMinor(account.discountAmount)) {
       addTimeline(application, { event: 'Discount changed', message: `Discount changed from ${account.discountAmount} to ${body.discountAmount}.`, visibility: 'internal', actor });
@@ -299,11 +351,14 @@ const APPROVED = ['approved', 'passport_ready', 'completed'];
 const camel = (key) => key.replace(/_([a-z])/g, (m, c) => c.toUpperCase());
 
 const dashboard = async () => {
-  const [byStatus, byChannel, unassigned, perCountry, recent, countries] = await Promise.all([
+  const [byStatus, byChannel, byService, unassigned, perCountry, recent, countries] = await Promise.all([
     VisaApplication.aggregate([{ $group: { _id: '$status', count: { $sum: 1 } } }]),
     VisaApplication.aggregate([{ $group: { _id: '$channel', count: { $sum: 1 } } }]),
+    VisaApplication.aggregate([{ $group: { _id: { $ifNull: ['$serviceType', 'visa'] }, count: { $sum: 1 } } }]),
     VisaApplication.countDocuments({ assignedStaff: { $exists: false }, status: { $nin: await finalStatusKeys() } }),
     VisaApplication.aggregate([
+      // The country table is about visas: the other services have no visa country.
+      { $match: { country: { $exists: true } } },
       { $group: { _id: '$country', applications: { $sum: 1 }, approved: { $sum: { $cond: [{ $in: ['$status', APPROVED] }, 1, 0] } }, rejected: { $sum: { $cond: [{ $eq: ['$status', 'rejected'] }, 1, 0] } } } }
     ]),
     VisaApplication.find().sort({ createdAt: -1 }).limit(10).populate(POPULATE),
@@ -325,6 +380,7 @@ const dashboard = async () => {
     ...result,
     b2c: channels.b2c || 0,
     b2b: channels.b2b || 0,
+    services: Object.fromEntries(SERVICE_TYPES.map((type) => [type, (byService.find((row) => row._id === type) || {}).count || 0])),
     unassigned,
     approvedTotal: approved,
     decisionRate: decided ? Math.round((approved / decided) * 100) : 0,

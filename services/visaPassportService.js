@@ -30,6 +30,7 @@ const allowedMethods = async (application) => {
 // pickup request, pickup staff, then the passport status with its details.
 const update = async (user, id, body, context = {}) => {
   const application = await findApplication(id);
+  if (application.serviceType !== 'visa') throw conflict('Passport handling applies to visa applications only.');
   const actor = await actorOf(user);
 
   if (body.passportSubmissionMethod) {

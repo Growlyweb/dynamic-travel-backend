@@ -1,11 +1,16 @@
 const mongoose = require('mongoose');
-const { APPLICANT_TYPES, PASSPORT_SUBMISSION_METHODS, PASSPORT_STATUSES, PASSPORT_REQUIREMENTS } = require('../config/visa');
+const { APPLICANT_TYPES, PASSPORT_SUBMISSION_METHODS, PASSPORT_STATUSES, PASSPORT_REQUIREMENTS, SERVICE_TYPES, TRIP_TYPES, TICKET_CLASSES } = require('../config/visa');
 
 const { ObjectId } = mongoose.Schema.Types;
 
-// One visa file. Staff create it from the dashboard; the money numbers are calculated by services/visaMoney.js and
-// never taken from the browser. Lists that belong to one application only (documents, timeline, notes, payments)
-// are embedded, so an application is a single read.
+// One file for a client: a visa, a ticket, a hotel booking or a tour package (serviceType). Staff create it from the
+// dashboard; the money numbers are calculated by services/visaMoney.js and never taken from the browser. Lists that
+// belong to one application only (documents, timeline, notes, payments) are embedded, so an application is a single read.
+// Files made before serviceType existed have none and are visa files.
+
+const isVisa = function isVisa() {
+  return this.serviceType === 'visa';
+};
 
 const money = { type: Number, min: 0, default: 0 };
 
@@ -83,17 +88,56 @@ const vendorLineSchema = new mongoose.Schema(
 
 const details = (fields) => new mongoose.Schema(Object.fromEntries(fields.map((field) => [field, { type: String, trim: true, maxlength: 300, default: '' }])), { _id: false });
 
+const place = { type: String, trim: true, maxlength: 80, default: '' };
+
+const ticketSchema = new mongoose.Schema(
+  {
+    tripType: { type: String, enum: TRIP_TYPES, required: true },
+    departure: { type: String, trim: true, maxlength: 80, required: true },
+    arrival: { type: String, trim: true, maxlength: 80, required: true },
+    travelClass: { type: String, enum: TICKET_CLASSES, required: true }
+  },
+  { _id: false }
+);
+
+const hotelSchema = new mongoose.Schema(
+  {
+    name: { type: String, trim: true, maxlength: 120, required: true },
+    country: { type: String, trim: true, maxlength: 80, required: true },
+    countryCode: { type: String, trim: true, maxlength: 3, default: '' },
+    city: { type: String, trim: true, maxlength: 80, required: true },
+    stay: { type: String, trim: true, maxlength: 40, required: true }
+  },
+  { _id: false }
+);
+
+const tourSchema = new mongoose.Schema(
+  {
+    packageName: { type: String, trim: true, maxlength: 120, default: '' },
+    duration: { type: String, trim: true, maxlength: 40, required: true },
+    destinations: {
+      type: [new mongoose.Schema({ country: { ...place, required: true }, countryCode: { type: String, trim: true, maxlength: 3, default: '' }, city: place }, { _id: false })],
+      default: []
+    }
+  },
+  { _id: false }
+);
+
 const visaApplicationSchema = new mongoose.Schema(
   {
     number: { type: String, required: true, unique: true },
+    serviceType: { type: String, enum: SERVICE_TYPES, default: 'visa', index: true },
     channel: { type: String, enum: ['b2c', 'b2b'], default: 'b2c', index: true },
     partner: { type: ObjectId, ref: 'Partner' },
     partnerName: { type: String, trim: true, maxlength: 120, default: '' },
 
-    country: { type: ObjectId, ref: 'VisaCountry', required: true, index: true },
-    countryName: { type: String, required: true },
-    visaType: { type: ObjectId, ref: 'VisaType', required: true },
-    visaTypeName: { type: String, required: true },
+    // The visa country and type. A ticket, hotel or tour file has neither.
+    country: { type: ObjectId, ref: 'VisaCountry', required: isVisa, index: true },
+    // Where the client is going, as a short label: the visa country, the hotel's country, the countries of a tour, the
+    // arrival place of a ticket.
+    countryName: { type: String, required: isVisa, default: '' },
+    visaType: { type: ObjectId, ref: 'VisaType', required: isVisa },
+    visaTypeName: { type: String, required: isVisa, default: '' },
 
     applicant: {
       fullName: { type: String, required: true, trim: true, maxlength: 100 },
@@ -106,19 +150,25 @@ const visaApplicationSchema = new mongoose.Schema(
       city: { type: String, trim: true, maxlength: 80, default: '' },
       applicantType: { type: String, enum: APPLICANT_TYPES, default: 'individual' }
     },
+    // A passport is needed for a visa and optional for the other services.
     passport: {
-      number: { type: String, required: true, trim: true, maxlength: 20 },
+      number: { type: String, required: isVisa, trim: true, maxlength: 20, default: '' },
       // Capital letters and digits only, so "ab 123-456" and "AB123456" are the same passport for the duplicate rule.
-      numberKey: { type: String, required: true, index: true },
+      numberKey: { type: String, required: isVisa, index: true, default: '' },
       expiry: { type: String, trim: true, default: '' },
       issueDate: { type: String, trim: true, default: '' },
       issuingCountry: { type: String, trim: true, maxlength: 60, default: 'Bangladesh' },
       type: { type: String, trim: true, maxlength: 30, default: 'ordinary' }
     },
+    // What the visa allows. Empty for the other services.
     service: {
       entries: { type: String, trim: true, maxlength: 30, default: 'single' },
       duration: { type: String, trim: true, maxlength: 40, default: '' }
     },
+    // The details of a ticket, a hotel booking or a tour package. Only the one that matches serviceType is filled.
+    ticket: { type: ticketSchema, default: null },
+    hotel: { type: hotelSchema, default: null },
+    tour: { type: tourSchema, default: null },
 
     status: { type: String, required: true, default: 'submitted', index: true },
     assignedStaff: { type: ObjectId, ref: 'User', index: true },

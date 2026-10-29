@@ -119,6 +119,18 @@ const VISA_CHECKLIST_EXAMPLE = {
   items: [{ _id: OID, label: 'Passport (valid at least 6 months)', requirement: 'required', active: true, submissionMode: 'both', fileFormats: 'PDF/JPG/PNG', maxSizeMb: 10 }]
 };
 
+const VISA_CHECKLIST_ENTRY = obj({
+  _id: str(OID), code: str('VI0001'), title: str('China Tourist Visa Document Check List'), description: str('<h3>Documents required</h3><ul><li>Passport</li></ul>'),
+  processingTime: str('5-7 working days'), media: arrayOf(obj({ _id: str(OID), name: str('Visa specimen'), type: str('image'), url: str('https://example.com/specimen.png') })),
+  displayOrder: INT(1), status: str('active', { enum: ['active', 'inactive'] }), country: str(ID_COUNTRY), countryName: str('China'), countryCode: str('CN'), flag: str('🇨🇳'),
+  visaType: str(ID_TYPE), visaTypeName: str('Tourist Visa'), entries: str('single', { enum: ['single', 'double', 'multiple'] }), createdAt: str(NOW), updatedAt: str(NOW)
+});
+const VISA_CHECKLIST_ENTRY_EXAMPLE = {
+  _id: OID, code: 'VI0001', title: 'China Tourist Visa Document Check List', description: '<h3>Documents required</h3><ul><li>Passport</li></ul>', processingTime: '5-7 working days',
+  media: [{ _id: OID, name: 'Visa specimen', type: 'image', url: 'https://example.com/specimen.png' }], displayOrder: 1, status: 'active', country: ID_COUNTRY, countryName: 'China', countryCode: 'CN', flag: '🇨🇳',
+  visaType: ID_TYPE, visaTypeName: 'Tourist Visa', entries: 'single', createdAt: NOW, updatedAt: NOW
+};
+
 const VISA_STATUS = obj({
   _id: str(ID_STATUS), key: str('under_review'), displayName: str('Under Review'), customerMessage: str('Your application is being reviewed by our team.'),
   internalDescription: str('A staff member is checking the application and documents.'), category: str('in_progress', { enum: ['in_progress', 'action_required', 'success', 'failed', 'cancelled'] }),
@@ -149,7 +161,8 @@ const VISA_TIMELINE_ENTRY = obj({
   visibility: str('both', { enum: ['internal', 'customer', 'both'] }), by: str('Admin Person')
 });
 const VISA_APPLICATION = obj({
-  _id: str(ID_APP), number: str('VISA-2026-000001'), channel: str('b2c', { enum: ['b2c', 'b2b'] }), partner: str(OID), partnerName: str(''),
+  _id: str(ID_APP), number: str('VISA-2026-000001'), serviceType: str('visa', { enum: ['visa', 'ticket', 'hotel', 'tour'] }), serviceLabel: str('Visa'), serviceSummary: str('Tourist Visa'),
+  channel: str('b2c', { enum: ['b2c', 'b2b'] }), partner: str(OID), partnerName: str(''),
   country: str(ID_COUNTRY), countryName: str('China'), visaType: str(ID_TYPE), visaTypeName: str('Tourist Visa'),
   applicant: obj({ fullName: str('Rahim Ahmed'), mobile: str('+8801712556340'), email: str('rahim@example.com'), nationality: str('Bangladeshi'), applicantType: str('individual') }),
   passport: obj({ number: str('BR0912345'), numberKey: str('BR0912345'), expiry: str('2030-06-15'), issueDate: str('2020-06-16'), issuingCountry: str('Bangladesh'), type: str('ordinary') }),
@@ -160,7 +173,7 @@ const VISA_APPLICATION = obj({
   passportSubmissionMethod: str('office', { enum: ['online', 'office', 'pickup'] }), passportStatus: str('not_received'), createdAt: str(NOW), updatedAt: str(NOW)
 });
 const VISA_APPLICATION_EXAMPLE = {
-  _id: ID_APP, number: 'VISA-2026-000001', channel: 'b2c', partnerName: '', country: ID_COUNTRY, countryName: 'China', visaType: ID_TYPE, visaTypeName: 'Tourist Visa',
+  _id: ID_APP, number: 'VISA-2026-000001', serviceType: 'visa', serviceLabel: 'Visa', serviceSummary: 'Tourist Visa', channel: 'b2c', partnerName: '', country: ID_COUNTRY, countryName: 'China', visaType: ID_TYPE, visaTypeName: 'Tourist Visa',
   applicant: { fullName: 'Rahim Ahmed', mobile: '+8801712556340', email: 'rahim@example.com', nationality: 'Bangladeshi', applicantType: 'individual' },
   passport: { number: 'BR0912345', numberKey: 'BR0912345', expiry: '2030-06-15', issueDate: '2020-06-16', issuingCountry: 'Bangladesh', type: 'ordinary' },
   status: 'under_review', assignedStaff: { _id: ID_STAFF, name: 'Priya Nair' },
@@ -197,6 +210,7 @@ const SETTINGS_EXAMPLE = {
 // Request schemas come straight from the validation files, so the documentation cannot drift from the real rules.
 const visaCatalog = require('../../validations/visaCatalog.validation');
 const visaApp = require('../../validations/visaApplication.validation');
+const visaChecklistEntry = require('../../validations/visaChecklistEntry.validation');
 const settingV = require('../../validations/setting.validation');
 const ACCESS = { view: 'ADMIN, or STAFF with VISA_VIEW', edit: 'ADMIN, or STAFF with VISA_EDIT', update: 'ADMIN, or STAFF with VISA_UPDATE' };
 
@@ -214,11 +228,11 @@ const ID_QUOTATION = '6ac0a5f0eebc510147c6725a';
 const ID_PARTNER = '6ac0a5f0eebc510147c6725b';
 
 const MESSAGE_TEMPLATE = obj({
-  _id: str(ID_TEMPLATE), name: str('Under Review'), channel: str('sms', { enum: ['sms', 'email'] }), trigger: str('under_review'), subject: str(''),
+  _id: str(ID_TEMPLATE), name: str('Under Review'), channel: str('sms', { enum: ['sms', 'email'] }), trigger: str('under_review'), serviceType: str('visa', { enum: ['all', 'visa', 'ticket', 'hotel', 'tour'] }), subject: str(''),
   message: str('Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.'), active: bool(true), createdAt: str(NOW), updatedAt: str(NOW)
 });
 const MESSAGE_TEMPLATE_EXAMPLE = {
-  _id: ID_TEMPLATE, name: 'Under Review', channel: 'sms', trigger: 'under_review', subject: '',
+  _id: ID_TEMPLATE, name: 'Under Review', channel: 'sms', trigger: 'under_review', serviceType: 'visa', subject: '',
   message: 'Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.', active: true, createdAt: NOW, updatedAt: NOW
 };
 const VISA_MESSAGE = obj({
@@ -1007,11 +1021,11 @@ const endpoints = [
     ACCESS.view, {
       success: ok(200, 'Visa dashboard overview fetched.', obj({
         total: INT(1), submitted: INT(0), underReview: INT(1), actionRequired: INT(0), documentsCompleted: INT(0), processing: INT(0), submittedToEmbassy: INT(0), approved: INT(0),
-        passportReady: INT(0), completed: INT(0), rejected: INT(0), cancelled: INT(0), b2c: INT(1), b2b: INT(0), unassigned: INT(0), approvedTotal: INT(0), decisionRate: INT(0),
+        passportReady: INT(0), completed: INT(0), rejected: INT(0), cancelled: INT(0), b2c: INT(1), b2b: INT(0), services: obj({ visa: INT(1), ticket: INT(0), hotel: INT(0), tour: INT(0) }), unassigned: INT(0), approvedTotal: INT(0), decisionRate: INT(0),
         countries: arrayOf(obj({ countryId: str(ID_COUNTRY), country: str('China'), flag: str('🇨🇳'), applications: INT(1), approved: INT(0), approvalRate: INT(0) })), recent: arrayOf(VISA_APPLICATION)
       }), {
         total: 1, submitted: 0, underReview: 1, actionRequired: 0, documentsCompleted: 0, processing: 0, submittedToEmbassy: 0, approved: 0, passportReady: 0, completed: 0, rejected: 0, cancelled: 0,
-        b2c: 1, b2b: 0, unassigned: 0, approvedTotal: 0, decisionRate: 0, countries: [{ countryId: ID_COUNTRY, country: 'China', flag: '🇨🇳', applications: 1, approved: 0, approvalRate: 0 }], recent: [VISA_LIST_ROW_EXAMPLE]
+        b2c: 1, b2b: 0, services: { visa: 1, ticket: 0, hotel: 0, tour: 0 }, unassigned: 0, approvedTotal: 0, decisionRate: 0, countries: [{ countryId: ID_COUNTRY, country: 'China', flag: '🇨🇳', applications: 1, approved: 0, approvalRate: 0 }], recent: [VISA_LIST_ROW_EXAMPLE]
       }),
       errors: { 401: true, 403: true }
     }),
@@ -1071,6 +1085,30 @@ const endpoints = [
       params: visaCatalog.checklistParam, paramExamples: { countryId: ID_COUNTRY, visaTypeId: ID_TYPE, applicantType: 'individual' },
       success: ok(200, 'Checklist fetched.', VISA_CHECKLIST, VISA_CHECKLIST_EXAMPLE), errors: { 401: true, 403: true, 404: ['VISA_TYPE_NOT_FOUND'], 422: true }
     }),
+  V('get', '/api/visa/checklist-entries', 'listVisaChecklistEntries', 'Visa Check List pages',
+    'The "Visa Check List" pages, one for each country and visa type, in display order. `search` matches the title, the code (`VI0001`) and the country name. `entries` keeps the visa types of one entry kind (`single`, `double` or `multiple`).',
+    ACCESS.view, {
+      query: visaChecklistEntry.listEntries, queryExample: { search: 'china', entries: 'single', status: 'active', page: '1', limit: '10' },
+      success: list('Visa checklists fetched.', VISA_CHECKLIST_ENTRY, VISA_CHECKLIST_ENTRY_EXAMPLE), errors: { 401: true, 403: true, 422: true }
+    }),
+  V('post', '/api/visa/checklist-entries', 'createVisaChecklistEntry', 'Add a Visa Check List page',
+    'The server numbers it (`VI0001`, `VI0002` ...). `description` is rich text and is cleaned: formatting stays, scripts and event handlers go. `media` holds sample links (http or https). The processing time starts from the visa type, and the display order from the number of pages.',
+    ACCESS.edit, {
+      body: visaChecklistEntry.createEntry, bodyExample: { countryId: ID_COUNTRY, visaTypeId: ID_TYPE, title: 'China Tourist Visa Document Check List', description: '<h3>Documents required</h3><ul><li>Passport</li></ul>', status: 'active' },
+      success: ok(201, 'Visa checklist created.', VISA_CHECKLIST_ENTRY, VISA_CHECKLIST_ENTRY_EXAMPLE),
+      errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND', 'VISA_TYPE_NOT_FOUND'], 409: ['CHECKLIST_ENTRY_EXISTS'], 422: true }
+    }),
+  V('get', '/api/visa/checklist-entries/{id}', 'getVisaChecklistEntry', 'One Visa Check List page', 'An unknown id answers `404`.',
+    ACCESS.view, { params: visaChecklistEntry.idParam, paramExamples: { id: OID }, success: ok(200, 'Visa checklist fetched.', VISA_CHECKLIST_ENTRY, VISA_CHECKLIST_ENTRY_EXAMPLE), errors: { 401: true, 403: true, 404: ['CHECKLIST_ENTRY_NOT_FOUND'], 422: true } }),
+  V('patch', '/api/visa/checklist-entries/{id}', 'updateVisaChecklistEntry', 'Change a Visa Check List page',
+    'Send only what changes. The country and the visa type cannot change: add a new page instead.',
+    ACCESS.edit, {
+      params: visaChecklistEntry.idParam, paramExamples: { id: OID }, body: visaChecklistEntry.updateEntry, bodyExample: { title: 'New title', status: 'inactive' },
+      success: ok(200, 'Visa checklist updated.', VISA_CHECKLIST_ENTRY, VISA_CHECKLIST_ENTRY_EXAMPLE), errors: { 401: true, 403: true, 404: ['CHECKLIST_ENTRY_NOT_FOUND'], 422: true }
+    }),
+  V('delete', '/api/visa/checklist-entries/{id}', 'deleteVisaChecklistEntry', 'Delete a Visa Check List page',
+    'The page is reading material, so it can always be deleted. It is also deleted with its visa type or its country.',
+    ACCESS.edit, { params: visaChecklistEntry.idParam, paramExamples: { id: OID }, success: ok(200, 'Visa checklist deleted.'), errors: { 401: true, 403: true, 404: ['CHECKLIST_ENTRY_NOT_FOUND'], 422: true } }),
   V('put', '/api/visa/checklists/{countryId}/{visaTypeId}/{applicantType}', 'saveVisaChecklist', 'Save a document checklist',
     'Replaces the whole list with `items`. Each item gets an `_id` that an upload can refer to with `checklistItemId`, so its size limit applies.',
     ACCESS.edit, {
@@ -1100,18 +1138,20 @@ const endpoints = [
 
   // ---- applications
   V('get', '/api/visa/applications', 'listVisaApplications', 'Visa applications',
-    'Newest first. `search` matches the number, the applicant name, phone and email, the passport number (spaces and case ignored), the country and the partner. `staff` is a user id or `unassigned`. A row leaves out the timeline, notes, payments and vendor lines: fetch one application for those.',
+    'Newest first. `serviceType` keeps one service (`visa`, `ticket`, `hotel` or `tour`). `search` matches the number, the applicant name, phone and email, the passport number (spaces and case ignored), the country, the partner, a hotel name, a package name and the places of a ticket. `staff` is a user id or `unassigned`. A row leaves out the timeline, notes, payments and vendor lines: fetch one application for those.',
     ACCESS.view, {
-      query: visaApp.listApplications, queryExample: { status: 'under_review', channel: 'b2c', search: 'rahim', page: '1', limit: '20' },
+      query: visaApp.listApplications, queryExample: { serviceType: 'visa', status: 'under_review', channel: 'b2c', search: 'rahim', page: '1', limit: '20' },
       success: list('Visa applications fetched.', VISA_APPLICATION, VISA_LIST_ROW_EXAMPLE), errors: { 401: true, 403: true, 422: true }
     }),
   V('post', '/api/visa/applications', 'createVisaApplication', 'Create a visa application',
-    'Staff and admins create the file. The server numbers it (`VISA-<year>-<6 digits>`, restarting every year), copies the price and the exchange rate from the visa type, and calculates net, advance, due and the payment status. ' +
-    'A `totalAmount` different from the price list needs `totalOverrideReason`. An `advancePaid` becomes the first payment entry. ' +
+    'Staff and admins create the file. `serviceType` is `visa` (the default), `ticket`, `hotel` or `tour`. The server numbers it (`VISA-`, `TKT-`, `HTL-` or `TOUR-` then `<year>-<6 digits>`, restarting every year) and calculates net, advance, due and the payment status. ' +
+    'A visa needs `passportNumber`, `countryId` and `visaTypeId`; the price and the exchange rate are copied from the visa type, and a `totalAmount` different from the price list needs `totalOverrideReason`. ' +
+    'A ticket, hotel or tour needs its own block (`ticket`, `hotel` or `tour`) and a typed `totalAmount`; it has no price list, no passport rule and no duplicate rule, and its passport is optional. Its sale is booked to the Air Ticket, Hotel or Tour Package category of the accounts. ' +
+    'An `advancePaid` becomes the first payment entry. ' +
     'Duplicates: the same passport, country and visa type with an open application is refused (`DUPLICATE_OPEN_APPLICATION`). The same passport and country inside the last 90 days (a setting) needs `confirmDuplicate`, a note that stays on the file (`DUPLICATE_RECENT_APPLICATION`). A rejected application never blocks a new one.',
     ACCESS.edit, {
       body: visaApp.createApplication,
-      bodyExample: { name: 'Rahim Ahmed', phone: '+8801712556340', email: 'rahim@example.com', passportNumber: 'BR0912345', countryId: ID_COUNTRY, visaTypeId: ID_TYPE, discountAmount: 1000, advancePaid: 4000, paymentMethod: 'Cash', vendorList: [{ name: 'Visa Vendor', service: 'visa', price: 7000 }] },
+      bodyExample: { serviceType: 'visa', name: 'Rahim Ahmed', phone: '+8801712556340', email: 'rahim@example.com', passportNumber: 'BR0912345', countryId: ID_COUNTRY, visaTypeId: ID_TYPE, discountAmount: 1000, advancePaid: 4000, paymentMethod: 'Cash', vendorList: [{ name: 'Visa Vendor', service: 'visa', price: 7000 }] },
       success: ok(201, 'Visa application created.', VISA_APPLICATION, VISA_APPLICATION_EXAMPLE),
       errors: { 401: true, 403: true, 404: ['COUNTRY_NOT_FOUND', 'VISA_TYPE_NOT_FOUND', 'PARTNER_NOT_FOUND'], 409: ['DUPLICATE_OPEN_APPLICATION', 'DUPLICATE_RECENT_APPLICATION'], 422: ['VALIDATION_ERROR', 'OVERRIDE_REASON_REQUIRED', 'DISCOUNT_TOO_HIGH', 'PAYMENTS_EXCEED_NET', 'CATALOG_PAUSED', 'PARTNER_REQUIRED', 'PARTNER_NOT_APPROVED', 'INVALID_STAFF', 'CURRENCY_NOT_ENABLED'] }
     }),
@@ -1188,7 +1228,7 @@ const endpoints = [
 
   // ---- messages
   V('get', '/api/visa/templates', 'listVisaTemplates', 'Message templates',
-    'The wording used when an application reaches a status. An **email** template is sent automatically through EmailJS at that moment. An **sms** template makes a prepared message in the log, which staff send by hand (no SMS provider is connected yet). Each template has an on/off switch (`active`).',
+    'The wording used when an application reaches a status. An **email** template is sent automatically through EmailJS at that moment. An **sms** template makes a prepared message in the log, which staff send by hand (no SMS provider is connected yet). Each template has an on/off switch (`active`). `serviceType` is the service the wording is for (`visa` is the default, and what a template made before this was); `all` is used for any service that has no template of its own on the same channel. The `{{trackingUrl}}` word is empty for a ticket, hotel or tour, because the public status page is for visas only.',
     ACCESS.view, { query: visaMessage.listTemplates, queryExample: { channel: 'sms' }, success: list('Message templates fetched.', MESSAGE_TEMPLATE, MESSAGE_TEMPLATE_EXAMPLE), errors: { 401: true, 403: true, 422: true } }),
   V('post', '/api/visa/templates', 'createVisaTemplate', 'Add a message template',
     'The `trigger` is a status key. The text may use only {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}}; any other word is refused (`UNKNOWN_VARIABLE`). An email template needs a `subject`. The name must be new for its channel.',

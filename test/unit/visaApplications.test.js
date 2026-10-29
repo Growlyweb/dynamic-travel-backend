@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const request = require('supertest');
 
 const app = require('../../app');
@@ -6,6 +7,8 @@ const { PERMISSIONS } = require('../../config/rbac');
 const events = require('../../utils/events');
 const AuditLog = require('../../models/AuditLog');
 const Partner = require('../../models/Partner');
+const VisaApplication = require('../../models/VisaApplication');
+const publicService = require('../../services/visaPublicService');
 const settingService = require('../../services/settingService');
 const { createUser, createB2B, bearer } = require('./helpers/factory');
 const { createAdmin, createVisaStaff, createCatalog, applicationBody } = require('./helpers/visa');
@@ -161,6 +164,103 @@ describe('creating an application', () => {
     expect((await create(customer, catalog)).status).toBe(403);
     expect((await create(partner, catalog)).status).toBe(403);
     expect((await request(app).post('/api/visa/applications').send(applicationBody(catalog))).status).toBe(401);
+  });
+});
+
+describe('a ticket, a hotel booking and a tour package', () => {
+  const client = { name: 'Mizanur Rahman', phone: '+880 1712 945 360', email: 'mizanur@example.com' };
+  const ticket = { tripType: 'Round Way', departure: 'Dhaka (DAC)', arrival: 'Dubai (DXB)', travelClass: 'Economy' };
+  const hotel = { name: 'Grand Hyatt Dubai', country: 'United Arab Emirates', countryCode: 'AE', city: 'Dubai', stay: '3 Nights' };
+  const tour = { packageName: 'Dubai + Kuala Lumpur', duration: '7 Days / 6 Nights', destinations: [{ country: 'United Arab Emirates', countryCode: 'AE', city: 'Dubai' }, { country: 'Malaysia', countryCode: 'MY', city: 'Kuala Lumpur' }] };
+  const make = (admin, serviceType, details, extra = {}) => post(admin, '/api/visa/applications', { ...client, serviceType, [serviceType]: details, totalAmount: 78000, ...extra });
+
+  it('needs no visa country, visa type or passport, and keeps the details it was given', async () => {
+    const admin = await createAdmin();
+    const res = await make(admin, 'ticket', ticket, { discountAmount: 3000, advancePaid: 30000, paymentMethod: 'bKash / Nagad' });
+
+    expect(res.status).toBe(201);
+    const a = res.body.data;
+    expect(a.number).toMatch(new RegExp(`^TKT-${new Date().getFullYear()}-000001$`));
+    expect(a).toMatchObject({ serviceType: 'ticket', serviceLabel: 'Ticket', serviceSummary: 'Dhaka (DAC) to Dubai (DXB), Round Way, Economy', countryName: 'Dubai (DXB)', status: 'submitted', ticket, passportStatus: 'not_required' });
+    expect(a.country).toBeUndefined();
+    expect(a.passport.number).toBe('');
+    expect(a.account).toMatchObject({ totalAmount: 78000, discountAmount: 3000, netAmount: 75000, advancePaid: 30000, dueAmount: 45000, paymentStatus: 'Partial' });
+    expect(a.price).toMatchObject({ currency: 'BDT', rateToBase: 1, b2c: 0, b2b: 0 });
+  });
+
+  it('numbers each service on its own, and labels hotels and tours by what they are', async () => {
+    const admin = await createAdmin();
+    const booking = (await make(admin, 'hotel', hotel)).body.data;
+    const package_ = (await make(admin, 'tour', tour)).body.data;
+    expect(booking.number).toMatch(/^HTL-\d{4}-000001$/);
+    expect(booking).toMatchObject({ serviceLabel: 'Hotel', serviceSummary: 'Grand Hyatt Dubai, Dubai, United Arab Emirates, 3 Nights', countryName: 'United Arab Emirates' });
+    expect(package_.number).toMatch(/^TOUR-\d{4}-000001$/);
+    expect(package_).toMatchObject({ serviceLabel: 'Tour Package', serviceSummary: 'Dubai + Kuala Lumpur, 7 Days / 6 Nights, Dubai + Kuala Lumpur', countryName: 'United Arab Emirates, Malaysia' });
+  });
+
+  it('needs the details of its own service and a typed total', async () => {
+    const admin = await createAdmin();
+    expect((await post(admin, '/api/visa/applications', { ...client, serviceType: 'ticket', totalAmount: 5000 })).body.message).toMatch(/ticket details are required/i);
+    expect((await make(admin, 'hotel', hotel, { totalAmount: undefined })).body.message).toMatch(/total amount is required/i);
+    expect((await make(admin, 'hotel', { ...hotel, stay: '' })).status).toBe(422);
+    expect((await make(admin, 'tour', { ...tour, destinations: [] })).body.message).toMatch(/at least one destination/i);
+    expect((await make(admin, 'ticket', { ...ticket, travelClass: 'Luxury' })).status).toBe(422);
+    expect((await make(admin, 'cruise', ticket)).body.message).toMatch(/service must be one of/i);
+    expect((await make(admin, 'ticket', ticket, { totalAmount: 0 })).body.code).toBe('INVALID_AMOUNT');
+  });
+
+  it('has no price list, so a different total needs no reason, and a passport is optional and never a duplicate', async () => {
+    const admin = await createAdmin();
+    const first = await make(admin, 'ticket', ticket, { passportNumber: 'BR1234567' });
+    const second = await make(admin, 'ticket', ticket, { passportNumber: 'BR1234567' });
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(first.body.data.passport).toMatchObject({ number: 'BR1234567', numberKey: 'BR1234567' });
+
+    const changed = await patch(admin, `/api/visa/applications/${first.body.data._id}`, { totalAmount: 81000 });
+    expect(changed.status).toBe(200);
+    expect(changed.body.data.account).toMatchObject({ totalAmount: 81000, totalOverrideReason: '' });
+  });
+
+  it('is filtered and searched with the visa files, and a file made before serviceType counts as a visa', async () => {
+    const admin = await createAdmin();
+    const catalog = await createCatalog();
+    const visa = (await create(admin, catalog)).body.data;
+    await make(admin, 'hotel', hotel);
+    await make(admin, 'ticket', ticket);
+    await VisaApplication.collection.updateOne({ _id: new mongoose.Types.ObjectId(visa._id) }, { $unset: { serviceType: '' } });
+
+    const names = async (query) => (await get(admin, `/api/visa/applications?${query}`)).body.data.map((a) => a.serviceType).sort();
+    expect(await names('')).toEqual(['hotel', 'ticket', 'visa']);
+    expect(await names('serviceType=visa')).toEqual(['visa']);
+    expect(await names('serviceType=hotel')).toEqual(['hotel']);
+    expect(await names('search=hyatt')).toEqual(['hotel']);
+    expect(await names('search=DXB')).toEqual(['ticket']);
+  });
+
+  it('counts the services on the dashboard and leaves them out of the visa country table', async () => {
+    const admin = await createAdmin();
+    await create(admin, await createCatalog());
+    await make(admin, 'tour', tour);
+    const { body } = await get(admin, '/api/visa/dashboard');
+    expect(body.data.total).toBe(2);
+    expect(body.data.services).toEqual({ visa: 1, ticket: 0, hotel: 0, tour: 1 });
+    expect(body.data.countries).toHaveLength(1);
+  });
+
+  it('has no passport handling, no public status page and still takes payments and notes', async () => {
+    const admin = await createAdmin();
+    const made = (await make(admin, 'hotel', hotel)).body.data;
+
+    const passport = await patch(admin, `/api/visa/applications/${made._id}/passport`, { passportSubmissionMethod: 'office' });
+    expect(passport.status).toBe(409);
+    expect(passport.body.message).toMatch(/visa applications only/i);
+    expect(await publicService.checkLink(made.number)).toEqual({ valid: false });
+
+    const paid = await post(admin, `/api/visa/applications/${made._id}/payments`, { amount: 20000, method: 'Cash' });
+    expect(paid.status).toBe(201);
+    expect(paid.body.data.account).toMatchObject({ advancePaid: 20000, dueAmount: 58000 });
+    expect((await post(admin, `/api/visa/applications/${made._id}/notes`, { type: 'internal', text: 'Late check-in.' })).status).toBe(201);
   });
 });
 

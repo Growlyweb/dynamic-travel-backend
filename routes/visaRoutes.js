@@ -8,6 +8,8 @@ const publicSchemas = require('../validations/visaPublic.validation');
 const { visaStatusLinkLimiter, visaStatusCodeLimiter, visaStatusVerifyLimiter } = require('../middleware/rateLimitMiddleware');
 const messageController = require('../controllers/visaMessageController');
 const quotationController = require('../controllers/visaQuotationController');
+const checklistEntryController = require('../controllers/visaChecklistEntryController');
+const checklistEntrySchemas = require('../validations/visaChecklistEntry.validation');
 const memoryUpload = require('../middleware/memoryUploadMiddleware');
 const appSchemas = require('../validations/visaApplication.validation');
 const messageSchemas = require('../validations/visaMessage.validation');
@@ -48,6 +50,13 @@ router.delete('/types/:id', edit, validate({ params: schemas.idParam }), catalog
 // Checklists
 router.get('/checklists/:countryId/:visaTypeId/:applicantType', view, validate({ params: schemas.checklistParam }), catalog.getChecklist);
 router.put('/checklists/:countryId/:visaTypeId/:applicantType', edit, validate({ params: schemas.checklistParam, body: schemas.saveChecklist }), catalog.saveChecklist);
+
+// The "Visa Check List" pages, one for each country and visa type
+router.get('/checklist-entries', view, validate({ query: checklistEntrySchemas.listEntries }), checklistEntryController.list);
+router.post('/checklist-entries', edit, validate({ body: checklistEntrySchemas.createEntry }), checklistEntryController.create);
+router.get('/checklist-entries/:id', view, validate({ params: checklistEntrySchemas.idParam }), checklistEntryController.get);
+router.patch('/checklist-entries/:id', edit, validate({ params: checklistEntrySchemas.idParam, body: checklistEntrySchemas.updateEntry }), checklistEntryController.update);
+router.delete('/checklist-entries/:id', edit, validate({ params: checklistEntrySchemas.idParam }), checklistEntryController.remove);
 
 // Statuses
 router.get('/statuses', view, validate({ query: schemas.listStatuses }), catalog.listStatuses);

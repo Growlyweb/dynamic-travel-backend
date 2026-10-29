@@ -57,6 +57,28 @@ describe('a visa application in the books', () => {
     expect((await get(admin, '/api/accounts/payables')).body.data.totals).toMatchObject({ due: 5500, count: 2 });
   });
 
+  it('books a hotel, a ticket and a tour to their own category, revenue and cost accounts', async () => {
+    const admin = await createAdmin();
+    const client = { name: 'Mizanur Rahman', phone: '+8801712945360', totalAmount: 60000, advancePaid: 20000, paymentMethod: 'Cash' };
+    const make = async (serviceType, details, vendor) => {
+      await post(admin, '/api/visa/applications', { ...client, serviceType, [serviceType]: details, vendorList: [{ name: vendor, service: serviceType, price: 48000 }] });
+      await events.idle();
+    };
+    await make('hotel', { name: 'Grand Hyatt Dubai', country: 'United Arab Emirates', city: 'Dubai', stay: '3 Nights' }, 'Gulf Hotels');
+    await make('ticket', { tripType: 'One Way', departure: 'Dhaka (DAC)', arrival: 'Dubai (DXB)', travelClass: 'Economy' }, 'Sky Air');
+    await make('tour', { duration: '5 Days', destinations: [{ country: 'Malaysia', city: 'Kuala Lumpur' }] }, 'Land Tours');
+
+    const files = Object.fromEntries((await sales(admin)).map((file) => [file.category, file]));
+    expect(files.Hotel).toMatchObject({ fileNo: expect.stringMatching(/^HF-\d{4}-0001$/), destination: 'United Arab Emirates', detail: 'Grand Hyatt Dubai, Dubai, United Arab Emirates, 3 Nights', sale: 60000, cost: 48000, received: 20000, due: 40000, profit: 12000 });
+    expect(files['Air Ticket']).toMatchObject({ fileNo: expect.stringMatching(/^AF-\d{4}-0001$/), destination: 'Dubai (DXB)', cost: 48000 });
+    expect(files['Tour Package']).toMatchObject({ fileNo: expect.stringMatching(/^TF-\d{4}-0001$/), destination: 'Malaysia', cost: 48000 });
+
+    const accounts = new Set((await Journal.find().lean()).flatMap((journal) => journal.lines.map((line) => line.account)));
+    ['4040', '5050', '4030', '5040', '4020', '5030'].forEach((code) => expect(accounts.has(code)).toBe(true));
+    ['4010', '5010'].forEach((code) => expect(accounts.has(code)).toBe(false));
+    expect((await get(admin, '/api/accounts/receipts')).body.data.map((receipt) => receipt.note).join(' ')).toMatch(/Hotel payment HTL-/);
+  });
+
   it('is safe to repeat: the same event twice changes nothing', async () => {
     const admin = await createAdmin();
     const catalog = await createCatalog();
