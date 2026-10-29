@@ -2,6 +2,7 @@ const { FilterXSS } = require('xss');
 const VisaCountry = require('../models/VisaCountry');
 const VisaType = require('../models/VisaType');
 const VisaChecklist = require('../models/VisaChecklist');
+const VisaChecklistEntry = require('../models/VisaChecklistEntry');
 const VisaStatusConfig = require('../models/VisaStatusConfig');
 const VisaApplication = require('../models/VisaApplication');
 const { SYSTEM_STATUSES, systemStatus, isSystemFinal, REQUIRED_TEXT, REOPEN_TO } = require('../config/visa');
@@ -18,7 +19,7 @@ const keyOf = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 // The checklist text is written in a rich text editor and shown in the dashboard and later on the storefront, so only
 // a small set of formatting tags survives. Scripts, event handlers and odd links are removed.
 const richTextFilter = new FilterXSS({
-  whiteList: { h3: [], h4: [], p: [], br: [], ul: [], ol: [], li: [], strong: [], b: [], em: [], i: [], u: [], blockquote: [], a: ['href'] },
+  whiteList: { h1: [], h2: [], h3: [], h4: [], p: [], br: [], ul: [], ol: [], li: [], strong: [], b: [], em: [], i: [], u: [], blockquote: [], a: ['href'], img: ['src', 'alt'] },
   stripIgnoreTag: true,
   stripIgnoreTagBody: ['script', 'style'],
   css: false
@@ -87,7 +88,7 @@ const removeCountry = async (actor, id, context = {}) => {
   if (used > 0) {
     throw new ApiError(409, `This country has ${used} application${used === 1 ? '' : 's'}. Pause it instead of deleting it.`, { code: 'COUNTRY_IN_USE' });
   }
-  await Promise.all([VisaChecklist.deleteMany({ country: country._id }), VisaType.deleteMany({ country: country._id })]);
+  await Promise.all([VisaChecklist.deleteMany({ country: country._id }), VisaChecklistEntry.deleteMany({ country: country._id }), VisaType.deleteMany({ country: country._id })]);
   await country.deleteOne();
   await audit(actor, `visa-country:${country._id}`, context, { action: 'deleted' });
 };
@@ -154,7 +155,7 @@ const removeType = async (actor, id, context = {}) => {
   if (used > 0) {
     throw new ApiError(409, `This visa type has ${used} application${used === 1 ? '' : 's'}. Pause it instead of deleting it.`, { code: 'VISA_TYPE_IN_USE' });
   }
-  await VisaChecklist.deleteMany({ visaType: type._id });
+  await Promise.all([VisaChecklist.deleteMany({ visaType: type._id }), VisaChecklistEntry.deleteMany({ visaType: type._id })]);
   await type.deleteOne();
   await audit(actor, `visa-type:${type._id}`, context, { action: 'deleted' });
 };

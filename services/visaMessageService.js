@@ -13,7 +13,7 @@ const paginate = require('../utils/pagination');
 const { buildMeta } = require('../utils/pagination');
 const auditService = require('./auditService');
 const statusService = require('./visaStatusService');
-const { findApplication, actorOf } = require('./visaShared');
+const { findApplication, actorOf, describeService } = require('./visaShared');
 
 const keyOf = (name) => name.trim().replace(/\s+/g, ' ').toLowerCase();
 const VARIABLE = /\{\{\s*([A-Za-z]+)\s*\}\}/g;
@@ -47,6 +47,7 @@ const listTemplates = async (query) => {
   const { page, limit, skip } = paginate(query);
   const filter = {};
   if (query.channel) filter.channel = query.channel;
+  if (query.serviceType) filter.serviceType = query.serviceType;
   if (query.active !== undefined) filter.active = query.active === 'true';
   const [items, total] = await Promise.all([MessageTemplate.find(filter).sort({ channel: 1, name: 1 }).skip(skip).limit(limit), MessageTemplate.countDocuments(filter)]);
   return { items, meta: buildMeta(total, page, limit) };
@@ -100,9 +101,11 @@ const variablesOf = async (application) => {
     applicantName: application.applicant.fullName,
     applicationNumber: application.number,
     country: application.countryName,
-    visaType: application.visaTypeName,
+    // A ticket, hotel or tour file has no visa type: the word is the service, so "your Hotel application" still reads well.
+    visaType: application.visaTypeName || describeService(application).label,
     status: status ? status.displayName : application.status,
-    trackingUrl: `${env.visaTrackingUrl}/${application.number}`
+    // The public status page knows visa files only, so any other file gets no link.
+    trackingUrl: describeService(application).type === 'visa' ? `${env.visaTrackingUrl}/${application.number}` : ''
   };
 };
 
@@ -183,14 +186,22 @@ const createMessage = async (application, { channel, template, subject, body, so
 
 // ------------------------------------------------------------------ automatic messages
 
-// When an application reaches a status, every active template for it is used. Email goes out at once, an SMS becomes
-// a prepared message in the log.
+// A template made for the service of the file is used; a template for "all" services is used only on a channel where the
+// service has none of its own. So a hotel file gets the hotel wording, and the general wording until there is some.
+const templatesForService = (templates, serviceType) => {
+  const own = new Set(templates.filter((template) => template.serviceType === serviceType).map((template) => template.channel));
+  return templates.filter((template) => template.serviceType === serviceType || (template.serviceType === 'all' && !own.has(template.channel)));
+};
+
+// When an application reaches a status, every active template for it and its service is used. Email goes out at once,
+// an SMS becomes a prepared message in the log.
 const runTriggers = async (applicationId, trigger) => {
-  const templates = await MessageTemplate.find({ trigger, active: true });
-  if (!templates.length) return [];
+  const found = await MessageTemplate.find({ trigger, active: true });
+  if (!found.length) return [];
   const application = await VisaApplication.findById(applicationId);
   if (!application) return [];
 
+  const templates = templatesForService(found, describeService(application).type);
   const made = [];
   for (const template of templates) {
     made.push(await createMessage(application, { channel: template.channel, template, subject: template.subject, body: template.message, source: 'auto' }));

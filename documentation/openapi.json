@@ -12114,13 +12114,29 @@
         ],
         "summary": "Visa applications",
         "operationId": "listVisaApplications",
-        "description": "Newest first. `search` matches the number, the applicant name, phone and email, the passport number (spaces and case ignored), the country and the partner. `staff` is a user id or `unassigned`. A row leaves out the timeline, notes, payments and vendor lines: fetch one application for those.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "description": "Newest first. `serviceType` keeps one service (`visa`, `ticket`, `hotel` or `tour`). `search` matches the number, the applicant name, phone and email, the passport number (spaces and case ignored), the country, the partner, a hotel name, a package name and the places of a ticket. `staff` is a user id or `unassigned`. A row leaves out the timeline, notes, payments and vendor lines: fetch one application for those.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
         "security": [
           {
             "bearerAuth": []
           }
         ],
         "parameters": [
+          {
+            "name": "serviceType",
+            "in": "query",
+            "required": false,
+            "description": "serviceType",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "visa",
+                "ticket",
+                "hotel",
+                "tour"
+              ]
+            },
+            "example": "visa"
+          },
           {
             "name": "status",
             "in": "query",
@@ -12270,6 +12286,24 @@
                           "number": {
                             "type": "string",
                             "example": "VISA-2026-000001"
+                          },
+                          "serviceType": {
+                            "type": "string",
+                            "example": "visa",
+                            "enum": [
+                              "visa",
+                              "ticket",
+                              "hotel",
+                              "tour"
+                            ]
+                          },
+                          "serviceLabel": {
+                            "type": "string",
+                            "example": "Visa"
+                          },
+                          "serviceSummary": {
+                            "type": "string",
+                            "example": "Tourist Visa"
                           },
                           "channel": {
                             "type": "string",
@@ -12650,6 +12684,9 @@
                     {
                       "_id": "6ac0a5f0eebc510147c67253",
                       "number": "VISA-2026-000001",
+                      "serviceType": "visa",
+                      "serviceLabel": "Visa",
+                      "serviceSummary": "Tourist Visa",
                       "channel": "b2c",
                       "partnerName": "",
                       "country": "6ac0a5f0eebc510147c67251",
@@ -12751,12 +12788,12 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "The value of status is not valid.",
+                  "message": "The value of serviceType is not valid.",
                   "code": "VALIDATION_ERROR",
                   "errors": [
                     {
-                      "field": "query.status",
-                      "message": "The value of status is not valid."
+                      "field": "query.serviceType",
+                      "message": "The value of serviceType is not valid."
                     }
                   ]
                 }
@@ -12771,7 +12808,7 @@
         ],
         "summary": "Create a visa application",
         "operationId": "createVisaApplication",
-        "description": "Staff and admins create the file. The server numbers it (`VISA-<year>-<6 digits>`, restarting every year), copies the price and the exchange rate from the visa type, and calculates net, advance, due and the payment status. A `totalAmount` different from the price list needs `totalOverrideReason`. An `advancePaid` becomes the first payment entry. Duplicates: the same passport, country and visa type with an open application is refused (`DUPLICATE_OPEN_APPLICATION`). The same passport and country inside the last 90 days (a setting) needs `confirmDuplicate`, a note that stays on the file (`DUPLICATE_RECENT_APPLICATION`). A rejected application never blocks a new one.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "description": "Staff and admins create the file. `serviceType` is `visa` (the default), `ticket`, `hotel` or `tour`. The server numbers it (`VISA-`, `TKT-`, `HTL-` or `TOUR-` then `<year>-<6 digits>`, restarting every year) and calculates net, advance, due and the payment status. A visa needs `passportNumber`, `countryId` and `visaTypeId`; the price and the exchange rate are copied from the visa type, and a `totalAmount` different from the price list needs `totalOverrideReason`. A ticket, hotel or tour needs its own block (`ticket`, `hotel` or `tour`) and a typed `totalAmount`; it has no price list, no passport rule and no duplicate rule, and its passport is optional. Its sale is booked to the Air Ticket, Hotel or Tour Package category of the accounts. An `advancePaid` becomes the first payment entry. Duplicates: the same passport, country and visa type with an open application is refused (`DUPLICATE_OPEN_APPLICATION`). The same passport and country inside the last 90 days (a setting) needs `confirmDuplicate`, a note that stays on the file (`DUPLICATE_RECENT_APPLICATION`). A rejected application never blocks a new one.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
         "security": [
           {
             "bearerAuth": []
@@ -12784,6 +12821,16 @@
               "schema": {
                 "type": "object",
                 "properties": {
+                  "serviceType": {
+                    "default": "visa",
+                    "type": "string",
+                    "enum": [
+                      "visa",
+                      "ticket",
+                      "hotel",
+                      "tour"
+                    ]
+                  },
                   "clientType": {
                     "type": "string",
                     "enum": [
@@ -12872,6 +12919,122 @@
                     "type": "string",
                     "maxLength": 40
                   },
+                  "ticket": {
+                    "type": "object",
+                    "properties": {
+                      "tripType": {
+                        "type": "string",
+                        "enum": [
+                          "One Way",
+                          "Round Way"
+                        ]
+                      },
+                      "departure": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "arrival": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "travelClass": {
+                        "type": "string",
+                        "enum": [
+                          "Economy",
+                          "Premium Economy",
+                          "Business",
+                          "First Class"
+                        ]
+                      }
+                    },
+                    "required": [
+                      "tripType",
+                      "departure",
+                      "arrival",
+                      "travelClass"
+                    ]
+                  },
+                  "hotel": {
+                    "type": "object",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "country": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "countryCode": {
+                        "type": "string",
+                        "maxLength": 3
+                      },
+                      "city": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 80
+                      },
+                      "stay": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      }
+                    },
+                    "required": [
+                      "name",
+                      "country",
+                      "city",
+                      "stay"
+                    ]
+                  },
+                  "tour": {
+                    "type": "object",
+                    "properties": {
+                      "packageName": {
+                        "type": "string",
+                        "maxLength": 120
+                      },
+                      "duration": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 40
+                      },
+                      "destinations": {
+                        "minItems": 1,
+                        "maxItems": 15,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "country": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "countryCode": {
+                              "type": "string",
+                              "maxLength": 3
+                            },
+                            "city": {
+                              "type": "string",
+                              "maxLength": 80
+                            }
+                          },
+                          "required": [
+                            "country"
+                          ]
+                        }
+                      }
+                    },
+                    "required": [
+                      "duration",
+                      "destinations"
+                    ]
+                  },
                   "currency": {
                     "type": "string",
                     "pattern": "^[A-Z]{3}$"
@@ -12923,7 +13086,12 @@
                         },
                         "service": {
                           "type": "string",
-                          "maxLength": 30
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
                         },
                         "country": {
                           "type": "string",
@@ -12959,13 +13127,11 @@
                 },
                 "required": [
                   "name",
-                  "phone",
-                  "passportNumber",
-                  "countryId",
-                  "visaTypeId"
+                  "phone"
                 ]
               },
               "example": {
+                "serviceType": "visa",
                 "name": "Rahim Ahmed",
                 "phone": "+8801712556340",
                 "email": "rahim@example.com",
@@ -13012,6 +13178,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -13383,6 +13567,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -13591,6 +13778,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -13962,6 +14167,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -14243,7 +14451,12 @@
                         },
                         "service": {
                           "type": "string",
-                          "maxLength": 30
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
                         },
                         "country": {
                           "type": "string",
@@ -14308,6 +14521,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -14679,6 +14910,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -15163,6 +15397,24 @@
                           "type": "string",
                           "example": "VISA-2026-000001"
                         },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
                         "channel": {
                           "type": "string",
                           "example": "b2c",
@@ -15533,6 +15785,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -15735,6 +15990,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -16106,6 +16379,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -16708,6 +16984,24 @@
                           "type": "string",
                           "example": "VISA-2026-000001"
                         },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
                         "channel": {
                           "type": "string",
                           "example": "b2c",
@@ -17078,6 +17372,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -17377,6 +17674,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -17748,6 +18063,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -17999,6 +18317,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -18370,6 +18706,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -18597,6 +18936,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -18968,6 +19325,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -19216,6 +19576,24 @@
                         "number": {
                           "type": "string",
                           "example": "VISA-2026-000001"
+                        },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "serviceLabel": {
+                          "type": "string",
+                          "example": "Visa"
+                        },
+                        "serviceSummary": {
+                          "type": "string",
+                          "example": "Tourist Visa"
                         },
                         "channel": {
                           "type": "string",
@@ -19587,6 +19965,9 @@
                   "data": {
                     "_id": "6ac0a5f0eebc510147c67253",
                     "number": "VISA-2026-000001",
+                    "serviceType": "visa",
+                    "serviceLabel": "Visa",
+                    "serviceSummary": "Tourist Visa",
                     "channel": "b2c",
                     "partnerName": "",
                     "country": "6ac0a5f0eebc510147c67251",
@@ -19734,6 +20115,1234 @@
                     {
                       "field": "tradeLicense",
                       "message": "Trade license document is required."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/checklist-entries": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Visa Check List pages",
+        "operationId": "listVisaChecklistEntries",
+        "description": "The \"Visa Check List\" pages, one for each country and visa type, in display order. `search` matches the title, the code (`VI0001`) and the country name. `entries` keeps the visa types of one entry kind (`single`, `double` or `multiple`).\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "search",
+            "in": "query",
+            "required": false,
+            "description": "Free text. Matched literally (special characters are escaped), case-insensitive.",
+            "schema": {
+              "type": "string",
+              "maxLength": 100
+            },
+            "example": "china"
+          },
+          {
+            "name": "countryId",
+            "in": "query",
+            "required": false,
+            "description": "countryId",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            }
+          },
+          {
+            "name": "entries",
+            "in": "query",
+            "required": false,
+            "description": "entries",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "single",
+                "double",
+                "multiple"
+              ]
+            },
+            "example": "single"
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "required": false,
+            "description": "Only accounts with this status.",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "active",
+                "inactive"
+              ]
+            },
+            "example": "active"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "description": "Page number, starting at 1. Default 1.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "1"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "description": "Items per page. Default 10, maximum 500.",
+            "schema": {
+              "type": "string",
+              "pattern": "^\\d+$"
+            },
+            "example": "10"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa checklists fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa checklists fetched."
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "_id": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67250"
+                          },
+                          "code": {
+                            "type": "string",
+                            "example": "VI0001"
+                          },
+                          "title": {
+                            "type": "string",
+                            "example": "China Tourist Visa Document Check List"
+                          },
+                          "description": {
+                            "type": "string",
+                            "example": "<h3>Documents required</h3><ul><li>Passport</li></ul>"
+                          },
+                          "processingTime": {
+                            "type": "string",
+                            "example": "5-7 working days"
+                          },
+                          "media": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "_id": {
+                                  "type": "string",
+                                  "example": "6ac0a5f0eebc510147c67250"
+                                },
+                                "name": {
+                                  "type": "string",
+                                  "example": "Visa specimen"
+                                },
+                                "type": {
+                                  "type": "string",
+                                  "example": "image"
+                                },
+                                "url": {
+                                  "type": "string",
+                                  "example": "https://example.com/specimen.png"
+                                }
+                              }
+                            }
+                          },
+                          "displayOrder": {
+                            "type": "integer",
+                            "example": 1
+                          },
+                          "status": {
+                            "type": "string",
+                            "example": "active",
+                            "enum": [
+                              "active",
+                              "inactive"
+                            ]
+                          },
+                          "country": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67251"
+                          },
+                          "countryName": {
+                            "type": "string",
+                            "example": "China"
+                          },
+                          "countryCode": {
+                            "type": "string",
+                            "example": "CN"
+                          },
+                          "flag": {
+                            "type": "string",
+                            "example": "🇨🇳"
+                          },
+                          "visaType": {
+                            "type": "string",
+                            "example": "6ac0a5f0eebc510147c67252"
+                          },
+                          "visaTypeName": {
+                            "type": "string",
+                            "example": "Tourist Visa"
+                          },
+                          "entries": {
+                            "type": "string",
+                            "example": "single",
+                            "enum": [
+                              "single",
+                              "double",
+                              "multiple"
+                            ]
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "example": "2026-10-03T06:51:28.261Z"
+                          }
+                        }
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    },
+                    "pagination": {
+                      "description": "The same object as `meta`, under the name the tour handoff uses.",
+                      "$ref": "#/components/schemas/PaginationMeta"
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa checklists fetched.",
+                  "data": [
+                    {
+                      "_id": "6ac0a5f0eebc510147c67250",
+                      "code": "VI0001",
+                      "title": "China Tourist Visa Document Check List",
+                      "description": "<h3>Documents required</h3><ul><li>Passport</li></ul>",
+                      "processingTime": "5-7 working days",
+                      "media": [
+                        {
+                          "_id": "6ac0a5f0eebc510147c67250",
+                          "name": "Visa specimen",
+                          "type": "image",
+                          "url": "https://example.com/specimen.png"
+                        }
+                      ],
+                      "displayOrder": 1,
+                      "status": "active",
+                      "country": "6ac0a5f0eebc510147c67251",
+                      "countryName": "China",
+                      "countryCode": "CN",
+                      "flag": "🇨🇳",
+                      "visaType": "6ac0a5f0eebc510147c67252",
+                      "visaTypeName": "Tourist Visa",
+                      "entries": "single",
+                      "createdAt": "2026-10-03T06:51:28.261Z",
+                      "updatedAt": "2026-10-03T06:51:28.261Z"
+                    }
+                  ],
+                  "meta": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  },
+                  "pagination": {
+                    "total": 42,
+                    "page": 1,
+                    "limit": 10,
+                    "totalPages": 5
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of search is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "query.search",
+                      "message": "The value of search is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Add a Visa Check List page",
+        "operationId": "createVisaChecklistEntry",
+        "description": "The server numbers it (`VI0001`, `VI0002` ...). `description` is rich text and is cleaned: formatting stays, scripts and event handlers go. `media` holds sample links (http or https). The processing time starts from the visa type, and the display order from the number of pages.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "countryId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "visaTypeId": {
+                    "type": "string",
+                    "pattern": "^[0-9a-fA-F]{24}$"
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "processingTime": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "media": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "type": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "url": {
+                          "type": "string",
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "url"
+                      ]
+                    }
+                  },
+                  "displayOrder": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "inactive"
+                    ]
+                  }
+                },
+                "required": [
+                  "countryId",
+                  "visaTypeId",
+                  "title"
+                ]
+              },
+              "example": {
+                "countryId": "6ac0a5f0eebc510147c67251",
+                "visaTypeId": "6ac0a5f0eebc510147c67252",
+                "title": "China Tourist Visa Document Check List",
+                "description": "<h3>Documents required</h3><ul><li>Passport</li></ul>",
+                "status": "active"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Visa checklist created.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa checklist created."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67250"
+                        },
+                        "code": {
+                          "type": "string",
+                          "example": "VI0001"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "China Tourist Visa Document Check List"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "<h3>Documents required</h3><ul><li>Passport</li></ul>"
+                        },
+                        "processingTime": {
+                          "type": "string",
+                          "example": "5-7 working days"
+                        },
+                        "media": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "_id": {
+                                "type": "string",
+                                "example": "6ac0a5f0eebc510147c67250"
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Visa specimen"
+                              },
+                              "type": {
+                                "type": "string",
+                                "example": "image"
+                              },
+                              "url": {
+                                "type": "string",
+                                "example": "https://example.com/specimen.png"
+                              }
+                            }
+                          }
+                        },
+                        "displayOrder": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "active",
+                          "enum": [
+                            "active",
+                            "inactive"
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "countryCode": {
+                          "type": "string",
+                          "example": "CN"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "example": "🇨🇳"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "entries": {
+                          "type": "string",
+                          "example": "single",
+                          "enum": [
+                            "single",
+                            "double",
+                            "multiple"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa checklist created.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67250",
+                    "code": "VI0001",
+                    "title": "China Tourist Visa Document Check List",
+                    "description": "<h3>Documents required</h3><ul><li>Passport</li></ul>",
+                    "processingTime": "5-7 working days",
+                    "media": [
+                      {
+                        "_id": "6ac0a5f0eebc510147c67250",
+                        "name": "Visa specimen",
+                        "type": "image",
+                        "url": "https://example.com/specimen.png"
+                      }
+                    ],
+                    "displayOrder": 1,
+                    "status": "active",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "countryCode": "CN",
+                    "flag": "🇨🇳",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "entries": "single",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `COUNTRY_NOT_FOUND`, `VISA_TYPE_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "COUNTRY_NOT_FOUND",
+                  "code": "COUNTRY_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict. Possible error codes: `CHECKLIST_ENTRY_EXISTS`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "CHECKLIST_ENTRY_EXISTS",
+                  "code": "CHECKLIST_ENTRY_EXISTS"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of countryId is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.countryId",
+                      "message": "The value of countryId is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/visa/checklist-entries/{id}": {
+      "get": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "One Visa Check List page",
+        "operationId": "getVisaChecklistEntry",
+        "description": "An unknown id answers `404`.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67250"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa checklist fetched.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa checklist fetched."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67250"
+                        },
+                        "code": {
+                          "type": "string",
+                          "example": "VI0001"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "China Tourist Visa Document Check List"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "<h3>Documents required</h3><ul><li>Passport</li></ul>"
+                        },
+                        "processingTime": {
+                          "type": "string",
+                          "example": "5-7 working days"
+                        },
+                        "media": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "_id": {
+                                "type": "string",
+                                "example": "6ac0a5f0eebc510147c67250"
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Visa specimen"
+                              },
+                              "type": {
+                                "type": "string",
+                                "example": "image"
+                              },
+                              "url": {
+                                "type": "string",
+                                "example": "https://example.com/specimen.png"
+                              }
+                            }
+                          }
+                        },
+                        "displayOrder": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "active",
+                          "enum": [
+                            "active",
+                            "inactive"
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "countryCode": {
+                          "type": "string",
+                          "example": "CN"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "example": "🇨🇳"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "entries": {
+                          "type": "string",
+                          "example": "single",
+                          "enum": [
+                            "single",
+                            "double",
+                            "multiple"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa checklist fetched.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67250",
+                    "code": "VI0001",
+                    "title": "China Tourist Visa Document Check List",
+                    "description": "<h3>Documents required</h3><ul><li>Passport</li></ul>",
+                    "processingTime": "5-7 working days",
+                    "media": [
+                      {
+                        "_id": "6ac0a5f0eebc510147c67250",
+                        "name": "Visa specimen",
+                        "type": "image",
+                        "url": "https://example.com/specimen.png"
+                      }
+                    ],
+                    "displayOrder": 1,
+                    "status": "active",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "countryCode": "CN",
+                    "flag": "🇨🇳",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "entries": "single",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `CHECKLIST_ENTRY_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "CHECKLIST_ENTRY_NOT_FOUND",
+                  "code": "CHECKLIST_ENTRY_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Change a Visa Check List page",
+        "operationId": "updateVisaChecklistEntry",
+        "description": "Send only what changes. The country and the visa type cannot change: add a new page instead.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67250"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 150
+                  },
+                  "description": {
+                    "type": "string",
+                    "maxLength": 20000
+                  },
+                  "processingTime": {
+                    "type": "string",
+                    "maxLength": 60
+                  },
+                  "media": {
+                    "maxItems": 20,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 120
+                        },
+                        "type": {
+                          "type": "string",
+                          "maxLength": 40
+                        },
+                        "url": {
+                          "type": "string",
+                          "maxLength": 500
+                        }
+                      },
+                      "required": [
+                        "name",
+                        "url"
+                      ]
+                    }
+                  },
+                  "displayOrder": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10000
+                  },
+                  "status": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "inactive"
+                    ]
+                  }
+                }
+              },
+              "example": {
+                "title": "New title",
+                "status": "inactive"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Visa checklist updated.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa checklist updated."
+                    },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "_id": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67250"
+                        },
+                        "code": {
+                          "type": "string",
+                          "example": "VI0001"
+                        },
+                        "title": {
+                          "type": "string",
+                          "example": "China Tourist Visa Document Check List"
+                        },
+                        "description": {
+                          "type": "string",
+                          "example": "<h3>Documents required</h3><ul><li>Passport</li></ul>"
+                        },
+                        "processingTime": {
+                          "type": "string",
+                          "example": "5-7 working days"
+                        },
+                        "media": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "_id": {
+                                "type": "string",
+                                "example": "6ac0a5f0eebc510147c67250"
+                              },
+                              "name": {
+                                "type": "string",
+                                "example": "Visa specimen"
+                              },
+                              "type": {
+                                "type": "string",
+                                "example": "image"
+                              },
+                              "url": {
+                                "type": "string",
+                                "example": "https://example.com/specimen.png"
+                              }
+                            }
+                          }
+                        },
+                        "displayOrder": {
+                          "type": "integer",
+                          "example": 1
+                        },
+                        "status": {
+                          "type": "string",
+                          "example": "active",
+                          "enum": [
+                            "active",
+                            "inactive"
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67251"
+                        },
+                        "countryName": {
+                          "type": "string",
+                          "example": "China"
+                        },
+                        "countryCode": {
+                          "type": "string",
+                          "example": "CN"
+                        },
+                        "flag": {
+                          "type": "string",
+                          "example": "🇨🇳"
+                        },
+                        "visaType": {
+                          "type": "string",
+                          "example": "6ac0a5f0eebc510147c67252"
+                        },
+                        "visaTypeName": {
+                          "type": "string",
+                          "example": "Tourist Visa"
+                        },
+                        "entries": {
+                          "type": "string",
+                          "example": "single",
+                          "enum": [
+                            "single",
+                            "double",
+                            "multiple"
+                          ]
+                        },
+                        "createdAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        },
+                        "updatedAt": {
+                          "type": "string",
+                          "example": "2026-10-03T06:51:28.261Z"
+                        }
+                      }
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa checklist updated.",
+                  "data": {
+                    "_id": "6ac0a5f0eebc510147c67250",
+                    "code": "VI0001",
+                    "title": "China Tourist Visa Document Check List",
+                    "description": "<h3>Documents required</h3><ul><li>Passport</li></ul>",
+                    "processingTime": "5-7 working days",
+                    "media": [
+                      {
+                        "_id": "6ac0a5f0eebc510147c67250",
+                        "name": "Visa specimen",
+                        "type": "image",
+                        "url": "https://example.com/specimen.png"
+                      }
+                    ],
+                    "displayOrder": 1,
+                    "status": "active",
+                    "country": "6ac0a5f0eebc510147c67251",
+                    "countryName": "China",
+                    "countryCode": "CN",
+                    "flag": "🇨🇳",
+                    "visaType": "6ac0a5f0eebc510147c67252",
+                    "visaTypeName": "Tourist Visa",
+                    "entries": "single",
+                    "createdAt": "2026-10-03T06:51:28.261Z",
+                    "updatedAt": "2026-10-03T06:51:28.261Z"
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `CHECKLIST_ENTRY_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "CHECKLIST_ENTRY_NOT_FOUND",
+                  "code": "CHECKLIST_ENTRY_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of title is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "body.title",
+                      "message": "The value of title is not valid."
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "Visa"
+        ],
+        "summary": "Delete a Visa Check List page",
+        "operationId": "deleteVisaChecklistEntry",
+        "description": "The page is reading material, so it can always be deleted. It is also deleted with its visa type or its country.\n\n**Access:** ADMIN, or STAFF with VISA_EDIT.",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "Resource id (MongoDB ObjectId, 24 hex characters).",
+            "schema": {
+              "type": "string",
+              "pattern": "^[0-9a-fA-F]{24}$"
+            },
+            "example": "6ac0a5f0eebc510147c67250"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Visa checklist deleted.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Visa checklist deleted."
+                    }
+                  },
+                  "required": [
+                    "success",
+                    "message"
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "Visa checklist deleted."
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "Not found. Possible error codes: `CHECKLIST_ENTRY_NOT_FOUND`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "CHECKLIST_ENTRY_NOT_FOUND",
+                  "code": "CHECKLIST_ENTRY_NOT_FOUND"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The input failed validation. `errors` lists each bad field.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "message": "The value of id is not valid.",
+                  "code": "VALIDATION_ERROR",
+                  "errors": [
+                    {
+                      "field": "params.id",
+                      "message": "The value of id is not valid."
                     }
                   ]
                 }
@@ -21482,6 +23091,27 @@
                           "type": "integer",
                           "example": 0
                         },
+                        "services": {
+                          "type": "object",
+                          "properties": {
+                            "visa": {
+                              "type": "integer",
+                              "example": 1
+                            },
+                            "ticket": {
+                              "type": "integer",
+                              "example": 0
+                            },
+                            "hotel": {
+                              "type": "integer",
+                              "example": 0
+                            },
+                            "tour": {
+                              "type": "integer",
+                              "example": 0
+                            }
+                          }
+                        },
                         "unassigned": {
                           "type": "integer",
                           "example": 0
@@ -21538,6 +23168,24 @@
                               "number": {
                                 "type": "string",
                                 "example": "VISA-2026-000001"
+                              },
+                              "serviceType": {
+                                "type": "string",
+                                "example": "visa",
+                                "enum": [
+                                  "visa",
+                                  "ticket",
+                                  "hotel",
+                                  "tour"
+                                ]
+                              },
+                              "serviceLabel": {
+                                "type": "string",
+                                "example": "Visa"
+                              },
+                              "serviceSummary": {
+                                "type": "string",
+                                "example": "Tourist Visa"
                               },
                               "channel": {
                                 "type": "string",
@@ -21924,6 +23572,12 @@
                     "cancelled": 0,
                     "b2c": 1,
                     "b2b": 0,
+                    "services": {
+                      "visa": 1,
+                      "ticket": 0,
+                      "hotel": 0,
+                      "tour": 0
+                    },
                     "unassigned": 0,
                     "approvedTotal": 0,
                     "decisionRate": 0,
@@ -21941,6 +23595,9 @@
                       {
                         "_id": "6ac0a5f0eebc510147c67253",
                         "number": "VISA-2026-000001",
+                        "serviceType": "visa",
+                        "serviceLabel": "Visa",
+                        "serviceSummary": "Tourist Visa",
                         "channel": "b2c",
                         "partnerName": "",
                         "country": "6ac0a5f0eebc510147c67251",
@@ -25327,7 +26984,7 @@
         ],
         "summary": "Message templates",
         "operationId": "listVisaTemplates",
-        "description": "The wording used when an application reaches a status. An **email** template is sent automatically through EmailJS at that moment. An **sms** template makes a prepared message in the log, which staff send by hand (no SMS provider is connected yet). Each template has an on/off switch (`active`).\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
+        "description": "The wording used when an application reaches a status. An **email** template is sent automatically through EmailJS at that moment. An **sms** template makes a prepared message in the log, which staff send by hand (no SMS provider is connected yet). Each template has an on/off switch (`active`). `serviceType` is the service the wording is for (`visa` is the default, and what a template made before this was); `all` is used for any service that has no template of its own on the same channel. The `{{trackingUrl}}` word is empty for a ticket, hotel or tour, because the public status page is for visas only.\n\n**Access:** ADMIN, or STAFF with VISA_VIEW.",
         "security": [
           {
             "bearerAuth": []
@@ -25347,6 +27004,22 @@
               ]
             },
             "example": "sms"
+          },
+          {
+            "name": "serviceType",
+            "in": "query",
+            "required": false,
+            "description": "serviceType",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "all",
+                "visa",
+                "ticket",
+                "hotel",
+                "tour"
+              ]
+            }
           },
           {
             "name": "active",
@@ -25423,6 +27096,17 @@
                             "type": "string",
                             "example": "under_review"
                           },
+                          "serviceType": {
+                            "type": "string",
+                            "example": "visa",
+                            "enum": [
+                              "all",
+                              "visa",
+                              "ticket",
+                              "hotel",
+                              "tour"
+                            ]
+                          },
                           "subject": {
                             "type": "string",
                             "example": ""
@@ -25468,6 +27152,7 @@
                       "name": "Under Review",
                       "channel": "sms",
                       "trigger": "under_review",
+                      "serviceType": "visa",
                       "subject": "",
                       "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.",
                       "active": true,
@@ -25556,6 +27241,16 @@
                     "minLength": 1,
                     "maxLength": 40
                   },
+                  "serviceType": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "visa",
+                      "ticket",
+                      "hotel",
+                      "tour"
+                    ]
+                  },
                   "subject": {
                     "type": "string",
                     "maxLength": 150
@@ -25624,6 +27319,17 @@
                           "type": "string",
                           "example": "under_review"
                         },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "all",
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
                         "subject": {
                           "type": "string",
                           "example": ""
@@ -25660,6 +27366,7 @@
                     "name": "Under Review",
                     "channel": "sms",
                     "trigger": "under_review",
+                    "serviceType": "visa",
                     "subject": "",
                     "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.",
                     "active": true,
@@ -25765,6 +27472,16 @@
                     "minLength": 1,
                     "maxLength": 40
                   },
+                  "serviceType": {
+                    "type": "string",
+                    "enum": [
+                      "all",
+                      "visa",
+                      "ticket",
+                      "hotel",
+                      "tour"
+                    ]
+                  },
                   "subject": {
                     "type": "string",
                     "maxLength": 150
@@ -25824,6 +27541,17 @@
                           "type": "string",
                           "example": "under_review"
                         },
+                        "serviceType": {
+                          "type": "string",
+                          "example": "visa",
+                          "enum": [
+                            "all",
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
                         "subject": {
                           "type": "string",
                           "example": ""
@@ -25860,6 +27588,7 @@
                     "name": "Under Review",
                     "channel": "sms",
                     "trigger": "under_review",
+                    "serviceType": "visa",
                     "subject": "",
                     "message": "Dear {{applicantName}}, your visa application {{applicationNumber}} is now under review.",
                     "active": true,
@@ -34029,6 +35758,32 @@
                             "type": "number",
                             "example": 500000
                           },
+                          "priceList": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "service": {
+                                  "type": "string",
+                                  "example": "visa",
+                                  "enum": [
+                                    "visa",
+                                    "ticket",
+                                    "hotel",
+                                    "tour"
+                                  ]
+                                },
+                                "country": {
+                                  "type": "string",
+                                  "example": "China"
+                                },
+                                "price": {
+                                  "type": "number",
+                                  "example": 6500
+                                }
+                              }
+                            }
+                          },
                           "active": {
                             "type": "boolean",
                             "example": true
@@ -34082,6 +35837,18 @@
                       "address": "",
                       "contactPerson": "Mr. Alam",
                       "creditLimit": 500000,
+                      "priceList": [
+                        {
+                          "service": "visa",
+                          "country": "China",
+                          "price": 6500
+                        },
+                        {
+                          "service": "visa",
+                          "country": "",
+                          "price": 5000
+                        }
+                      ],
                       "active": true,
                       "billed": 45000,
                       "paid": 20000,
@@ -34141,7 +35908,7 @@
         ],
         "summary": "Add a vendor",
         "operationId": "createVendor",
-        "description": "Codes are `VND-0001` and so on. An `openingBalance` of type `due` (what we already owe) or `advance` (what we already paid) is posted as an opening voucher.\n\n**Access:** ADMIN, or STAFF with VENDOR_MANAGE.",
+        "description": "Codes are `VND-0001` and so on. An `openingBalance` of type `due` (what we already owe) or `advance` (what we already paid) is posted as an opening voucher. `priceList` is what the vendor charges, in taka: one price for each service, and for a visa one per country (no country is the price for any other country). A new application starts its vendor line from it (`DUPLICATE_PRICE` when a price is listed twice).\n\n**Access:** ADMIN, or STAFF with VENDOR_MANAGE.",
         "security": [
           {
             "bearerAuth": []
@@ -34185,6 +35952,37 @@
                   "notes": {
                     "type": "string",
                     "maxLength": 1000
+                  },
+                  "priceList": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "service": {
+                          "type": "string",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "maxLength": 80
+                        },
+                        "price": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        }
+                      },
+                      "required": [
+                        "service",
+                        "price"
+                      ]
+                    }
                   },
                   "openingBalance": {
                     "type": "number",
@@ -34265,6 +36063,32 @@
                           "type": "number",
                           "example": 500000
                         },
+                        "priceList": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "service": {
+                                "type": "string",
+                                "example": "visa",
+                                "enum": [
+                                  "visa",
+                                  "ticket",
+                                  "hotel",
+                                  "tour"
+                                ]
+                              },
+                              "country": {
+                                "type": "string",
+                                "example": "China"
+                              },
+                              "price": {
+                                "type": "number",
+                                "example": 6500
+                              }
+                            }
+                          }
+                        },
                         "active": {
                           "type": "boolean",
                           "example": true
@@ -34309,6 +36133,18 @@
                     "address": "",
                     "contactPerson": "Mr. Alam",
                     "creditLimit": 500000,
+                    "priceList": [
+                      {
+                        "service": "visa",
+                        "country": "China",
+                        "price": 6500
+                      },
+                      {
+                        "service": "visa",
+                        "country": "",
+                        "price": 5000
+                      }
+                    ],
                     "active": true,
                     "billed": 45000,
                     "paid": 20000,
@@ -34342,7 +36178,7 @@
             }
           },
           "422": {
-            "description": "The input failed validation. `errors` lists each bad field.",
+            "description": "Validation failed. Possible error codes: `VALIDATION_ERROR`, `DUPLICATE_PRICE`.",
             "content": {
               "application/json": {
                 "schema": {
@@ -34350,12 +36186,12 @@
                 },
                 "example": {
                   "success": false,
-                  "message": "The value of name is not valid.",
+                  "message": "Trade license document is required.",
                   "code": "VALIDATION_ERROR",
                   "errors": [
                     {
-                      "field": "body.name",
-                      "message": "The value of name is not valid."
+                      "field": "tradeLicense",
+                      "message": "Trade license document is required."
                     }
                   ]
                 }
@@ -35765,6 +37601,32 @@
                           "type": "number",
                           "example": 500000
                         },
+                        "priceList": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "service": {
+                                "type": "string",
+                                "example": "visa",
+                                "enum": [
+                                  "visa",
+                                  "ticket",
+                                  "hotel",
+                                  "tour"
+                                ]
+                              },
+                              "country": {
+                                "type": "string",
+                                "example": "China"
+                              },
+                              "price": {
+                                "type": "number",
+                                "example": 6500
+                              }
+                            }
+                          }
+                        },
                         "active": {
                           "type": "boolean",
                           "example": true
@@ -35809,6 +37671,18 @@
                     "address": "",
                     "contactPerson": "Mr. Alam",
                     "creditLimit": 500000,
+                    "priceList": [
+                      {
+                        "service": "visa",
+                        "country": "China",
+                        "price": 6500
+                      },
+                      {
+                        "service": "visa",
+                        "country": "",
+                        "price": 5000
+                      }
+                    ],
                     "active": true,
                     "billed": 45000,
                     "paid": 20000,
@@ -35928,6 +37802,37 @@
                     "type": "string",
                     "maxLength": 1000
                   },
+                  "priceList": {
+                    "maxItems": 100,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "service": {
+                          "type": "string",
+                          "enum": [
+                            "visa",
+                            "ticket",
+                            "hotel",
+                            "tour"
+                          ]
+                        },
+                        "country": {
+                          "type": "string",
+                          "maxLength": 80
+                        },
+                        "price": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 1000000000
+                        }
+                      },
+                      "required": [
+                        "service",
+                        "price"
+                      ]
+                    }
+                  },
                   "active": {
                     "type": "boolean"
                   }
@@ -35990,6 +37895,32 @@
                           "type": "number",
                           "example": 500000
                         },
+                        "priceList": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "service": {
+                                "type": "string",
+                                "example": "visa",
+                                "enum": [
+                                  "visa",
+                                  "ticket",
+                                  "hotel",
+                                  "tour"
+                                ]
+                              },
+                              "country": {
+                                "type": "string",
+                                "example": "China"
+                              },
+                              "price": {
+                                "type": "number",
+                                "example": 6500
+                              }
+                            }
+                          }
+                        },
                         "active": {
                           "type": "boolean",
                           "example": true
@@ -36034,6 +37965,18 @@
                     "address": "",
                     "contactPerson": "Mr. Alam",
                     "creditLimit": 500000,
+                    "priceList": [
+                      {
+                        "service": "visa",
+                        "country": "China",
+                        "price": 6500
+                      },
+                      {
+                        "service": "visa",
+                        "country": "",
+                        "price": 5000
+                      }
+                    ],
                     "active": true,
                     "billed": 45000,
                     "paid": 20000,

@@ -8,6 +8,7 @@ const path = require('path');
 const VisaCountry = require('../../models/VisaCountry');
 const VisaType = require('../../models/VisaType');
 const VisaChecklist = require('../../models/VisaChecklist');
+const VisaChecklistEntry = require('../../models/VisaChecklistEntry');
 const VisaStatusConfig = require('../../models/VisaStatusConfig');
 const VisaApplication = require('../../models/VisaApplication');
 const VisaQuotation = require('../../models/VisaQuotation');
@@ -19,6 +20,7 @@ const User = require('../../models/User');
 const { ROLES, USER_STATUS, APPROVAL_STATUS } = require('../../config/constants');
 const { PRIVATE_ROOT } = require('../../utils/file');
 const catalog = require('../../services/visaCatalogService');
+const counterService = require('../../services/counterService');
 const applications = require('../../services/visaApplicationService');
 const statusService = require('../../services/visaStatusService');
 const messages = require('../../services/visaMessageService');
@@ -77,6 +79,14 @@ const APPLICATIONS = [
   ['Tanvir Hasan', 'A02984170', '+8801867330492', 'tanvir.hasan@example.com', 'Malaysia', 'Tourist Visa', 0, 1000, 'Cash', ['cancelled'], false]
 ];
 
+// A ticket, a hotel booking and a tour package, so the list shows every service.
+// [service, name, phone, email, details, total, advance, method, vendor cost, status moves]
+const OTHER_APPLICATIONS = [
+  ['ticket', 'Mizanur Rahman', '+8801712945360', 'mizanur.rahman@example.com', { tripType: 'Round Way', departure: 'Dhaka (DAC)', arrival: 'Dubai (DXB)', travelClass: 'Economy' }, 78000, 30000, 'bKash / Nagad', 66000, ['under_review']],
+  ['hotel', 'Sultana Razia', '+8801815720934', 'sultana.razia@example.com', { name: 'Grand Hyatt Dubai', country: 'United Arab Emirates', countryCode: 'AE', city: 'Dubai', stay: '4 Nights' }, 64000, 64000, 'Credit / Debit Card', 52000, []],
+  ['tour', 'Imran Khan', '+8801923846105', 'imran.khan@example.com', { packageName: 'Dubai + Kuala Lumpur Tour', duration: '7 Days / 6 Nights', destinations: [{ country: 'United Arab Emirates', countryCode: 'AE', city: 'Dubai' }, { country: 'Malaysia', countryCode: 'MY', city: 'Kuala Lumpur' }] }, 185000, 50000, 'Bank Transfer', 150000, ['under_review', 'processing']]
+];
+
 const MOVE_TEXT = {
   action_required: { customerMessage: 'Please upload a clearer bank statement.' },
   rejected: { customerReason: 'The embassy refused the application.', internalReason: 'Insufficient funds shown.' },
@@ -98,6 +108,14 @@ const TEMPLATES = [
   ['Visa Rejected (email)', 'email', 'rejected', 'Update on visa application {{applicationNumber}}', 'Dear {{applicantName}},\n\nUnfortunately your {{country}} visa application {{applicationNumber}} was not approved. Please contact us for details.']
 ];
 
+// The wording of a ticket, a hotel booking or a tour package: any service with no template of its own uses these. There is
+// no tracking link, because the website's status page is for visas only.
+// [name, channel, trigger, subject, message, service]
+const GENERAL_TEMPLATES = [
+  ['Booking Received', 'sms', 'submitted', '', 'Dear {{applicantName}}, we have received your {{visaType}} request {{applicationNumber}} ({{country}}). Our team will keep you updated.', 'all'],
+  ['Booking Received (email)', 'email', 'submitted', 'We received your request {{applicationNumber}}', 'Dear {{applicantName}},\n\nWe have received your {{visaType}} request for {{country}}. Your reference is {{applicationNumber}}.\nOur team will keep you updated.\n\nThank you for choosing us.', 'all']
+];
+
 // [partner index, client, country, visa type, quantity, additional fee, days valid, status moves]
 const QUOTATIONS = [
   [0, 'Rahim Ahmed', 'China', 'Tourist Visa', 2, 1500, 14, ['sent', 'accepted']],
@@ -111,10 +129,10 @@ const seedMessages = async (actor) => {
   // Wait for the listeners of the events raised above, so none of them sees the templates made below.
   await events.idle();
   const result = { templates: 0, messages: 0 };
-  for (const [name, channel, trigger, subject, message] of TEMPLATES) {
+  for (const [name, channel, trigger, subject, message, serviceType = 'visa'] of [...TEMPLATES, ...GENERAL_TEMPLATES]) {
     const nameKey = keyOf(name);
     if (await MessageTemplate.exists({ channel, nameKey })) continue;
-    await MessageTemplate.create({ name, nameKey, channel, trigger, subject, message });
+    await MessageTemplate.create({ name, nameKey, channel, trigger, subject, message, serviceType });
     result.templates += 1;
   }
 
@@ -148,8 +166,12 @@ const seedQuotations = async (actor) => {
   return { quotations: count };
 };
 
+// The text of a "Visa Check List" page: what the applicant brings for a country and visa type.
+const checklistHtml = (country, type) =>
+  `<h3>${country} ${type} - documents required</h3><ul><li>Passport valid for at least 6 months</li><li>Recent passport-size photograph</li><li>Bank statement (last 6 months)</li><li>Hotel booking and flight reservation</li></ul><p>Original documents may be asked for at the interview.</p>`;
+
 const seedCatalog = async () => {
-  const created = { countries: 0, types: 0, checklists: 0 };
+  const created = { countries: 0, types: 0, checklists: 0, checklistEntries: 0 };
   const countryIds = {};
 
   for (const [index, country] of COUNTRIES.entries()) {
@@ -178,6 +200,20 @@ const seedCatalog = async () => {
     await VisaChecklist.create({ ...china, items: CHECKLIST_ITEMS });
     created.checklists += 1;
   }
+
+  for (const [country, name, processingTime] of TYPES) {
+    const pair = { country: countryIds[country], visaType: typeIds[`${country}|${name}`] };
+    if (await VisaChecklistEntry.exists(pair)) continue;
+    await VisaChecklistEntry.create({
+      ...pair,
+      code: `VI${String(await counterService.next('VI')).padStart(4, '0')}`,
+      title: `${country} ${name} Document Check List`,
+      description: checklistHtml(country, name),
+      processingTime,
+      displayOrder: created.checklistEntries + 1
+    });
+    created.checklistEntries += 1;
+  }
   return created;
 };
 
@@ -205,6 +241,17 @@ const seedApplications = async (actor) => {
     for (const status of moves) await statusService.changeStatus(actor, created._id, { status, ...MOVE_TEXT[status] });
     count += 1;
   }
+
+  for (const [serviceType, name, phone, email, details, totalAmount, advancePaid, paymentMethod, cost, moves] of OTHER_APPLICATIONS) {
+    const created = await applications.create(actor, {
+      serviceType, name, phone, email,
+      [serviceType]: details,
+      totalAmount, advancePaid, paymentMethod,
+      vendorList: [{ vendorId: '', name: 'Demo Vendor', service: serviceType, price: cost }]
+    });
+    for (const status of moves) await statusService.changeStatus(actor, created._id, { status });
+    count += 1;
+  }
   return { applications: count };
 };
 
@@ -221,13 +268,14 @@ module.exports = {
   },
 
   async clear() {
-    const [applicationsRemoved, checklists, types, countries, statuses, counters, templatesRemoved, messagesRemoved, quotationsRemoved] = await Promise.all([
+    const [applicationsRemoved, checklists, checklistEntries, types, countries, statuses, counters, templatesRemoved, messagesRemoved, quotationsRemoved] = await Promise.all([
       VisaApplication.deleteMany({}),
       VisaChecklist.deleteMany({}),
+      VisaChecklistEntry.deleteMany({}),
       VisaType.deleteMany({}),
       VisaCountry.deleteMany({}),
       VisaStatusConfig.deleteMany({}),
-      Counter.deleteMany({ _id: /^(VISA|QT):/ }),
+      Counter.deleteMany({ _id: /^((VISA|TKT|HTL|TOUR|QT):|VI$)/ }),
       MessageTemplate.deleteMany({}),
       VisaMessage.deleteMany({}),
       VisaQuotation.deleteMany({})
@@ -236,6 +284,7 @@ module.exports = {
     return {
       applications: applicationsRemoved.deletedCount,
       checklists: checklists.deletedCount,
+      checklistEntries: checklistEntries.deletedCount,
       types: types.deletedCount,
       countries: countries.deletedCount,
       statuses: statuses.deletedCount,

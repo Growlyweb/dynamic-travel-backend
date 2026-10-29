@@ -41,6 +41,29 @@ describe('vendors', () => {
     expect((await get(user, '/api/vendors/not-an-id')).status).toBe(422);
   });
 
+  it('keeps a price list: a price for each service, a visa price per country, and none twice', async () => {
+    const user = await createAccountant();
+    const made = await vendor(user, { priceList: [{ service: 'visa', country: ' China ', price: 6500 }, { service: 'visa', price: 5000 }, { service: 'hotel', country: 'Ignored', price: 52000.5 }] });
+    expect(made.status).toBe(201);
+    expect(made.body.data.priceList).toEqual([{ service: 'visa', country: 'China', price: 6500 }, { service: 'visa', country: '', price: 5000 }, { service: 'hotel', country: '', price: 52000.5 }]);
+
+    const id = made.body.data._id;
+    expect((await get(user, `/api/vendors/${id}`)).body.data.priceList).toHaveLength(3);
+    expect((await get(user, '/api/vendors')).body.data[0].priceList).toHaveLength(3);
+
+    const changed = await patch(user, `/api/vendors/${id}`, { priceList: [{ service: 'ticket', price: 66000 }] });
+    expect(changed.body.data.priceList).toEqual([{ service: 'ticket', country: '', price: 66000 }]);
+    expect((await patch(user, `/api/vendors/${id}`, { phone: '+8801799999999' })).body.data.priceList).toHaveLength(1);
+    expect((await patch(user, `/api/vendors/${id}`, { priceList: [] })).body.data.priceList).toEqual([]);
+
+    const twice = await patch(user, `/api/vendors/${id}`, { priceList: [{ service: 'visa', country: 'China', price: 1 }, { service: 'visa', country: 'china', price: 2 }] });
+    expect(twice.status).toBe(422);
+    expect(twice.body.code).toBe('DUPLICATE_PRICE');
+    expect((await patch(user, `/api/vendors/${id}`, { priceList: [{ service: 'cruise', price: 1 }] })).status).toBe(422);
+    expect((await patch(user, `/api/vendors/${id}`, { priceList: [{ service: 'visa', price: -5 }] })).status).toBe(422);
+    expect((await vendor(user, { name: 'No prices' })).body.data.priceList).toEqual([]);
+  });
+
   it('posts an opening balance, owed or advanced, as an opening voucher', async () => {
     const user = await createAccountant();
     const owed = await vendor(user, { openingBalance: 20000, openingBalanceType: 'due' });

@@ -1,9 +1,11 @@
 const mongoose = require('mongoose');
-const { MESSAGE_CHANNELS } = require('../config/visa');
+const { MESSAGE_CHANNELS, TEMPLATE_SERVICES } = require('../config/visa');
 
 // Wording sent when an application reaches a status. `channel` is "email" (sent automatically through EmailJS when the
 // status is reached) or "sms" (a prepared message that staff send by hand and mark as sent). The words
 // {{applicantName}}, {{applicationNumber}}, {{country}}, {{visaType}}, {{status}} and {{trackingUrl}} are filled in.
+// `serviceType` is the service the wording is for ("all" is any service that has no template of its own for the channel).
+// A template with none was written when there were only visas, so it is a visa template.
 // `active` is the on/off switch of each template.
 const messageTemplateSchema = new mongoose.Schema(
   {
@@ -11,6 +13,7 @@ const messageTemplateSchema = new mongoose.Schema(
     nameKey: { type: String, required: true },
     channel: { type: String, enum: MESSAGE_CHANNELS, required: true, index: true },
     trigger: { type: String, required: true, trim: true, maxlength: 40, index: true },
+    serviceType: { type: String, enum: TEMPLATE_SERVICES, default: 'visa' },
     subject: { type: String, trim: true, maxlength: 150, default: '' },
     message: { type: String, required: true, trim: true, maxlength: 5000 },
     active: { type: Boolean, default: true }

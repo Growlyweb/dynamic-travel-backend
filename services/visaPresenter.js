@@ -2,10 +2,16 @@
 //  - the storage path of a document is never sent: the file is fetched through its own authenticated route
 //  - the timeline is newest first
 //  - a list row leaves out the long embedded lists, a single application has everything
+const { describeService } = require('./visaShared');
+
 const byNewest = (a, b) => new Date(b.at) - new Date(a.at);
 
 const presentApplication = (application, { list = false } = {}) => {
   const data = application.toJSON();
+  const service = describeService(data);
+  data.serviceType = service.type;
+  data.serviceLabel = service.label;
+  data.serviceSummary = service.summary;
 
   data.documents = (data.documents || []).map(({ storagePath, ...document }) => document);
 

@@ -9,6 +9,7 @@ const ApiError = require('../utils/ApiError');
 const logger = require('../utils/logger');
 const { hashValue, safeEqual, generateOtp } = require('../utils/crypto');
 const notificationService = require('./notificationService');
+const { VISA_FILES } = require('./visaShared');
 
 // The public status check, as the storefront page uses it (nobody is signed in):
 //  1. checkLink: is this application number a real link?
@@ -30,7 +31,8 @@ const passportKey = (value) => String(value).toUpperCase().replace(/[^A-Z0-9]/g,
 // "+880 1712-345678" and "01712345678" are one number: compare the last ten digits.
 const phoneKey = (value) => String(value).replace(/\D/g, '').slice(-10);
 
-const findByLink = (ref) => VisaApplication.findOne({ number: refKey(ref) });
+// The public page is for visa files only: a ticket, hotel or tour file is never found here.
+const findByLink = (ref) => VisaApplication.findOne({ number: refKey(ref), serviceType: VISA_FILES });
 
 // The application, only when the passport and the phone both match.
 const findMatch = async ({ ref, passportNo, phone }) => {
@@ -40,7 +42,7 @@ const findMatch = async ({ ref, passportNo, phone }) => {
   return application.passport.numberKey === passportKey(passportNo) && sameMobile ? application : null;
 };
 
-const checkLink = async (ref) => ({ valid: Boolean(await VisaApplication.exists({ number: refKey(ref) })) });
+const checkLink = async (ref) => ({ valid: Boolean(await VisaApplication.exists({ number: refKey(ref), serviceType: VISA_FILES })) });
 
 const lockOf = async (applicationId) => {
   const locked = await VisaStatusCode.findOne({ application: applicationId, lockedUntil: { $gt: new Date() } }).select('lockedUntil');
