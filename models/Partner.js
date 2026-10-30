@@ -30,6 +30,7 @@ const partnerSchema = new mongoose.Schema(
     address: { type: String, trim: true, default: '' },
     documents: { type: [documentSchema], default: [] },
 
+    commissionRate: { type: Number, default: 8, min: 0, max: 100 },
     approvalStatus: {
       type: String,
       enum: Object.values(APPROVAL_STATUS),

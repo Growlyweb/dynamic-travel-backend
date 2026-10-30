@@ -67,12 +67,13 @@ const get = async (user, id) => {
 const setStatus = async (user, id, { status, note }, context = {}) => {
   const request = await loadFor(user, id);
   const manager = isTourManager(user);
+  const isAdmin = user.role === ROLES.ADMIN;
 
   if (!manager) {
     const mayCancel = user.role === ROLES.B2C && status === STATUS.CANCELLED && request.status === STATUS.NEW;
     if (!mayCancel) throw new ApiError(403, 'You can only cancel your own request, and only while it is new.', { code: 'FORBIDDEN' });
   }
-  if (!NEXT[request.status].includes(status)) {
+  if (!isAdmin && !NEXT[request.status]?.includes(status)) {
     throw new ApiError(409, `A request that is ${request.status} cannot become ${status}.`, { code: 'INVALID_TRANSITION' });
   }
 

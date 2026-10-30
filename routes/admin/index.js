@@ -10,6 +10,7 @@ router.use(authenticate, requireRole(ROLES.ADMIN));
 
 router.use('/', require('./userRoutes'));
 router.use('/b2b', require('./partnerRoutes'));
+router.use('/customers', require('./customerRoutes'));
 
 // Register new admin feature routers here:
 // router.use('/products', require('./productRoutes'));

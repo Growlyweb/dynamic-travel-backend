@@ -128,6 +128,13 @@ router.post('/templates', edit, validate({ body: messageSchemas.createTemplate }
 router.patch('/templates/:id', edit, validate({ params: messageSchemas.idParam, body: messageSchemas.updateTemplate }), messageController.updateTemplate);
 router.delete('/templates/:id', edit, validate({ params: messageSchemas.idParam }), messageController.removeTemplate);
 
+// Frontend route aliases
+router.get('/sms/templates', view, validate({ query: messageSchemas.listTemplates }), messageController.listTemplates);
+router.post('/sms/templates', edit, validate({ body: messageSchemas.createTemplate }), messageController.createTemplate);
+router.patch('/sms/templates/:id', edit, validate({ params: messageSchemas.idParam, body: messageSchemas.updateTemplate }), messageController.updateTemplate);
+router.delete('/sms/templates/:id', edit, validate({ params: messageSchemas.idParam }), messageController.removeTemplate);
+router.get('/sms/logs', view, validate({ query: messageSchemas.listMessages }), messageController.listMessages);
+
 router.get('/messages', view, validate({ query: messageSchemas.listMessages }), messageController.listMessages);
 router.patch('/messages/:id', edit, validate({ params: messageSchemas.idParam, body: messageSchemas.markMessage }), messageController.mark);
 router.post('/messages/:id/send', edit, validate({ params: messageSchemas.idParam }), messageController.resend);

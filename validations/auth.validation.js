@@ -1,5 +1,5 @@
 const { z } = require('zod');
-const { email, phone, optionalPhone, name, password, otp } = require('./common');
+const { email, phone, optionalPhone, name, password, otp, idParam } = require('./common');
 
 // B2C self-registration. There is deliberately NO role field: the service sets it.
 const registerB2C = z.object({
@@ -68,5 +68,6 @@ module.exports = {
   verifyResetToken,
   resetPassword,
   changePassword,
-  setupAccount
+  setupAccount,
+  idParam
 };

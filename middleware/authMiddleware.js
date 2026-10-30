@@ -12,9 +12,15 @@ const roleService = require('../services/roleService');
 //
 // Use on every protected route. Run authorize / ownership checks AFTER it.
 const authenticate = asyncHandler(async (req, res, next) => {
-  const [scheme, token] = (req.headers.authorization || '').split(' ');
+  let token = null;
+  const authHeader = req.headers.authorization || '';
+  if (/^Bearer\s+/i.test(authHeader)) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
 
-  if (!/^Bearer$/i.test(scheme || '') || !token) {
+  if (!token) {
     throw new ApiError(401, 'Authentication required.', { code: 'AUTH_REQUIRED' });
   }
 
@@ -29,6 +35,7 @@ const authenticate = asyncHandler(async (req, res, next) => {
   }
 
   req.user = {
+    _id: user._id,
     id: String(user._id),
     role: user.role,
     status: user.status,

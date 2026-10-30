@@ -10,7 +10,8 @@ const forbidden = () => new ApiError(403, 'Forbidden', { code: 'FORBIDDEN' });
 const requireRole =
   (...roles) =>
   (req, res, next) => {
-    if (!req.user || !roles.includes(req.user.role)) return next(forbidden());
+    const flatRoles = roles.flat();
+    if (!req.user || !flatRoles.includes(req.user.role)) return next(forbidden());
     next();
   };
 

@@ -28,4 +28,13 @@ router.use(requireApprovedPartner);
 
 router.get('/overview', partnerController.overview);
 
+const b2bOps = require('../../controllers/b2bOperationsController');
+const opSchemas = require('../../validations/b2bOperations.validation');
+
+router.post('/pickups', validate({ body: opSchemas.createPickup }), b2bOps.createPickup);
+router.get('/pickups', validate({ query: opSchemas.listOperations }), b2bOps.listPickups);
+router.get('/commissions', b2bOps.getCommissions);
+router.post('/withdrawals', validate({ body: opSchemas.createWithdrawal }), b2bOps.createWithdrawal);
+router.get('/withdrawals', validate({ query: opSchemas.listOperations }), b2bOps.listWithdrawals);
+
 module.exports = router;

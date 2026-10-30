@@ -8,6 +8,7 @@ const RefreshSession = require('../models/RefreshSession');
 const ApiError = require('../utils/ApiError');
 const { hashValue } = require('../utils/crypto');
 const auditService = require('./auditService');
+const { parseUserAgent } = require('../utils/userAgent');
 
 // Access token : short lived (15m), sent as "Authorization: Bearer ..."
 // Refresh token: 7d, stored only as a keyed hash in RefreshSession, rotated on every use.
@@ -125,6 +126,55 @@ const rotateRefreshToken = async (rawRefreshToken, context = {}) => {
   return { user, session: await issueSession(user, context) };
 };
 
+const listSessions = async (userId, rawRefreshToken = null, currentContext = {}) => {
+  const sessions = await RefreshSession.find({
+    userId,
+    revokedAt: null,
+    expiresAt: { $gt: new Date() }
+  })
+    .sort({ createdAt: -1 })
+    .lean();
+
+  const currentHash = rawRefreshToken ? hashValue(rawRefreshToken) : null;
+
+  return sessions.map((s, idx) => {
+    const isCurrent = currentHash
+      ? s.tokenHash === currentHash
+      : (Boolean(currentContext.ip && s.ip === currentContext.ip) || idx === 0);
+
+    return {
+      id: String(s._id),
+      device: parseUserAgent(s.userAgent),
+      ip: s.ip || 'Unknown',
+      location: s.ip === '127.0.0.1' || s.ip === '::1' ? 'Local Network' : 'Remote Session',
+      current: isCurrent,
+      createdAt: s.createdAt,
+      expiresAt: s.expiresAt
+    };
+  });
+};
+
+const revokeSessionById = async (userId, sessionId) => {
+  const session = await RefreshSession.findOne({ _id: sessionId, userId, revokedAt: null });
+  if (!session) {
+    throw new ApiError(404, 'Active session not found.');
+  }
+
+  session.revokedAt = new Date();
+  await session.save();
+  return { id: String(session._id), revoked: true };
+};
+
+const revokeOtherSessions = async (userId, rawRefreshToken = null) => {
+  const query = { userId, revokedAt: null };
+  if (rawRefreshToken) {
+    query.tokenHash = { $ne: hashValue(rawRefreshToken) };
+  }
+
+  const result = await RefreshSession.updateMany(query, { revokedAt: new Date() });
+  return { revokedCount: result.modifiedCount || 0 };
+};
+
 module.exports = {
   signAccessToken,
   verifyAccessToken,
@@ -132,5 +182,8 @@ module.exports = {
   rotateRefreshToken,
   revokeSession,
   revokeAllSessions,
-  invalidateUserTokens
+  invalidateUserTokens,
+  listSessions,
+  revokeSessionById,
+  revokeOtherSessions
 };
