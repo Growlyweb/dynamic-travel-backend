@@ -65,13 +65,16 @@ const type = {
     .toUpperCase()
     .regex(/^[A-Z]{3}$/, 'A currency code is three letters.'),
   b2cPrice: money('The B2C price'),
-  b2bNetPrice: money('The B2B net price'),
+  b2bNetPrice: z.union([money('The B2B net price'), z.null(), z.undefined()]).optional().transform((v) => (v == null ? 0 : v)),
   fees: z.object({ embassy: money('The embassy fee').optional(), service: money('The service fee').optional(), vat: money('The VAT').optional() }),
   validFrom: z
-    .string()
-    .trim()
-    .refine((value) => /^\d{4}-\d{2}-\d{2}/.test(value) && !Number.isNaN(Date.parse(value)), 'Valid from must be a date.')
-    .transform((value) => new Date(value)),
+    .union([
+      z.string().trim().refine((value) => !value || (/^\d{4}-\d{2}-\d{2}/.test(value) && !Number.isNaN(Date.parse(value))), 'Valid from must be a date.').transform((value) => (value ? new Date(value) : null)),
+      z.date(),
+      z.null(),
+      z.undefined(),
+    ])
+    .optional(),
   terms: text('Terms', 5000),
   status: z.enum(['active', 'paused'], 'Status must be active or paused.'),
   passportRequirement: z.enum(PASSPORT_REQUIREMENTS),
