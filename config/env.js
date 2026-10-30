@@ -1,9 +1,12 @@
+const os = require('os');
+const path = require('path');
+
 // Tests are hermetic: they never read a developer's .env (real keys, Firebase, EmailJS).
 // They get safe built-in values instead (see isTest below). The end-to-end stack (test/e2e/stack.js) runs a
 // real server and sets SKIP_DOTENV=true for the same reason.
-if (process.env.NODE_ENV !== 'test' && process.env.SKIP_DOTENV !== 'true') require('dotenv').config();
-const os = require('os');
-const path = require('path');
+if (process.env.NODE_ENV !== 'test' && process.env.SKIP_DOTENV !== 'true') {
+  require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
+}
 
 // Single source of truth for configuration.
 // Read process.env here and nowhere else; import this module everywhere.

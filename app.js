@@ -123,6 +123,15 @@ app.use('/api/tours', tourRoutes);
 // Membership plans, memberships and reports. Mounted at /api with the guards on each route, see the file.
 app.use('/api', membershipRoutes);
 
+// B2C Customers (staff and admin management)
+app.use('/api/customers', require('./routes/admin/customerRoutes'));
+
+// In-App Notifications
+app.use('/api/notifications', require('./routes/notificationRoutes'));
+
+// Marketing broadcasts & campaigns
+app.use('/api/marketing', require('./routes/marketingRoutes'));
+
 // Role areas (authenticate + requireRole applied once, inside each router's index)
 app.use('/api/admin', adminRoutes);
 app.use('/api/staff', staffRoutes);
