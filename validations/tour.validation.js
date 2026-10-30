@@ -164,7 +164,17 @@ const listCustomRequests = z.object({
 const customRequestParam = z.object({ id: objectId });
 
 const setCustomRequestStatus = z.object({
-  status: z.enum(Object.values(CUSTOM_REQUEST_STATUS), `Status must be one of ${Object.values(CUSTOM_REQUEST_STATUS).join(', ')}.`),
+  status: z.preprocess(
+    (v) => {
+      if (typeof v !== 'string') return v;
+      const upper = v.trim().toUpperCase();
+      if (upper === 'PENDING') return CUSTOM_REQUEST_STATUS.NEW;
+      if (upper === 'BOOKED') return CUSTOM_REQUEST_STATUS.CONFIRMED;
+      if (upper === 'CLOSED') return CUSTOM_REQUEST_STATUS.CANCELLED;
+      return upper;
+    },
+    z.enum(Object.values(CUSTOM_REQUEST_STATUS), `Status must be one of ${Object.values(CUSTOM_REQUEST_STATUS).join(', ')}.`)
+  ),
   note: optionalText('Note', 500).optional()
 });
 
