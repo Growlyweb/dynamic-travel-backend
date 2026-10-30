@@ -5,7 +5,8 @@ const { objectId, pagination, search } = require('./common');
 const listPartners = z.object({
   ...pagination,
   search,
-  approvalStatus: z.enum(Object.values(APPROVAL_STATUS)).optional()
+  status: z.string().trim().optional(),
+  approvalStatus: z.string().trim().optional()
 });
 
 const decide = z.object({

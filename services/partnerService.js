@@ -52,7 +52,10 @@ const list = async (query) => {
   const { page, limit, skip } = paginate(query);
 
   const filter = {};
-  if (query.approvalStatus) filter.approvalStatus = query.approvalStatus;
+  const statusFilter = query.approvalStatus || query.status;
+  if (statusFilter && String(statusFilter).toLowerCase() !== 'all') {
+    filter.approvalStatus = String(statusFilter).toUpperCase();
+  }
   if (query.search) {
     const pattern = { $regex: escapeRegex(query.search), $options: 'i' };
     filter.$or = [{ companyName: pattern }, { licenseNo: pattern }];
