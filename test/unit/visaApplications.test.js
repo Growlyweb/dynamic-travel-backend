@@ -188,6 +188,30 @@ describe('a ticket, a hotel booking and a tour package', () => {
     expect(a.price).toMatchObject({ currency: 'BDT', rateToBase: 1, b2c: 0, b2b: 0 });
   });
 
+  it('supports Multi City tickets with multiple legs', async () => {
+    const admin = await createAdmin();
+    const multiCityTicket = {
+      tripType: 'Multi City',
+      travelClass: 'Economy',
+      departure: 'Dhaka (DAC)',
+      arrival: 'London (LHR)',
+      legs: [
+        { departure: 'Dhaka (DAC)', arrival: 'Dubai (DXB)' },
+        { departure: 'Dubai (DXB)', arrival: 'London (LHR)' }
+      ]
+    };
+    const res = await make(admin, 'ticket', multiCityTicket);
+    expect(res.status).toBe(201);
+    const a = res.body.data;
+    expect(a.ticket.tripType).toBe('Multi City');
+    expect(a.ticket.legs).toHaveLength(2);
+    expect(a.serviceSummary).toBe('Dhaka (DAC) → Dubai (DXB) → London (LHR), Multi City, Economy');
+    expect(a.countryName).toBe('Dubai (DXB), London (LHR)');
+
+    const invalidRes = await make(admin, 'ticket', { ...multiCityTicket, legs: [{ departure: 'DAC', arrival: 'DXB' }] });
+    expect(invalidRes.status).toBe(422);
+  });
+
   it('numbers each service on its own, and labels hotels and tours by what they are', async () => {
     const admin = await createAdmin();
     const booking = (await make(admin, 'hotel', hotel)).body.data;

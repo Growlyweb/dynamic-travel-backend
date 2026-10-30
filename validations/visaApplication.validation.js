@@ -57,12 +57,30 @@ const passportFields = {
   passportIssuingCountry: text('Issuing country', 60).optional()
 };
 
-const ticketDetails = z.object({
-  tripType: z.enum(TRIP_TYPES, `Trip type must be one of: ${TRIP_TYPES.join(', ')}.`),
+const ticketLeg = z.object({
   departure: required('The departure place', 80),
-  arrival: required('The arrival place', 80),
-  travelClass: z.enum(TICKET_CLASSES, `Travel class must be one of: ${TICKET_CLASSES.join(', ')}.`)
+  arrival: required('The arrival place', 80)
 });
+
+const ticketDetails = z
+  .object({
+    tripType: z.enum(TRIP_TYPES, `Trip type must be one of: ${TRIP_TYPES.join(', ')}.`),
+    departure: required('The departure place', 80),
+    arrival: required('The arrival place', 80),
+    travelClass: z.enum(TICKET_CLASSES, `Travel class must be one of: ${TICKET_CLASSES.join(', ')}.`),
+    legs: z.array(ticketLeg).optional()
+  })
+  .superRefine((val, ctx) => {
+    if (val.tripType === 'Multi City') {
+      if (!val.legs || val.legs.length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Multi City trip must have at least 2 flight segments / destinations.',
+          path: ['legs']
+        });
+      }
+    }
+  });
 
 const hotelDetails = z.object({
   name: required('The hotel name', 120),
