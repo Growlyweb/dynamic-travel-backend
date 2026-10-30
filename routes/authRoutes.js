@@ -67,4 +67,9 @@ router.post(
 );
 router.get('/me', authenticate, authController.me);
 
+// ---- Active Sessions Management
+router.get('/sessions', authenticate, authController.listSessions);
+router.delete('/sessions/:id', authenticate, validate({ params: schemas.idParam }), authController.revokeSession);
+router.delete('/sessions', authenticate, authController.revokeOtherSessions);
+
 module.exports = router;

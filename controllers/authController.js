@@ -1,4 +1,5 @@
 const authService = require('../services/authService');
+const tokenService = require('../services/tokenService');
 const profileService = require('../services/profileService');
 const roleService = require('../services/roleService');
 const { bypassesPermissions } = require('../config/rbac');
@@ -134,4 +135,24 @@ exports.me = asyncHandler(async (req, res) => {
   // What the dashboard needs to decide what to show: the roles and the permissions that result from them.
   const access = { roles: await roleService.rolesOf(user), permissions: req.user.permissions, isAdmin: bypassesPermissions(user.role) };
   sendResponse(res, 200, true, 'Current user profile.', { user, access, ...(partner ? { partner } : {}) });
+});
+
+// GET /api/auth/sessions
+exports.listSessions = asyncHandler(async (req, res) => {
+  const rawRefreshToken = readRefreshToken(req);
+  const sessions = await tokenService.listSessions(req.user.id, rawRefreshToken, contextOf(req));
+  sendResponse(res, 200, true, 'Active sessions retrieved.', sessions);
+});
+
+// DELETE /api/auth/sessions/:id
+exports.revokeSession = asyncHandler(async (req, res) => {
+  const result = await tokenService.revokeSessionById(req.user.id, req.params.id);
+  sendResponse(res, 200, true, 'Session revoked successfully.', result);
+});
+
+// DELETE /api/auth/sessions
+exports.revokeOtherSessions = asyncHandler(async (req, res) => {
+  const rawRefreshToken = readRefreshToken(req);
+  const result = await tokenService.revokeOtherSessions(req.user.id, rawRefreshToken);
+  sendResponse(res, 200, true, 'Other sessions revoked successfully.', result);
 });
