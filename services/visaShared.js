@@ -16,7 +16,14 @@ const describeService = (application) => {
   const { ticket, hotel, tour } = application;
   const parts = {
     visa: () => [application.visaTypeName],
-    ticket: () => ticket && [`${ticket.departure} to ${ticket.arrival}`, ticket.tripType, ticket.travelClass],
+    ticket: () => {
+      if (!ticket) return [];
+      if (ticket.tripType === 'Multi City' && Array.isArray(ticket.legs) && ticket.legs.length > 0) {
+        const route = ticket.legs.map((leg, i) => (i === 0 ? `${leg.departure} → ${leg.arrival}` : leg.arrival)).join(' → ');
+        return [route, ticket.tripType, ticket.travelClass];
+      }
+      return [`${ticket.departure} to ${ticket.arrival}`, ticket.tripType, ticket.travelClass];
+    },
     hotel: () => hotel && [hotel.name, hotel.city, hotel.country, hotel.stay],
     tour: () => tour && [tour.packageName || 'Tour package', tour.duration, (tour.destinations || []).map((stop) => stop.city || stop.country).join(' + ')]
   }[type]();

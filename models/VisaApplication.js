@@ -90,12 +90,21 @@ const details = (fields) => new mongoose.Schema(Object.fromEntries(fields.map((f
 
 const place = { type: String, trim: true, maxlength: 80, default: '' };
 
+const ticketLegSchema = new mongoose.Schema(
+  {
+    departure: { type: String, trim: true, maxlength: 80, required: true },
+    arrival: { type: String, trim: true, maxlength: 80, required: true }
+  },
+  { _id: false }
+);
+
 const ticketSchema = new mongoose.Schema(
   {
     tripType: { type: String, enum: TRIP_TYPES, required: true },
     departure: { type: String, trim: true, maxlength: 80, required: true },
     arrival: { type: String, trim: true, maxlength: 80, required: true },
-    travelClass: { type: String, enum: TICKET_CLASSES, required: true }
+    travelClass: { type: String, enum: TICKET_CLASSES, required: true },
+    legs: { type: [ticketLegSchema], default: [] }
   },
   { _id: false }
 );

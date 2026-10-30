@@ -15,7 +15,7 @@ const SERVICE_LABELS = Object.freeze({ visa: 'Visa', ticket: 'Ticket', hotel: 'H
 const SERVICE_NUMBER_PREFIXES = Object.freeze({ visa: 'VISA', ticket: 'TKT', hotel: 'HTL', tour: 'TOUR' });
 // A message template is for one service, or for every service that has no template of its own.
 const TEMPLATE_SERVICES = Object.freeze(['all', ...SERVICE_TYPES]);
-const TRIP_TYPES = Object.freeze(['One Way', 'Round Way']);
+const TRIP_TYPES = Object.freeze(['One Way', 'Round Way', 'Multi City']);
 const TICKET_CLASSES = Object.freeze(['Economy', 'Premium Economy', 'Business', 'First Class']);
 const PASSPORT_SUBMISSION_METHODS = Object.freeze(['online', 'office', 'pickup']);
 const PASSPORT_STATUSES = Object.freeze([
