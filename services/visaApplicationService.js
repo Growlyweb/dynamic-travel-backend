@@ -117,7 +117,12 @@ const plainTerms = async (body) => {
 
 // Where the client is going, as the short label kept on the file.
 const destinationOf = (body) => {
-  if (body.serviceType === 'ticket') return body.ticket.arrival;
+  if (body.serviceType === 'ticket') {
+    if (body.ticket?.tripType === 'Multi City' && Array.isArray(body.ticket.legs) && body.ticket.legs.length > 0) {
+      return body.ticket.legs.map((leg) => leg.arrival).filter(Boolean).join(', ');
+    }
+    return body.ticket.arrival;
+  }
   if (body.serviceType === 'hotel') return body.hotel.country;
   return [...new Set(body.tour.destinations.map((stop) => stop.country))].join(', ');
 };

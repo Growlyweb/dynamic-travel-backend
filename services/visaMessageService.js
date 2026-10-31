@@ -162,10 +162,12 @@ const createMessage = async (application, { channel, template, subject, body, so
     createdByName: actor ? actor.name : 'System'
   });
 
+// When an applicant has no email address, log it as failed and record an internal timeline note.
   if (isEmail && !to) {
     message.status = 'failed';
     message.error = 'The applicant has no email address.';
     await message.save();
+    await addTimeline(application._id, 'Email not sent', `${message.templateName}: The applicant has no email address.`, actor);
     return message;
   }
   if (isEmail) {
@@ -193,15 +195,44 @@ const templatesForService = (templates, serviceType) => {
   return templates.filter((template) => template.serviceType === serviceType || (template.serviceType === 'all' && !own.has(template.channel)));
 };
 
+// SMS integration is currently on hold. Automatic SMS triggers are suppressed unless SMS_ENABLED is explicitly enabled.
+const isSmsSuppressed = () => {
+  if (process.env.SMS_ENABLED === 'true') return false;
+  if (env.isTest && process.env.SMS_ON_HOLD !== 'true') return false;
+  return true;
+};
+
+// Fallback email template when no active database template exists for application submission
+const DEFAULT_SUBMISSION_EMAIL = {
+  name: 'Application Received (Default)',
+  channel: 'email',
+  trigger: 'submitted',
+  serviceType: 'all',
+  subject: 'We received your {{visaType}} application {{applicationNumber}}',
+  message: 'Dear {{applicantName}},\n\nWe have received your {{country}} {{visaType}} application. Your reference is {{applicationNumber}}.\nYou can follow it here: {{trackingUrl}}\n\nThank you for choosing us.'
+};
+
 // When an application reaches a status, every active template for it and its service is used. Email goes out at once,
 // an SMS becomes a prepared message in the log.
 const runTriggers = async (applicationId, trigger) => {
-  const found = await MessageTemplate.find({ trigger, active: true });
-  if (!found.length) return [];
   const application = await VisaApplication.findById(applicationId);
   if (!application) return [];
 
-  const templates = templatesForService(found, describeService(application).type);
+  const found = await MessageTemplate.find({ trigger, active: true });
+  let templates = templatesForService(found, describeService(application).type);
+
+  // Suppress automatic SMS messages while SMS integration is on hold
+  if (isSmsSuppressed()) {
+    templates = templates.filter((template) => template.channel !== 'sms');
+  }
+
+  // Guarantee fallback email template for submission if none configured or active in DB
+  if (trigger === 'submitted' && !templates.some((t) => t.channel === 'email')) {
+    templates = [DEFAULT_SUBMISSION_EMAIL, ...templates];
+  }
+
+  if (!templates.length) return [];
+
   const made = [];
   for (const template of templates) {
     made.push(await createMessage(application, { channel: template.channel, template, subject: template.subject, body: template.message, source: 'auto' }));
@@ -210,9 +241,18 @@ const runTriggers = async (applicationId, trigger) => {
 };
 
 // Called once at start-up (app.js). The status service and the application service only raise events.
+// The listener is strictly non-blocking with an error boundary so failures do not interrupt primary actions.
 const register = () => {
-  events.on(events.EVENTS.VISA_APPLICATION_CREATED, ({ applicationId }) => runTriggers(applicationId, 'submitted'));
-  events.on(events.EVENTS.VISA_STATUS_CHANGED, ({ applicationId, to }) => runTriggers(applicationId, to));
+  events.on(events.EVENTS.VISA_APPLICATION_CREATED, ({ applicationId }) => {
+    runTriggers(applicationId, 'submitted').catch((err) => {
+      logger.error({ err, applicationId }, 'Error dispatching application created messages');
+    });
+  });
+  events.on(events.EVENTS.VISA_STATUS_CHANGED, ({ applicationId, to }) => {
+    runTriggers(applicationId, to).catch((err) => {
+      logger.error({ err, applicationId, to }, 'Error dispatching status changed messages');
+    });
+  });
 };
 
 // ------------------------------------------------------------------ manual messages
