@@ -68,6 +68,7 @@ const authService = require('../services/authService');
 
   // 3. Seed B2C Customers
   const customerData = [
+    { name: 'Md. Sajjad Hossen', email: 'sajjad.hossen@gmail.com', phone: '+8801812345679', password: 'CustomerPass2025!' },
     { name: 'Rohan Gupta', email: 'rohan.gupta@example.com', phone: '+8801710000001' },
     { name: 'Sara Ali', email: 'sara.ali@example.com', phone: '+8801710000002' },
     { name: 'Tom Becker', email: 'tom.becker@example.com', phone: '+8801710000003' },
@@ -82,7 +83,7 @@ const authService = require('../services/authService');
         name: c.name,
         email: c.email,
         phone: c.phone,
-        passwordHash: await authService.hashPassword('Customer@12345'),
+        passwordHash: await authService.hashPassword(c.password || 'Customer@12345'),
         role: ROLES.B2C,
         status: USER_STATUS.ACTIVE,
         emailVerified: true,
@@ -93,6 +94,17 @@ const authService = require('../services/authService');
 
   // 4. Seed B2B Partners
   const partnerSeedData = [
+    {
+      companyName: 'Ajmal Travel Agency',
+      licenseNo: 'ABL-B2B-1089',
+      businessType: 'Travel Agency',
+      address: 'House #12, Road #5, Uttara, Dhaka 1230, Bangladesh',
+      email: 'ajmaltravel@gmail.com',
+      ownerName: 'Ajmal Travel Agency',
+      password: 'PartnerPass2025!',
+      approvalStatus: APPROVAL_STATUS.APPROVED,
+      commissionRate: 12,
+    },
     {
       companyName: 'Skyline Travels & Tours',
       licenseNo: 'LIC-2026-8801',
@@ -128,7 +140,7 @@ const authService = require('../services/authService');
       pUser = await User.create({
         name: p.ownerName,
         email: p.email,
-        passwordHash: await authService.hashPassword('Partner@12345'),
+        passwordHash: await authService.hashPassword(p.password || 'Partner@12345'),
         role: ROLES.B2B,
         status: USER_STATUS.ACTIVE,
         emailVerified: true,
@@ -140,6 +152,7 @@ const authService = require('../services/authService');
         licenseNo: p.licenseNo,
         businessType: p.businessType,
         address: p.address,
+        commissionRate: p.commissionRate || 8,
         approvalStatus: p.approvalStatus,
         reviewedBy: admin._id,
         reviewedAt: new Date(),
