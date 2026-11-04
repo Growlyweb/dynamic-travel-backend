@@ -29,7 +29,13 @@ router.use(requireApprovedPartner);
 router.get('/overview', partnerController.overview);
 
 const b2bOps = require('../../controllers/b2bOperationsController');
+const b2bApp = require('../../controllers/b2bApplicationController');
 const opSchemas = require('../../validations/b2bOperations.validation');
+
+// Partner Visa Applications
+router.get('/applications', b2bApp.listApplications);
+router.post('/applications', b2bApp.createApplication);
+router.get('/applications/:id', b2bApp.getApplication);
 
 router.post('/pickups', validate({ body: opSchemas.createPickup }), b2bOps.createPickup);
 router.get('/pickups', validate({ query: opSchemas.listOperations }), b2bOps.listPickups);

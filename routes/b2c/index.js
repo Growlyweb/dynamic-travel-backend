@@ -19,8 +19,22 @@ router.patch('/profile', validate({ body: updateProfile }), profileController.up
 // A customer's own memberships (read-only). The customer is always the one in the token.
 router.get('/memberships', validate({ query: listOwnMemberships }, { statusCode: 400 }), membershipController.listOwn);
 
-// Add applications, documents, tours, flight inquiries and notifications here.
-// For single records use checkOwnership (middleware/ownershipMiddleware.js) so a traveller
-// can only ever open their own: isOwner: (record, user) => String(record.userId) === user.id
+const b2cController = require('../../controllers/b2cController');
+
+// Customer Dashboard Overview
+router.get('/overview', b2cController.getOverview);
+
+// Customer Visa Applications
+router.get('/visa-applications', b2cController.listVisaApplications);
+router.post('/visa-applications', b2cController.createVisaApplication);
+
+// Customer Tour Bookings
+router.get('/tours/bookings', b2cController.listTourBookings);
+router.post('/tours/bookings', b2cController.createTourBooking);
+
+// Customer Saved Items (Wishlist)
+router.get('/saved', b2cController.listSavedItems);
+router.post('/saved', b2cController.addSavedItem);
+router.delete('/saved/:id', b2cController.removeSavedItem);
 
 module.exports = router;

@@ -28,6 +28,10 @@ router.get('/public/status/link/:ref', visaStatusLinkLimiter, validate({ params:
 router.post('/public/status/otp', visaStatusCodeLimiter, validate({ body: publicSchemas.requestCode }), publicController.requestCode);
 router.post('/public/status/verify', visaStatusVerifyLimiter, validate({ body: publicSchemas.verifyCode }), publicController.verifyCode);
 
+// Public storefront catalog
+router.get('/public/countries', catalog.listCountries);
+router.get('/public/types', catalog.listTypes);
+
 router.use(authenticate);
 
 const view = requirePermission(PERMISSIONS.VISA_VIEW);

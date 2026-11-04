@@ -5,9 +5,9 @@ const { buildMeta } = require('../utils/pagination');
 
 // Writing an audit record must never break the request that caused it.
 // Never pass passwords or raw tokens in `meta`.
-const record = async ({ actorUserId, action, targetUserId, resource = '', result = 'SUCCESS', ip = '', meta }) => {
+const record = async ({ actorUserId, action, targetUserId, resource = '', result = 'SUCCESS', ip = '', meta, details }) => {
   try {
-    await AuditLog.create({ actorUserId, action, targetUserId, resource, result, ip, meta });
+    await AuditLog.create({ actorUserId, action, targetUserId, resource, result, ip, meta: meta || details });
   } catch (err) {
     logger.error({ err }, `Failed to write audit log (${action})`);
   }
@@ -29,4 +29,4 @@ const list = async (query) => {
   return { items, meta: buildMeta(total, page, limit) };
 };
 
-module.exports = { record, list };
+module.exports = { record, log: record, list };
