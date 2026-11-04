@@ -9,7 +9,7 @@ const membershipService = require('./membershipService');
 // never from the URL or body, so one person can only ever read or change their own record.
 
 const get = async (userId) => {
-  const user = await User.findById(userId);
+  const user = await User.findById(userId).select('+passwordHash');
   if (!user) throw new ApiError(404, 'Account not found.');
 
   const partner = user.role === ROLES.B2B ? await partnerService.getByUserId(user._id) : null;

@@ -371,24 +371,29 @@ const resetPassword = async ({ email, otp, newPassword }, context = {}) => {
   notificationService.trySend(() => notificationService.passwordChanged(user));
 };
 
-// Logged-in password change. Other devices are signed out; this device gets a fresh session.
+// Logged-in password change or first-time password creation (for Google accounts).
+// Other devices are signed out; this device gets a fresh session.
 const changePassword = async (userId, { currentPassword, newPassword }, context = {}) => {
   const user = await User.findById(userId).select('+passwordHash');
   if (!user) throw new ApiError(404, 'Account not found.');
 
-  if (!user.passwordHash) {
-    throw new ApiError(400, 'This account has no password yet. Use "forgot password" to set one.', {
-      code: 'NO_PASSWORD_SET'
-    });
-  }
-  if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
-    throw new ApiError(401, 'Current password is incorrect.', { code: 'WRONG_PASSWORD' });
-  }
-  if (await bcrypt.compare(newPassword, user.passwordHash)) {
-    throw new ApiError(400, 'New password must be different from your current password.');
+  const isFirstTimePassword = !user.passwordHash;
+
+  if (!isFirstTimePassword) {
+    if (!currentPassword) {
+      throw new ApiError(422, 'Current password is required.', { code: 'CURRENT_PASSWORD_REQUIRED' });
+    }
+    if (!(await bcrypt.compare(currentPassword, user.passwordHash))) {
+      throw new ApiError(401, 'Current password is incorrect.', { code: 'WRONG_PASSWORD' });
+    }
+    if (await bcrypt.compare(newPassword, user.passwordHash)) {
+      throw new ApiError(400, 'New password must be different from your current password.');
+    }
   }
 
   await applyNewPassword(user, newPassword);
+  user.hasPassword = true;
+  await user.save();
 
   await auditService.record({
     actorUserId: user._id,

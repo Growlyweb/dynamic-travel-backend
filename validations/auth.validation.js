@@ -46,7 +46,7 @@ const verifyResetToken = z.object({ email, otp });
 const resetPassword = z.object({ email, otp, newPassword: password });
 
 const changePassword = z.object({
-  currentPassword: z.string('Current password is required.').min(1).max(200),
+  currentPassword: z.string().max(200).optional(),
   newPassword: password
 });
 

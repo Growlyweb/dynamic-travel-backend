@@ -32,6 +32,7 @@ const userSchema = new mongoose.Schema(
 
     authProvider: { type: String, enum: Object.values(AUTH_PROVIDERS), default: AUTH_PROVIDERS.LOCAL },
     firebaseUid: { type: String },
+    hasPassword: { type: Boolean, default: false },
 
     lastLoginAt: { type: Date }
   },
@@ -50,9 +51,22 @@ userSchema.pre('validate', function requireContact(next) {
   next();
 });
 
+userSchema.pre('save', function syncHasPassword(next) {
+  if (this.isModified('passwordHash')) {
+    this.hasPassword = Boolean(this.passwordHash);
+  }
+  next();
+});
+
 // Never leak secrets or internals in any JSON response.
 userSchema.set('toJSON', {
   transform: (doc, ret) => {
+    ret.hasPassword =
+      doc.passwordHash !== undefined
+        ? Boolean(doc.passwordHash)
+        : ret.hasPassword !== undefined
+        ? Boolean(ret.hasPassword)
+        : doc.authProvider !== 'firebase';
     delete ret.passwordHash;
     delete ret.tokenVersion;
     delete ret.firebaseUid;
