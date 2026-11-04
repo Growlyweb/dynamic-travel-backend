@@ -284,7 +284,8 @@ const loginWithFirebase = async ({ idToken }, context = {}) => {
       emailVerified,
       phoneVerified: Boolean(phone),
       authProvider: AUTH_PROVIDERS.FIREBASE,
-      firebaseUid: decoded.uid
+      firebaseUid: decoded.uid,
+      avatar: decoded.picture || undefined
     });
     await auditService.record({
       actorUserId: user._id,
@@ -296,6 +297,7 @@ const loginWithFirebase = async ({ idToken }, context = {}) => {
   } else {
     if (emailVerified) user.emailVerified = true;
     if (user.status === USER_STATUS.PENDING) user.status = USER_STATUS.ACTIVE;
+    if (decoded.picture && !user.avatar) user.avatar = decoded.picture;
     await user.save();
   }
 

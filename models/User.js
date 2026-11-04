@@ -33,6 +33,7 @@ const userSchema = new mongoose.Schema(
     authProvider: { type: String, enum: Object.values(AUTH_PROVIDERS), default: AUTH_PROVIDERS.LOCAL },
     firebaseUid: { type: String },
     hasPassword: { type: Boolean, default: false },
+    avatar: { type: String, trim: true },
 
     lastLoginAt: { type: Date }
   },
