@@ -12,7 +12,7 @@ const logger = require('../utils/logger');
 let app;
 
 const credentialFromEnv = () => {
-  if (env.firebase.serviceAccountPath) {
+  if (env.firebase.serviceAccountPath && fs.existsSync(path.resolve(env.firebase.serviceAccountPath))) {
     const json = fs.readFileSync(path.resolve(env.firebase.serviceAccountPath), 'utf8');
     return cert(JSON.parse(json));
   }
