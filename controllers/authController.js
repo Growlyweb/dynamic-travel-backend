@@ -120,7 +120,8 @@ exports.resetPassword = asyncHandler(async (req, res) => {
 // POST /api/auth/change-password
 exports.changePassword = asyncHandler(async (req, res) => {
   const session = await authService.changePassword(req.user.id, req.body, contextOf(req));
-  sendSession(req, res, 200, 'Password updated. Your other devices were signed out.', { session });
+  const { user } = await profileService.get(req.user.id);
+  sendSession(req, res, 200, 'Password saved successfully.', { user, session });
 });
 
 // POST /api/auth/setup-account  (invited staff / admin sets the first password)

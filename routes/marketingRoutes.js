@@ -8,7 +8,10 @@ const { PERMISSIONS } = require('../config/rbac');
 const validate = require('../middleware/validationMiddleware');
 const schemas = require('../validations/marketing.validation');
 
-// Guard all marketing routes: authentication + ADMIN or STAFF with report permissions
+// Public newsletter subscription route
+router.post('/subscribers', marketingController.subscribeNewsletter);
+
+// Guard all internal marketing routes: authentication + ADMIN or STAFF with report permissions
 router.use(authenticate, requireRole(ROLES.ADMIN, ROLES.STAFF));
 
 router.get('/overview', marketingController.getOverview);

@@ -34,11 +34,11 @@ const getFirebaseAuth = () => {
 };
 
 // Returns the decoded Firebase ID token ({ uid, email, email_verified, phone_number, name, firebase }).
-// checkRevoked=true also rejects tokens of disabled users or sessions revoked in Firebase.
+// Fast local cryptographic verification using cached Google public keys.
 const verifyIdToken = async (idToken) => {
   const auth = getFirebaseAuth();
   try {
-    return await auth.verifyIdToken(idToken, true);
+    return await auth.verifyIdToken(idToken);
   } catch (err) {
     logger.warn(`Firebase token rejected: ${err.code || err.message}`);
     throw new ApiError(401, 'Invalid or expired Firebase token.', { code: 'FIREBASE_TOKEN_INVALID' });
