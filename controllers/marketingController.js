@@ -1,6 +1,28 @@
+const Subscriber = require('../models/Subscriber');
+const ApiError = require('../utils/ApiError');
 const marketingService = require('../services/marketingService');
 const sendResponse = require('../utils/response');
 const asyncHandler = require('../utils/asyncHandler');
+
+// POST /api/marketing/subscribers (Public newsletter signup)
+exports.subscribeNewsletter = asyncHandler(async (req, res) => {
+  const { email, source } = req.body || {};
+  if (!email || !email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    throw new ApiError(422, 'A valid email address is required.');
+  }
+
+  const cleanEmail = email.trim().toLowerCase();
+  const subscriber = await Subscriber.findOneAndUpdate(
+    { email: cleanEmail },
+    { $set: { email: cleanEmail, source: source || 'storefront', isActive: true, subscribedAt: new Date() } },
+    { upsert: true, new: true }
+  );
+
+  sendResponse(res, 200, true, 'Subscribed to newsletter successfully.', {
+    email: subscriber.email,
+    subscribedAt: subscriber.subscribedAt,
+  });
+});
 
 // GET /api/marketing/overview
 exports.getOverview = asyncHandler(async (req, res) => {

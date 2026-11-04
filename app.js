@@ -120,6 +120,9 @@ app.use('/api/documents', documentRoutes);
 app.use('/api/tour-categories', tourCategoryRoutes);
 app.use('/api/tours', tourRoutes);
 
+// Contact inquiries from public storefront
+app.use('/api/contact', require('./routes/contactRoutes'));
+
 // Membership plans, memberships and reports. Mounted at /api with the guards on each route, see the file.
 app.use('/api', membershipRoutes);
 
